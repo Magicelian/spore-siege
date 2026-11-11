@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tiny Shrooms: Spore Siege</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+        -webkit-user-select: none;
+        user-select: none;
+        cursor: default;
+      }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        image-rendering: pixelated;
+      }
+      #bouton-menu {
+        position: fixed;
+        top: 8px;
+        right: 8px;
+        width: 28px;
+        height: 28px;
+        border: none;
+        border-radius: 14px;
+        background: rgba(40, 30, 25, 0.55);
+        color: #fff;
+        font-size: 16px;
+        line-height: 28px;
+        padding: 0;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      body:hover #bouton-menu,
+      #bouton-menu:focus-visible {
+        opacity: 1;
+      }
+      #menu {
+        position: fixed;
+        top: 42px;
+        right: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 6px;
+        border-radius: 12px;
+        background: rgba(40, 30, 25, 0.85);
+        font: 13px -apple-system, 'Segoe UI', sans-serif;
+      }
+      #menu[hidden] {
+        display: none;
+      }
+      #menu button {
+        border: none;
+        border-radius: 8px;
+        background: none;
+        color: #fff;
+        text-align: left;
+        padding: 6px 12px 6px 24px;
+        font: inherit;
+      }
+      #menu button:hover {
+        background: rgba(255, 255, 255, 0.15);
+      }
+      #menu button.coche::before {
+        content: '✓';
+        position: absolute;
+        margin-left: -16px;
+      }
+      #menu button.quitter {
+        margin-top: 4px;
+        color: #ffb3a8;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="jeu"></div>
+    <button id="bouton-menu" title="Fenêtre" hidden>⚙</button>
+    <div id="menu" hidden></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
