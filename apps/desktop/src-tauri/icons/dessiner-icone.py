@@ -1,6 +1,6 @@
 """Icônes de Spore Siege en pixel art, dessinées sur une grille puis agrandies sans lissage.
 
-- `icone.png` (1024 px, grille 32 × 32) : le canon à spores, chapeau rouge casqué, sur un ciel de guerre.
+- `icone.png` (1024 px, grille 32 × 32) : le canon à spores, chapeau rouge casqué, et une limace, sur fond transparent.
 - `barre-menus.png` (36 px, grille 18 × 18) : sa silhouette en modèle monochrome pour la barre des menus.
 
 Couleurs de `packages/renderer/src/fortins.ts`. Usage :
@@ -180,39 +180,31 @@ def icone():
     canon(devant)
     limace(devant)
     devant.detourer()
-    for y in range(32):
-        for x in range(32):
-            if devant.p[y][x] is not None:
-                fond.p[y][x] = devant.p[y][x]
-
-    # Marge de 2 pixels tout autour, comme les icônes de macOS.
-    r, m = 5, 2
-    bas, haut = m + r, 31 - m - r
-    for y in range(32):
-        for x in range(32):
-            cx = min(max(x, bas), haut)
-            cy = min(max(y, bas), haut)
-            d = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
-            if d > r + 0.4:
-                fond.p[y][x] = None
-            elif d > r - 0.6:
-                fond.p[y][x] = CONTOUR
-    png(ICI / 'icone.png', fond, 32)
+    # Fond transparent (demande de Celian, 12/11/2026) : seul le sujet, détouré, sans ciel ni cadre.
+    png(ICI / 'icone.png', devant, 32)
 
 
 def barre_menus():
-    """Silhouette : chapeau casqué et tour, en noir (macOS la teinte)."""
+    """Même style que celle de Tiny Shrooms (chapeau à gros pois évidés, pied à part avec deux yeux), en version
+    guerre : pointe de casque sur le chapeau, fût de canon sur le côté. En noir (macOS la teinte)."""
     g = Grille(18)
     noir = (0, 0, 0)
-    g.ovale(9, 9, 8, 6.5, noir, haut_seulement=True)
-    g.rect(1, 9, 16, 9, noir)
-    g.rect(8, 1, 9, 3, noir)
-    g.rect(5, 10, 12, 16, noir)
-    g.rect(12, 12, 16, 13, noir)
-    g.rect(4, 16, 13, 17, noir)
-    # Pois et meurtrière évidés, pour qu'on lise un champignon.
-    for x, y in ((5, 6), (6, 6), (12, 5), (11, 7), (8, 13)):
+    # Pointe de casque.
+    g.rect(8, 1, 9, 2, noir)
+    # Chapeau.
+    for y, x0, x1 in ((3, 6, 11), (4, 4, 13), (5, 3, 14), (6, 2, 15), (7, 1, 16), (8, 1, 16)):
+        g.rect(x0, y, x1, y, noir)
+    g.rect(4, 5, 5, 6, None)
+    g.rect(11, 4, 12, 5, None)
+    # Pied, coins arrondis, deux yeux.
+    g.rect(5, 10, 12, 15, noir)
+    for x, y in ((5, 10), (12, 10), (5, 15), (12, 15)):
         g.point(x, y, None)
+    g.rect(7, 12, 7, 13, None)
+    g.rect(10, 12, 10, 13, None)
+    # Fût du canon, à droite du pied.
+    g.rect(13, 12, 15, 13, noir)
+    g.rect(16, 11, 16, 14, noir)
     png(ICI / 'barre-menus.png', g, 2)
 
 
