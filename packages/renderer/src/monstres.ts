@@ -1,48 +1,102 @@
-// Monstres de la Rouille : modèles provisoires en voxels (les vrais viendront à l'étape 6), placés entre
-// deux instantanés du moteur pour un mouvement fluide.
+// Monstres de la Rouille : bestioles couvertes de moisissure grise, taches de rouille, yeux qui luisent ;
+// placées entre deux instantanés du moteur pour un mouvement fluide. Barre de vie dès le premier coup ;
+// à la mort, le monstre s'écrase puis éclate en cubes, et ses spores montent en « +N ».
 import * as THREE from 'three';
 import type { Ile, Instantane, TypeMonstre } from '@spore-siege/engine';
 import { versMonde } from './repere';
-import { Voxels, type Modele } from './voxels';
+import { lumineuse, materiau } from './palette';
+import { hachage, sansNuance, Voxels, type Modele } from './voxels';
 
-const ROUILLE = { gris: 0x8d9198, sombre: 0x4c4f57, rouille: 0xb8572b, clair: 0xdfe8ef, oeil: 0x1d1d22, carapace: 0x4a3a38 };
+const M = {
+  gris: 0x8d9198,
+  grisClair: 0xb9bec4,
+  sombre: 0x4c4f57,
+  ventre: 0x6a6d74,
+  rouille: 0xb8572b,
+  rouilleSombre: 0x7e3a1e,
+  carapace: 0x553a32,
+  aile: 0xd8e2ea,
+  oeil: 0xffa23a,
+};
+lumineuse(M.oeil);
 const C = -0.5;
 
 /** Taches de rouille éparses, tirées d'un hachage de la position. */
-function taches(v: Voxels, fond: number, part: number): void {
-  v.peindre((x, y, z, c) => c === fond && Math.abs(Math.sin(x * 12.99 + y * 78.23 + z * 37.71) * 43758.5) % 1 < part, ROUILLE.rouille);
+function taches(v: Voxels, fond: number, part: number, couleur = M.rouille): void {
+  v.peindre((x, y, z, c) => c === fond && hachage(x, y, z) < part, couleur);
 }
 
+/** Duvet de moisissure : quelques voxels clairs posés sur le dessus des voxels `fond`. */
+function duvet(v: Voxels, fond: number, part: number): void {
+  const poses: [number, number, number][] = [];
+  for (const [x, y, z, c] of v.entrees())
+    if (c === fond && v.lire(x, y + 1, z) === undefined && hachage(x, y, z + 7) < part) poses.push([x, y + 1, z]);
+  for (const [x, y, z] of poses) v.poser(x, y, z, M.grisClair);
+}
+
+/** Limace : longue, basse, dos moisi, deux cornes aux yeux qui luisent (avant = +x). */
 function limace(): Voxels {
-  const v = new Voxels().boule(C, 1.5, C, 3.6, 1.6, 1.8, ROUILLE.gris);
-  taches(v, ROUILLE.gris, 0.15);
-  // Cornes à l'avant (+x).
-  v.boite(2, 3, -2, 2, 4, -2, ROUILLE.sombre).boite(2, 3, 1, 2, 4, 1, ROUILLE.sombre);
-  return v.poser(2, 5, -2, ROUILLE.oeil).poser(2, 5, 1, ROUILLE.oeil);
+  const v = new Voxels().boule(C - 1, 1.5, C, 3.4, 1.5, 1.8, M.gris);
+  v.boule(C + 2, 2.2, C, 1.8, 1.8, 1.6, M.gris);
+  v.peindre((_x, y, _z, c) => c === M.gris && y === 0, M.ventre);
+  taches(v, M.gris, 0.16);
+  duvet(v, M.gris, 0.25);
+  v.boite(2, 4, -2, 2, 5, -2, M.sombre).boite(2, 4, 1, 2, 5, 1, M.sombre);
+  return v.poser(3, 6, -2, M.oeil).poser(3, 6, 1, M.oeil);
 }
 
+/** Moucheron : petit corps sombre rayé de rouille, gros yeux qui luisent, ailes claires. */
 function moucheron(): Voxels {
-  const v = new Voxels().boule(C, 5, C, 1.6, 1.2, 1.2, ROUILLE.sombre);
-  v.poser(1, 5, -1, ROUILLE.rouille).poser(1, 5, 0, ROUILLE.rouille);
-  // Ailes.
-  return v.boite(-2, 6, -4, 0, 6, -2, ROUILLE.clair).boite(-2, 6, 1, 0, 6, 3, ROUILLE.clair);
+  const v = new Voxels().boule(C - 1, 5, C, 2, 1.3, 1.3, M.sombre);
+  v.peindre((x, _y, _z, c) => c === M.sombre && x <= -2 && (x & 1) === 0, M.rouille);
+  v.boule(C + 1.5, 5.5, C, 1.2, 1.2, 1.4, M.sombre);
+  v.poser(2, 6, -2, M.oeil).poser(2, 6, 1, M.oeil);
+  v.boite(-2, 7, -4, 0, 7, -2, M.aile).boite(-2, 7, 1, 0, 7, 3, M.aile);
+  for (const x of [-2, 0]) v.poser(x, 3, -1, M.sombre).poser(x, 3, 0, M.sombre);
+  return v;
 }
 
+/** Scarabée : carapace rouillée fendue au milieu, plaques de moisissure, tête sombre à mandibules. */
 function scarabee(): Voxels {
-  const v = new Voxels().dome(C, C, 1, 3.4, 3, ROUILLE.carapace);
-  // Raie de rouille le long du dos.
-  v.peindre((_x, _y, z, c) => c === ROUILLE.carapace && (z === -1 || z === 0), ROUILLE.rouille);
-  v.boite(3, 1, -2, 4, 2, 1, ROUILLE.sombre);
-  for (const x of [-2, 0, 2]) v.poser(x, 0, -4, ROUILLE.sombre).poser(x, 0, 3, ROUILLE.sombre);
+  const v = new Voxels().dome(C - 1, C, 1, 3.6, 3, M.carapace);
+  v.peindre((_x, _y, z, c) => c === M.carapace && (z === -1 || z === 0), M.rouilleSombre);
+  taches(v, M.carapace, 0.22, M.gris);
+  duvet(v, M.carapace, 0.12);
+  v.boite(3, 1, -2, 4, 3, 1, M.sombre);
+  v.poser(5, 1, -2, M.rouille).poser(5, 1, 1, M.rouille).poser(6, 1, -2, M.sombre).poser(6, 1, 1, M.sombre);
+  v.poser(4, 3, -2, M.oeil).poser(4, 3, 1, M.oeil);
+  for (const x of [-3, -1, 1]) v.poser(x, 0, -5, M.sombre).poser(x, 0, 4, M.sombre);
   return v;
 }
 
+/** Amas de Rouille : boule de moisissure bosselée, couverte de duvet, plusieurs yeux. */
 function amas(rayon: number): Voxels {
-  const v = new Voxels().boule(C, rayon, C, rayon, rayon * 0.9, rayon, ROUILLE.gris);
-  v.boule(C + rayon * 0.5, rayon * 1.5, C - rayon * 0.3, rayon * 0.5, rayon * 0.5, rayon * 0.5, ROUILLE.gris);
-  taches(v, ROUILLE.gris, 0.35);
+  const v = new Voxels().boule(C, rayon, C, rayon, rayon * 0.9, rayon, M.gris);
+  v.boule(C + rayon * 0.5, rayon * 1.5, C - rayon * 0.3, rayon * 0.55, rayon * 0.5, rayon * 0.55, M.gris);
+  v.boule(C - rayon * 0.6, rayon * 1.2, C + rayon * 0.5, rayon * 0.5, rayon * 0.5, rayon * 0.5, M.gris);
+  taches(v, M.gris, 0.3);
+  duvet(v, M.gris, 0.3);
+  // Yeux sur la face avant (+x), plus nombreux chez le gros.
+  const yeux = rayon > 2 ? [[1.4, -1], [1.9, 1], [1, 2]] : [[1.2, -0.5], [1.2, 0.8]];
+  for (const [hy, z] of yeux) {
+    const y = Math.round(rayon * hy!);
+    for (let x = 6; x > -6; x--)
+      if (v.lire(x, y, Math.round(C + z!)) !== undefined) {
+        v.poser(x, y, Math.round(C + z!), M.oeil);
+        break;
+      }
+  }
   return v;
 }
+
+/** Couleurs des éclats quand le monstre meurt. */
+export const ECLATS: Record<TypeMonstre, number[]> = {
+  limace: [M.gris, M.rouille, M.grisClair],
+  moucheron: [M.sombre, M.rouille, M.aile],
+  scarabee: [M.carapace, M.rouilleSombre, M.gris],
+  amas: [M.gris, M.rouille, M.grisClair],
+  petitAmas: [M.gris, M.rouille, M.grisClair],
+};
 
 let modeles: Record<TypeMonstre, Modele> | null = null;
 export function modelesMonstres(): Record<TypeMonstre, Modele> {
@@ -56,19 +110,98 @@ export function modelesMonstres(): Record<TypeMonstre, Modele> {
   return modeles;
 }
 
+const GEO_ECLAT = sansNuance(new THREE.BoxGeometry(1, 1, 1));
+/** Secondes : le monstre s'écrase, puis ses éclats volent, pendant que son butin monte. */
+const DUREE_ECRASE = 0.12;
+const DUREE_ECLATS = 0.45;
+const DUREE_BUTIN = 0.9;
+const DUREE_MORSURE = 0.15;
+const GRAVITE = 9;
+
+const sansProfondeur = { depthTest: false, depthWrite: false } as const;
+const FOND = new THREE.SpriteMaterial({ color: 0x1a120c, ...sansProfondeur });
+const JAUGES = {
+  vert: new THREE.SpriteMaterial({ color: 0x7bd63a, ...sansProfondeur }),
+  jaune: new THREE.SpriteMaterial({ color: 0xf0c040, ...sansProfondeur }),
+  rouge: new THREE.SpriteMaterial({ color: 0xe04030, ...sansProfondeur }),
+};
+
+/** Texte « +N » en pixels nets (police des chiffres de l'interface), mis en cache par valeur. */
+const textes = new Map<number, { materiau: THREE.SpriteMaterial; largeur: number; hauteur: number }>();
+function texteButin(n: number): { materiau: THREE.SpriteMaterial; largeur: number; hauteur: number } {
+  let t = textes.get(n);
+  if (t) return t;
+  const texte = `+${n}`;
+  const toile = document.createElement('canvas');
+  const ctx = toile.getContext('2d')!;
+  const police = "9px 'Chiffres', 'Pixelify Sans', sans-serif";
+  ctx.font = police;
+  toile.width = Math.ceil(ctx.measureText(texte).width) + 4;
+  toile.height = 12;
+  ctx.font = police;
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#1a120c';
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]] as const)
+    ctx.fillText(texte, 2 + dx, 6 + dy);
+  ctx.fillStyle = '#ffe08a';
+  ctx.fillText(texte, 2, 6);
+  // Bords nets : chaque pixel est plein ou vide.
+  const image = ctx.getImageData(0, 0, toile.width, toile.height);
+  for (let i = 3; i < image.data.length; i += 4) image.data[i] = image.data[i]! > 110 ? 255 : 0;
+  ctx.putImageData(image, 0, 0);
+  const texture = new THREE.CanvasTexture(toile);
+  texture.magFilter = texture.minFilter = THREE.NearestFilter;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  t = { materiau: new THREE.SpriteMaterial({ map: texture, transparent: true, ...sansProfondeur }), largeur: toile.width, hauteur: toile.height };
+  textes.set(n, t);
+  return t;
+}
+
 interface Corps {
   maillage: THREE.Mesh;
   type: TypeMonstre;
+  hauteur: number;
+  fond: THREE.Sprite;
+  jauge: THREE.Sprite;
+}
+interface Mourant {
+  maillage: THREE.Mesh;
+  type: TypeMonstre;
+  debut: number;
+  mort: boolean;
+}
+interface Eclat {
+  maillage: THREE.Mesh;
+  debut: number;
+  depart: THREE.Vector3;
+  vitesse: THREE.Vector3;
+  taille: number;
+}
+interface Butin {
+  sprite: THREE.Sprite;
+  debut: number;
+  depart: THREE.Vector3;
+  largeur: number;
+  hauteur: number;
 }
 
 export class MonstresRendu {
   readonly groupe = new THREE.Group();
+  /** Barres de vie et butins : dessinés par-dessus tout, sans contour (superposition). */
+  readonly dessus = new THREE.Group();
   private readonly corps = new Map<number, Corps>();
+  private mourants: Mourant[] = [];
+  private eclats: Eclat[] = [];
+  private butins: Butin[] = [];
   private readonly position = new THREE.Vector3();
   private readonly avant = new THREE.Vector3();
 
-  /** Place les monstres entre `precedent` et `actuel` ; `alpha` de 0 (précédent) à 1 (actuel). */
-  afficher(ile: Ile, precedent: Instantane | null, actuel: Instantane, alpha: number, instant: number): void {
+  /**
+   * Place les monstres entre `precedent` et `actuel` ; `alpha` de 0 (précédent) à 1 (actuel).
+   * `instant` en ms ; `parPixel` : taille d'un pixel de l'image en unités du monde (barres et textes nets).
+   */
+  afficher(ile: Ile, precedent: Instantane | null, actuel: Instantane, alpha: number, instant: number, parPixel: number): void {
+    const t = instant / 1000;
     const anciens = new Map(precedent?.monstres.map((m) => [m.id, m.position]));
     const vus = new Set<number>();
     for (const m of actuel.monstres) {
@@ -78,9 +211,10 @@ export class MonstresRendu {
         const modele = modelesMonstres()[m.type];
         const maillage = new THREE.Mesh(modele.geometrie, modele.materiaux);
         maillage.castShadow = true;
-        corps = { maillage, type: m.type };
+        corps = { maillage, type: m.type, hauteur: modele.hauteur, fond: new THREE.Sprite(FOND), jauge: new THREE.Sprite(JAUGES.vert) };
         this.corps.set(m.id, corps);
         this.groupe.add(maillage);
+        this.dessus.add(corps.fond, corps.jauge);
       }
       const ancienne = anciens.get(m.id) ?? m.position;
       const x = ancienne.x + (m.position.x - ancienne.x) * alpha;
@@ -90,17 +224,125 @@ export class MonstresRendu {
       versMonde({ x: x + ecart, y: y - ecart }, ile, this.position);
       if (m.type === 'moucheron') this.position.y += Math.sin(instant / 120 + m.id) * 0.06;
       corps.maillage.position.copy(this.position);
+      // Limace et amas ondulent en avançant (et s'arrêtent avec eux).
+      if (m.type === 'limace' || m.type === 'amas' || m.type === 'petitAmas') {
+        const s = Math.sin((x + y) * 7 + m.id) * 0.07;
+        corps.maillage.scale.set(1 + s, 1 - s, 1 + s);
+      }
       // Regard vers la direction de marche (+x du modèle).
       versMonde(m.position, ile, this.avant);
       versMonde(ancienne, ile, this.position);
       const dx = this.avant.x - this.position.x;
       const dz = this.avant.z - this.position.z;
       if (dx * dx + dz * dz > 1e-6) corps.maillage.rotation.y = Math.atan2(-dz, dx);
+      this.placerJauge(corps, m.pv / m.pvMax, parPixel);
     }
     for (const [id, corps] of this.corps) {
       if (vus.has(id)) continue;
-      this.groupe.remove(corps.maillage);
+      this.dessus.remove(corps.fond, corps.jauge);
       this.corps.delete(id);
+      const fin = actuel.evenements.find((e) => e.id === id);
+      if (!fin) {
+        this.groupe.remove(corps.maillage);
+        continue;
+      }
+      this.mourants.push({ maillage: corps.maillage, type: corps.type, debut: t, mort: fin.type === 'mort' });
+      if (fin.type === 'mort') this.lacherButin(fin.butin, corps.maillage.position, corps.hauteur, t);
     }
+    this.animerMourants(t);
+    this.animerEclats(t);
+    this.animerButins(t, parPixel);
+  }
+
+  /** Barre de 10 × 2 pixels dans un cadre sombre, cachée tant que le monstre est intact. */
+  private placerJauge(corps: Corps, part: number, parPixel: number): void {
+    const visible = part < 1;
+    corps.fond.visible = corps.jauge.visible = visible;
+    if (!visible) return;
+    const p = corps.maillage.position;
+    corps.fond.position.set(p.x, p.y + corps.hauteur + 0.12, p.z);
+    corps.jauge.position.copy(corps.fond.position);
+    corps.fond.scale.set(12 * parPixel, 4 * parPixel, 1);
+    const largeur = Math.max(1, Math.round(10 * part));
+    corps.jauge.scale.set(largeur * parPixel, 2 * parPixel, 1);
+    // Ancrée à gauche : son bord gauche reste au bord gauche du cadre.
+    corps.jauge.center.set(5 / largeur, 0.5);
+    corps.jauge.material = part > 0.5 ? JAUGES.vert : part > 0.25 ? JAUGES.jaune : JAUGES.rouge;
+    corps.fond.renderOrder = 1;
+    corps.jauge.renderOrder = 2;
+  }
+
+  private lacherButin(n: number, position: THREE.Vector3, hauteur: number, t: number): void {
+    const { materiau, largeur, hauteur: h } = texteButin(n);
+    const sprite = new THREE.Sprite(materiau.clone());
+    sprite.renderOrder = 3;
+    this.dessus.add(sprite);
+    this.butins.push({ sprite, debut: t, depart: position.clone().setY(position.y + hauteur + 0.1), largeur, hauteur: h });
+  }
+
+  /** Le mort s'écrase puis éclate ; celui qui mord la souche rapetisse d'un coup. */
+  private animerMourants(t: number): void {
+    this.mourants = this.mourants.filter((m) => {
+      const k = (t - m.debut) / (m.mort ? DUREE_ECRASE : DUREE_MORSURE);
+      if (k < 1) {
+        if (m.mort) m.maillage.scale.set(1 + 0.4 * k, 1 - 0.7 * k, 1 + 0.4 * k);
+        else m.maillage.scale.setScalar(1 - k);
+        return true;
+      }
+      this.groupe.remove(m.maillage);
+      if (m.mort) this.eclater(m, t);
+      return false;
+    });
+  }
+
+  private eclater(m: Mourant, t: number): void {
+    const couleurs = ECLATS[m.type];
+    const depart = m.maillage.position.clone().setY(m.maillage.position.y + 0.15);
+    const tourne = hachage(depart.x, depart.y, depart.z) * Math.PI * 2;
+    for (let i = 0; i < 8; i++) {
+      const a = tourne + (i * Math.PI) / 4;
+      const vite = 1.1 + hachage(i, depart.x, depart.z) * 0.8;
+      const maillage = new THREE.Mesh(GEO_ECLAT, materiau(couleurs[i % couleurs.length]!));
+      const taille = m.type === 'amas' ? 0.18 : 0.13;
+      maillage.scale.setScalar(taille);
+      maillage.position.copy(depart);
+      this.groupe.add(maillage);
+      const vitesse = new THREE.Vector3(Math.cos(a) * vite, 2 + (i % 3) * 0.5, Math.sin(a) * vite);
+      this.eclats.push({ maillage, debut: t, depart, vitesse, taille });
+    }
+  }
+
+  private animerEclats(t: number): void {
+    this.eclats = this.eclats.filter((e) => {
+      const d = t - e.debut;
+      if (d >= DUREE_ECLATS) {
+        this.groupe.remove(e.maillage);
+        return false;
+      }
+      e.maillage.position.set(
+        e.depart.x + e.vitesse.x * d,
+        Math.max(0.05, e.depart.y + e.vitesse.y * d - (GRAVITE * d * d) / 2),
+        e.depart.z + e.vitesse.z * d,
+      );
+      // Rapetisse pendant la seconde moitié.
+      e.maillage.scale.setScalar(e.taille * Math.min(1, (DUREE_ECLATS - d) / (DUREE_ECLATS / 2)));
+      return true;
+    });
+  }
+
+  private animerButins(t: number, parPixel: number): void {
+    this.butins = this.butins.filter((b) => {
+      const d = t - b.debut;
+      if (d >= DUREE_BUTIN) {
+        this.dessus.remove(b.sprite);
+        b.sprite.material.dispose();
+        return false;
+      }
+      const monte = 1 - (1 - d / DUREE_BUTIN) ** 3;
+      b.sprite.position.set(b.depart.x, b.depart.y + monte * 0.5, b.depart.z);
+      b.sprite.scale.set(b.largeur * parPixel, b.hauteur * parPixel, 1);
+      b.sprite.material.opacity = d < DUREE_BUTIN * 0.6 ? 1 : 1 - (d - DUREE_BUTIN * 0.6) / (DUREE_BUTIN * 0.4);
+      return true;
+    });
   }
 }

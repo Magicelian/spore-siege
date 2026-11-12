@@ -1,6 +1,6 @@
 // Rendu de l'île : scène Three.js pixelisée, dans le style de Tiny Shrooms.
 import * as THREE from 'three';
-import type { Biome, Case, Ile, Instantane } from '@spore-siege/engine';
+import type { Biome, Case, EvenementVu, Ile, Instantane } from '@spore-siege/engine';
 import { Archipel, COTE_ARCHIPEL } from './archipel';
 import { CameraIso } from './camera';
 import { construireIle } from './ile';
@@ -39,6 +39,10 @@ export class Rendu {
   private readonly vue = new CameraIso();
   private readonly pixelisation: Pixelisation;
   private readonly souche = new SoucheRendu();
+  /** Superposition dessinée par-dessus l'île, sans contour : barres de vie, butins. */
+  private readonly dessus = new THREE.Scene();
+  /** Événements déjà montrés (ils restent quelques pas dans l'instantané). */
+  private evenementsVus = new Set<string>();
   private readonly monstres = new MonstresRendu();
   private readonly tours = new ToursRendu();
   private readonly sceneCarte = new THREE.Scene();
@@ -71,6 +75,7 @@ export class Rendu {
     soleil.shadow.bias = -0.002;
     Object.assign(soleil.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 50 });
     this.scene.add(ciel, soleil, this.souche.groupe, this.monstres.groupe, this.tours.groupe);
+    this.dessus.add(this.monstres.dessus);
 
     // Carte des îles : mêmes lumières, ombres sur toute l'étendue de l'archipel.
     const soleilCarte = soleil.clone();
@@ -121,10 +126,19 @@ export class Rendu {
     selection: number | null = null,
     pose: Pose | null = null,
     marque: Marque | null = null,
-  ): void {
-    if (!this.ile) return;
-    this.monstres.afficher(this.ile, precedent, actuel, alpha, performance.now());
+  ): EvenementVu[] {
+    if (!this.ile) return [];
+    const instant = performance.now();
+    const cle = (e: EvenementVu) => `${e.type}${e.id}`;
+    const nouveaux = actuel.evenements.filter((e) => !this.evenementsVus.has(cle(e)));
+    this.evenementsVus = new Set(actuel.evenements.map(cle));
+    if (nouveaux.some((e) => e.type === 'morsure')) this.souche.mordre(instant);
+    this.souche.animer(instant);
+    const camera = this.vue.camera;
+    const parPixel = (camera.top - camera.bottom) / camera.zoom / this.canevas.height;
+    this.monstres.afficher(this.ile, precedent, actuel, alpha, instant, parPixel);
     this.tours.afficher(this.ile, precedent, actuel, alpha, selection, pose, marque);
+    return nouveaux;
   }
 
   /** Case de l'île sous un point de la fenêtre (pixels CSS), ou null. */
@@ -183,7 +197,7 @@ export class Rendu {
       this.pixelisation.rendre(this.sceneCarte, this.vueCarte.camera, []);
     } else {
       this.vue.animer(dt);
-      this.pixelisation.rendre(this.scene, this.vue.camera, []);
+      this.pixelisation.rendre(this.scene, this.vue.camera, [this.dessus]);
     }
     this.images++;
   };

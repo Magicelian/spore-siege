@@ -80,6 +80,14 @@ export interface ImpactVu {
   pas: number;
 }
 
+/**
+ * Ce qui vient de se passer, gardé un court moment (comme les impacts) : l'affichage et les sons réagissent
+ * une fois à chacun, même quand plusieurs pas passent entre deux images.
+ */
+export type EvenementVu =
+  | { type: 'mort'; id: number; monstre: TypeMonstre; position: Position; butin: number; pas: number }
+  | { type: 'morsure'; id: number; monstre: TypeMonstre; degats: number; pas: number };
+
 /** `pause` : on construit avant la vague `numero` ; `vague` : la vague `numero` est en cours. */
 export type Phase = 'pause' | 'vague' | 'victoire' | 'defaite';
 
@@ -98,6 +106,8 @@ export interface Instantane {
   tours: TourVue[];
   projectiles: ProjectileVu[];
   impacts: ImpactVu[];
+  /** Morts et morsures des dernières secondes. */
+  evenements: EvenementVu[];
   /** Cases de sentier fermées par une ronce. */
   ronces: Case[];
   /** Spores gagnées en lançant la vague maintenant (0 hors pause). */

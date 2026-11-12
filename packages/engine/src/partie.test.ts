@@ -70,6 +70,7 @@ describe('partie', () => {
     // Route : 12 cases de centre à centre (3 vers l'est, 3 au nord, 5 à l'est, 1 au sud), puis un demi-pas.
     expect(pas).toBeCloseTo((12.5 / MONSTRES.limace.vitesse) * PAS_PAR_SECONDE, -1);
     expect(partie.instantane()).toMatchObject({ phase: 'victoire', souche: { pv: PV_SOUCHE - 1 }, etoiles: 2 });
+    expect(partie.instantane().evenements).toMatchObject([{ type: 'morsure', monstre: 'limace', degats: 1 }]);
   });
 
   it('perd quand la souche tombe à 0', () => {

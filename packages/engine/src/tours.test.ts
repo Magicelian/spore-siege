@@ -40,6 +40,7 @@ describe('tours', () => {
     expect(fin.phase).toBe('victoire');
     expect(fin.souche.pv).toBe(20);
     expect(fin.spores).toBe(avant + MONSTRES.limace.butin);
+    expect(fin.evenements).toMatchObject([{ type: 'mort', monstre: 'limace', butin: MONSTRES.limace.butin }]);
   });
 
   it('l’armure du scarabée ne laisse passer qu’un dégât par abeille', () => {

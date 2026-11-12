@@ -1,6 +1,6 @@
 // Une partie sur une île : vagues, monstres qui suivent le sentier, tours qui tirent, spores, vie de la souche.
 // Pur et déterministe : mêmes île, vagues, graine et commandes → même partie, pas pour pas.
-import type { Case, Commande, ImpactVu, Ile, Instantane, MonstreVu, Phase, Position, TourVue, TypeMonstre, TypeTour } from './contrat';
+import type { Case, Commande, EvenementVu, ImpactVu, Ile, Instantane, MonstreVu, Phase, Position, TourVue, TypeMonstre, TypeTour } from './contrat';
 import {
   BONUS_PAR_SECONDE_GAGNEE,
   BONUS_VAGUE,
@@ -60,6 +60,8 @@ interface Projectile {
 
 /** Pas pendant lesquels une explosion reste dans l'instantané. */
 const DUREE_IMPACT = 8;
+/** Pas pendant lesquels un événement reste dans l'instantané. */
+const DUREE_EVENEMENT = 20;
 
 /** Un monstre à lâcher, `pas` comptés depuis le début de la vague. */
 interface Lacher {
@@ -85,6 +87,7 @@ export class Partie {
   private tours: Tour[] = [];
   private projectiles: Projectile[] = [];
   private impacts: ImpactVu[] = [];
+  private evenements: EvenementVu[] = [];
   /** Réservé aux tirages des étapes suivantes (cibles, effets) ; fixé par la graine. */
   readonly hasard: () => number;
 
@@ -194,6 +197,7 @@ export class Partie {
     this.voler();
     this.enterrer();
     this.impacts = this.impacts.filter((i) => this.pas - i.pas < DUREE_IMPACT);
+    this.evenements = this.evenements.filter((e) => this.pas - e.pas < DUREE_EVENEMENT);
     if (this.phase === 'pause') {
       if (this.pasPhase >= PAUSE_SECONDES * PAS_PAR_SECONDE) this.commencerVague();
       return;
@@ -245,6 +249,7 @@ export class Partie {
       tours,
       projectiles: this.projectiles.map((p) => ({ id: p.id, type: p.type, position: { ...p.position } })),
       impacts: this.impacts.map((i) => ({ ...i, position: { ...i.position } })),
+      evenements: this.evenements.map((e) => (e.type === 'mort' ? { ...e, position: { ...e.position } } : { ...e })),
       ronces: [...this.ronces].map((k) => {
         const [x, y] = k.split(',').map(Number) as [number, number];
         return { x, y };
@@ -350,8 +355,11 @@ export class Partie {
     const restants: Monstre[] = [];
     for (const m of this.monstres) {
       m.avancement += this.vitesse(m) / PAS_PAR_SECONDE;
-      if (m.avancement >= m.longueur) this.pvSouche -= MONSTRES[m.type].morsure;
-      else {
+      if (m.avancement >= m.longueur) {
+        const degats = MONSTRES[m.type].morsure;
+        this.pvSouche -= degats;
+        this.evenements.push({ type: 'morsure', id: m.id, monstre: m.type, degats, pas: this.pas });
+      } else {
         m.position = pointSur(m.trace, m.avancement);
         restants.push(m);
       }
@@ -465,7 +473,9 @@ export class Partie {
         vivants.push(m);
         continue;
       }
-      this.spores += MONSTRES[m.type].butin;
+      const butin = MONSTRES[m.type].butin;
+      this.spores += butin;
+      this.evenements.push({ type: 'mort', id: m.id, monstre: m.type, position: { ...m.position }, butin, pas: this.pas });
       if (m.type === 'amas') {
         vivants.push(this.nouveauMonstre('petitAmas', m.trace, m.avancement));
         vivants.push(this.nouveauMonstre('petitAmas', m.trace, Math.max(0, m.avancement - 0.4)));
