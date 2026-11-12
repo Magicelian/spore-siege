@@ -75,7 +75,7 @@ export class Rendu {
     soleil.shadow.bias = -0.002;
     Object.assign(soleil.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 50 });
     this.scene.add(ciel, soleil, this.souche.groupe, this.monstres.groupe, this.tours.groupe);
-    this.dessus.add(this.monstres.dessus);
+    this.dessus.add(this.monstres.dessus, this.tours.dessus);
 
     // Carte des îles : mêmes lumières, ombres sur toute l'étendue de l'archipel.
     const soleilCarte = soleil.clone();
@@ -137,7 +137,7 @@ export class Rendu {
     const camera = this.vue.camera;
     const parPixel = (camera.top - camera.bottom) / camera.zoom / this.canevas.height;
     this.monstres.afficher(this.ile, precedent, actuel, alpha, instant, parPixel);
-    this.tours.afficher(this.ile, precedent, actuel, alpha, selection, pose, marque);
+    this.tours.afficher(this.ile, precedent, actuel, alpha, selection, pose, marque, instant, parPixel);
     return nouveaux;
   }
 

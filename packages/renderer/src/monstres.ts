@@ -4,8 +4,9 @@
 import * as THREE from 'three';
 import type { Ile, Instantane, TypeMonstre } from '@spore-siege/engine';
 import { versMonde } from './repere';
-import { lumineuse, materiau } from './palette';
-import { hachage, sansNuance, Voxels, type Modele } from './voxels';
+import { lumineuse } from './palette';
+import { Eclats } from './effets';
+import { hachage, Voxels, type Modele } from './voxels';
 
 const M = {
   gris: 0x8d9198,
@@ -110,13 +111,10 @@ export function modelesMonstres(): Record<TypeMonstre, Modele> {
   return modeles;
 }
 
-const GEO_ECLAT = sansNuance(new THREE.BoxGeometry(1, 1, 1));
 /** Secondes : le monstre s'écrase, puis ses éclats volent, pendant que son butin monte. */
 const DUREE_ECRASE = 0.12;
-const DUREE_ECLATS = 0.45;
 const DUREE_BUTIN = 0.9;
 const DUREE_MORSURE = 0.15;
-const GRAVITE = 9;
 
 const sansProfondeur = { depthTest: false, depthWrite: false } as const;
 const FOND = new THREE.SpriteMaterial({ color: 0x1a120c, ...sansProfondeur });
@@ -170,13 +168,6 @@ interface Mourant {
   debut: number;
   mort: boolean;
 }
-interface Eclat {
-  maillage: THREE.Mesh;
-  debut: number;
-  depart: THREE.Vector3;
-  vitesse: THREE.Vector3;
-  taille: number;
-}
 interface Butin {
   sprite: THREE.Sprite;
   debut: number;
@@ -191,10 +182,14 @@ export class MonstresRendu {
   readonly dessus = new THREE.Group();
   private readonly corps = new Map<number, Corps>();
   private mourants: Mourant[] = [];
-  private eclats: Eclat[] = [];
+  private readonly eclats = new Eclats();
   private butins: Butin[] = [];
   private readonly position = new THREE.Vector3();
   private readonly avant = new THREE.Vector3();
+
+  constructor() {
+    this.groupe.add(this.eclats.groupe);
+  }
 
   /**
    * Place les monstres entre `precedent` et `actuel` ; `alpha` de 0 (précédent) à 1 (actuel).
@@ -250,7 +245,7 @@ export class MonstresRendu {
       if (fin.type === 'mort') this.lacherButin(fin.butin, corps.maillage.position, corps.hauteur, t);
     }
     this.animerMourants(t);
-    this.animerEclats(t);
+    this.eclats.animer(t);
     this.animerButins(t, parPixel);
   }
 
@@ -296,38 +291,8 @@ export class MonstresRendu {
   }
 
   private eclater(m: Mourant, t: number): void {
-    const couleurs = ECLATS[m.type];
     const depart = m.maillage.position.clone().setY(m.maillage.position.y + 0.15);
-    const tourne = hachage(depart.x, depart.y, depart.z) * Math.PI * 2;
-    for (let i = 0; i < 8; i++) {
-      const a = tourne + (i * Math.PI) / 4;
-      const vite = 1.1 + hachage(i, depart.x, depart.z) * 0.8;
-      const maillage = new THREE.Mesh(GEO_ECLAT, materiau(couleurs[i % couleurs.length]!));
-      const taille = m.type === 'amas' ? 0.18 : 0.13;
-      maillage.scale.setScalar(taille);
-      maillage.position.copy(depart);
-      this.groupe.add(maillage);
-      const vitesse = new THREE.Vector3(Math.cos(a) * vite, 2 + (i % 3) * 0.5, Math.sin(a) * vite);
-      this.eclats.push({ maillage, debut: t, depart, vitesse, taille });
-    }
-  }
-
-  private animerEclats(t: number): void {
-    this.eclats = this.eclats.filter((e) => {
-      const d = t - e.debut;
-      if (d >= DUREE_ECLATS) {
-        this.groupe.remove(e.maillage);
-        return false;
-      }
-      e.maillage.position.set(
-        e.depart.x + e.vitesse.x * d,
-        Math.max(0.05, e.depart.y + e.vitesse.y * d - (GRAVITE * d * d) / 2),
-        e.depart.z + e.vitesse.z * d,
-      );
-      // Rapetisse pendant la seconde moitié.
-      e.maillage.scale.setScalar(e.taille * Math.min(1, (DUREE_ECLATS - d) / (DUREE_ECLATS / 2)));
-      return true;
-    });
+    this.eclats.lancer(depart, t, { couleurs: ECLATS[m.type], taille: m.type === 'amas' ? 0.18 : 0.13 });
   }
 
   private animerButins(t: number, parPixel: number): void {

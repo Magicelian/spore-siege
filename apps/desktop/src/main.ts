@@ -1,9 +1,9 @@
 // Point d'entrée : l'île-forêt dans une fenêtre qui flotte par-dessus les applications.
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { ileForet, Partie, PAS_MS, VAGUES_FORET, type Instantane } from '@spore-siege/engine';
+import { ileForet, Partie, PAS_MS, VAGUES_FORET, type Commande, type EvenementVu, type Instantane, type Phase } from '@spore-siege/engine';
 import { echelleAffichage, ORDRE_ILES, Rendu } from '@spore-siege/renderer';
-import { ControleurInterface, type Fenetre, type Jeu } from '@spore-siege/ui';
+import { ControleurInterface, type Effet, type Fenetre, type Jeu } from '@spore-siege/ui';
 import '@spore-siege/ui/interface.css';
 
 const dansTauri = '__TAURI_INTERNALS__' in window;
@@ -40,12 +40,43 @@ const fenetre: Fenetre | undefined = dansTauri
     }
   : undefined;
 
+const SON_COMMANDE: Partial<Record<Commande['type'], Effet>> = {
+  poserTour: 'poser',
+  ameliorerTour: 'ameliorer',
+  vendreTour: 'vendre',
+  poserRonce: 'ronce',
+  enleverRonce: 'ronce',
+};
+
+/** Ce que les sons ont déjà entendu : phase, dernier tir de chaque tour, dernière explosion. */
+const entendu = { phase: actuel.phase as Phase, tirs: new Map<number, number>(), impact: -1 };
+
+/** Joue ce qui s'est passé depuis la dernière image. */
+function ecouter(vue: Instantane, evenements: EvenementVu[]): void {
+  const sons = ui.sons;
+  if (vue.phase !== entendu.phase) {
+    entendu.phase = vue.phase;
+    if (vue.phase === 'vague') sons.jouer('vague');
+    else if (vue.phase === 'victoire') sons.jouer('victoire');
+    else if (vue.phase === 'defaite') sons.jouer('defaite');
+  }
+  for (const t of vue.tours) {
+    if (t.dernierTir >= 0 && entendu.tirs.get(t.id) !== t.dernierTir) sons.jouer(`tir-${t.type}`);
+    entendu.tirs.set(t.id, t.dernierTir);
+  }
+  if (vue.impacts.some((i) => i.pas > entendu.impact)) sons.jouer('explosion');
+  entendu.impact = Math.max(entendu.impact, ...vue.impacts.map((i) => i.pas));
+  for (const e of evenements) sons.jouer(e.type);
+}
+
 /** La partie vue par l'interface : après une commande, l'instantané change sans attendre le pas suivant. */
 function jeuDe(p: Partie): Jeu {
   return {
     executer: (commande) => {
       const fait = p.executer(commande);
       if (fait) actuel = p.instantane();
+      const effet = fait ? SON_COMMANDE[commande.type] : 'refus';
+      if (effet) ui.sons.jouer(effet);
       return fait;
     },
     instantane: () => actuel,
@@ -80,6 +111,7 @@ function recommencer(): void {
   ui.jeu = jeuDe(partie);
   precedent = null;
   actuel = partie.instantane();
+  Object.assign(entendu, { phase: actuel.phase, tirs: new Map(), impact: -1 });
   ui.fermer();
   ui.maj(actuel);
 }
@@ -98,7 +130,7 @@ rendu.surImage = (instant) => {
   }
   if (pas === PAS_MAX_PAR_IMAGE) reserve = 0;
   const marque = ui.marque;
-  rendu.afficherPartie(precedent, actuel, reserve / PAS_MS, ui.selection, ui.apercu, marque);
+  ecouter(actuel, rendu.afficherPartie(precedent, actuel, reserve / PAS_MS, ui.selection, ui.apercu, marque));
   rendu.canevas.style.cursor = marque ? 'pointer' : '';
   if (pas > 0 || ui.vitesse === 0) {
     if (precedent && precedent.phase !== actuel.phase) {

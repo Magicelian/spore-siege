@@ -5,7 +5,10 @@ import { render } from 'preact';
 import type { Biome, Case, Commande, Ile, Instantane, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
 import { MONSTRES, PART_RONCE_RENDUE, PRIX_RONCE, TOURS } from '@spore-siege/engine';
 import { icone, type Icone } from './icones';
-import { ecrireDecouverts, ecrireEtoiles, lireDecouverts, lireEtoiles } from './sauvegarde';
+import { ecrireDecouverts, ecrireEtoiles, ecrireSons, lireDecouverts, lireEtoiles, lireSons } from './sauvegarde';
+import { Sons } from './sons';
+
+export type { Effet } from './sons';
 import { ILES_TEXTES, MONSTRES_TEXTES, nombre, TEXTES, TOURS_TEXTES } from './textes';
 
 /** Ce que l'interface peut demander à la partie. */
@@ -70,6 +73,8 @@ const memeCase = (a: Case, b: Case) => a.x === b.x && a.y === b.y;
 export class ControleurInterface {
   vitesse: Vitesse = 1;
   ecran: Ecran = 'accueil';
+  /** Bruitages ; coupés tant que le joueur ne les a pas allumés dans ⚙ (choix retenu). */
+  readonly sons = new Sons();
   /** Meilleures étoiles de chaque île, gardées d'une partie à l'autre. */
   private readonly etoiles = lireEtoiles();
   /** Vitesse choisie avant la pause, pour reprendre au même rythme. */
@@ -96,6 +101,11 @@ export class ControleurInterface {
     public jeu: Jeu,
     private readonly options: OptionsInterface,
   ) {
+    if (lireSons()) {
+      this.sons.activer(true);
+      // Le navigateur ne laisse jouer qu'après un geste du joueur.
+      addEventListener('pointerdown', () => this.sons.activer(this.sons.actif), { once: true });
+    }
     void options.fenetre?.actuelle().then((t) => {
       this.tailleFenetre = t;
       this.dessiner();
@@ -127,7 +137,10 @@ export class ControleurInterface {
     if (this.fiche || this.livre) return this.fermer();
     this.menu = false;
     this.survol = null;
+    const avant = this.bulle;
     this.bulle = c && this.natureCase(c) ? { case: c, enHaut } : null;
+    if (this.bulle && !(avant && memeCase(avant.case, this.bulle.case))) this.sons.jouer('ouvrir');
+    else if (avant && !this.bulle) this.sons.jouer('fermer');
     this.dessiner();
   }
 
@@ -568,6 +581,22 @@ export class ControleurInterface {
               </div>
             </>
           )}
+          <h3>{TEXTES.son}</h3>
+          <div class="rang">
+            {[false, true].map((allume) => (
+              <button
+                class={`bouton${this.sons.actif === allume ? ' actif' : ''}`}
+                onClick={() => {
+                  this.sons.activer(allume);
+                  ecrireSons(allume);
+                  this.sons.jouer('ouvrir');
+                  this.dessiner();
+                }}
+              >
+                {allume ? TEXTES.sonAllume : TEXTES.sonCoupe}
+              </button>
+            ))}
+          </div>
           <h3>{TEXTES.grimoire}</h3>
           <button class="bouton large" title={TEXTES.grimoireAide} onClick={() => this.ouvrirLivre()}>
             <Ico nom="livre" /> {TEXTES.ouvrirGrimoire}

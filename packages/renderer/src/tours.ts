@@ -1,6 +1,7 @@
 // Tours, projectiles, explosions et éclairs. Modèles des tours dans `fortins.ts`.
 import * as THREE from 'three';
-import type { Case, Ile, Instantane, TypeTour } from '@spore-siege/engine';
+import type { Case, ImpactVu, Ile, Instantane, ProjectileVu, TypeTour } from '@spore-siege/engine';
+import { Eclats } from './effets';
 import { centreCase, versMonde } from './repere';
 import { fortin } from './fortins';
 import { Voxels, type Modele } from './voxels';
@@ -39,12 +40,39 @@ function fantome(modele: Modele): THREE.Material[] {
   });
 }
 
-const PROJECTILES: Record<TypeTour, { couleur: number; taille: number }> = {
-  ruche: { couleur: 0xffd54a, taille: 0.1 },
-  cristal: { couleur: 0xb7f2ff, taille: 0.1 },
-  mortier: { couleur: 0x4a3626, taille: 0.2 },
-  canon: { couleur: 0xf3e6c8, taille: 0.16 },
+/**
+ * Projectiles dessinés par-dessus tout, à taille fixe à l'écran (en pixels de l'image) pour rester lisibles
+ * en vue dézoomée : un cœur coloré dans un cadre sombre, une traînée derrière. `arc` : hauteur de la cloche.
+ */
+const PROJECTILES: Record<TypeTour, { couleur: number; cote: number; arc: number }> = {
+  ruche: { couleur: 0xffd54a, cote: 2, arc: 0 },
+  cristal: { couleur: 0xb7f2ff, cote: 2, arc: 0 },
+  mortier: { couleur: 0x8fa04a, cote: 4, arc: 1.6 },
+  canon: { couleur: 0xf3e6c8, cote: 3, arc: 0.7 },
 };
+const sansProfondeur = { depthTest: false, depthWrite: false } as const;
+const CADRE = new THREE.SpriteMaterial({ color: 0x1a120c, ...sansProfondeur });
+const COEURS = new Map<TypeTour, THREE.SpriteMaterial>();
+const TRAINEES = new Map<TypeTour, THREE.SpriteMaterial>();
+for (const [type, { couleur }] of Object.entries(PROJECTILES) as [TypeTour, { couleur: number }][]) {
+  COEURS.set(type, new THREE.SpriteMaterial({ color: couleur, ...sansProfondeur }));
+  TRAINEES.set(type, new THREE.SpriteMaterial({ color: couleur, transparent: true, opacity: 0.45, ...sansProfondeur }));
+}
+const ECLAIR = new THREE.LineBasicMaterial({ color: 0xffffff, ...sansProfondeur });
+const HALO = new THREE.LineBasicMaterial({ color: 0x6fd6ea, ...sansProfondeur });
+
+/** Gerbes : explosions, fumée du tir, tour vendue. */
+const GERBE_IMPACT: Record<TypeTour, number[]> = {
+  ruche: [0xffd54a],
+  cristal: [0xb7f2ff],
+  mortier: [0x4a3826, 0x7c8f3c, 0x8fa04a],
+  canon: [0xf3e6c8, 0xc8403a, 0xe8d9b8],
+};
+const FUMEE = [0xd8d2c8, 0xb8b2a8];
+const DEBRIS = [0x6b4a2f, 0x33241a, 0x5b5550, 0x7d776b];
+/** Secondes. */
+const DUREE_REBOND = 0.35;
+const DUREE_RECUL = 0.15;
 
 /** Cercle plat au ras du sol (portée, explosions). */
 function anneau(couleur: number, opacite: number): THREE.Mesh {
@@ -70,12 +98,26 @@ export interface Pose {
   portee: number;
 }
 
+interface CorpsTour {
+  maillage: THREE.Mesh;
+  cle: string;
+  /** Secondes : pose ou dernière amélioration, dernier tir vu. */
+  poseA: number;
+  tirA: number;
+  dernierTir: number;
+  hauteur: number;
+}
+
 export class ToursRendu {
   readonly groupe = new THREE.Group();
-  private readonly tours = new Map<number, { maillage: THREE.Mesh; cle: string }>();
-  private readonly projectiles = new Map<number, THREE.Mesh>();
+  /** Projectiles et éclairs : dessinés par-dessus l'île, sans contour (superposition). */
+  readonly dessus = new THREE.Group();
+  private readonly tours = new Map<number, CorpsTour>();
+  private readonly projectiles = new Map<number, { cadre: THREE.Sprite; coeur: THREE.Sprite; trainee: THREE.Sprite }>();
   private readonly impacts: THREE.Mesh[] = [];
-  private readonly eclairs = new Map<number, THREE.Line>();
+  private impactsVus = new Set<string>();
+  private readonly eclats = new Eclats();
+  private readonly eclairs = new Map<number, { coeur: THREE.Line; halo: THREE.Line }>();
   private readonly ronces = new Map<string, THREE.Mesh>();
   private readonly portee = anneau(0xffffff, 0.7);
   private fantome: { maillage: THREE.Mesh; cle: string } | null = null;
@@ -92,7 +134,7 @@ export class ToursRendu {
       new THREE.LineSegments(new THREE.EdgesGeometry(BOITE), new THREE.LineBasicMaterial({ color: clair, transparent: true, opacity: 0.9, depthWrite: false })),
     );
     this.surlignage.visible = false;
-    this.groupe.add(this.portee, this.sol, this.surlignage);
+    this.groupe.add(this.portee, this.sol, this.surlignage, this.eclats.groupe);
   }
 
   /**
@@ -107,13 +149,17 @@ export class ToursRendu {
     selection: number | null,
     pose: Pose | null,
     marque: Marque | null = null,
+    instant = performance.now(),
+    parPixel = 0.05,
   ): void {
+    const t = instant / 1000;
     this.afficherMarque(ile, marque);
-    this.afficherTours(ile, actuel);
+    this.afficherTours(ile, actuel, t);
     this.afficherRonces(ile, actuel);
-    this.afficherProjectiles(ile, precedent, actuel, alpha);
-    this.afficherImpacts(ile, actuel, alpha);
-    this.afficherEclairs(ile, actuel);
+    this.afficherProjectiles(ile, precedent, actuel, alpha, instant, parPixel);
+    this.afficherImpacts(ile, actuel, alpha, t);
+    this.afficherEclairs(ile, actuel, parPixel);
+    this.eclats.animer(t);
     this.afficherPortee(ile, actuel, selection, pose);
     this.afficherFantome(ile, pose);
   }
@@ -129,26 +175,44 @@ export class ToursRendu {
     }
   }
 
-  private afficherTours(ile: Ile, vue: Instantane): void {
+  /** Pose et amélioration : la tour jaillit avec un rebond ; chaque tir la fait reculer ; vendue, elle s'effondre. */
+  private afficherTours(ile: Ile, vue: Instantane, t: number): void {
     const vus = new Set<number>();
-    for (const t of vue.tours) {
-      vus.add(t.id);
-      const cle = `${t.type}${t.stade}`;
-      let corps = this.tours.get(t.id);
+    for (const tv of vue.tours) {
+      vus.add(tv.id);
+      const cle = `${tv.type}${tv.stade}`;
+      let corps = this.tours.get(tv.id);
       if (corps?.cle !== cle) {
         if (corps) this.groupe.remove(corps.maillage);
-        const modele = modeleTour(t.type, t.stade);
-        corps = { maillage: new THREE.Mesh(modele.geometrie, modele.materiaux), cle };
-        corps.maillage.castShadow = corps.maillage.receiveShadow = true;
-        centreCase(t.case.x, t.case.y, ile, corps.maillage.position);
-        this.tours.set(t.id, corps);
-        this.groupe.add(corps.maillage);
+        const modele = modeleTour(tv.type, tv.stade);
+        const maillage = new THREE.Mesh(modele.geometrie, modele.materiaux);
+        maillage.castShadow = maillage.receiveShadow = true;
+        centreCase(tv.case.x, tv.case.y, ile, maillage.position);
+        corps = { maillage, cle, poseA: t, tirA: -Infinity, dernierTir: tv.dernierTir, hauteur: modele.hauteur };
+        this.tours.set(tv.id, corps);
+        this.groupe.add(maillage);
       }
+      if (tv.dernierTir !== corps.dernierTir) {
+        corps.dernierTir = tv.dernierTir;
+        corps.tirA = t;
+        if (tv.type === 'canon' || tv.type === 'mortier') {
+          const p = corps.maillage.position;
+          this.eclats.lancer(new THREE.Vector3(p.x, p.y + corps.hauteur, p.z), t, { couleurs: FUMEE, nombre: 4, taille: 0.09, force: 0.5, duree: 0.3 });
+        }
+      }
+      const r = Math.min(1, (t - corps.poseA) / DUREE_REBOND);
+      const rebond = r < 1 ? 1 - 0.35 * (1 - r) ** 2 * Math.cos(r * Math.PI * 2.5) : 1;
+      const k = Math.min(1, (t - corps.tirA) / DUREE_RECUL);
+      const recul = 1 - 0.08 * (1 - k);
+      const sy = rebond * recul;
+      corps.maillage.scale.set(1 - (sy - 1) * 0.5, sy, 1 - (sy - 1) * 0.5);
     }
     for (const [id, corps] of this.tours) {
       if (vus.has(id)) continue;
       this.groupe.remove(corps.maillage);
       this.tours.delete(id);
+      const p = corps.maillage.position;
+      this.eclats.lancer(new THREE.Vector3(p.x, p.y + 0.3, p.z), t, { couleurs: DEBRIS, nombre: 10, taille: 0.15, force: 1.2 });
     }
   }
 
@@ -172,32 +236,59 @@ export class ToursRendu {
     }
   }
 
-  private afficherProjectiles(ile: Ile, precedent: Instantane | null, actuel: Instantane, alpha: number): void {
+  private afficherProjectiles(ile: Ile, precedent: Instantane | null, actuel: Instantane, alpha: number, instant: number, parPixel: number): void {
     const anciens = new Map(precedent?.projectiles.map((p) => [p.id, p.position]));
     const vus = new Set<number>();
     for (const p of actuel.projectiles) {
       vus.add(p.id);
-      let maillage = this.projectiles.get(p.id);
-      if (!maillage) {
-        const { couleur, taille } = PROJECTILES[p.type];
-        maillage = new THREE.Mesh(new THREE.BoxGeometry(taille, taille, taille), new THREE.MeshBasicMaterial({ color: couleur }));
-        this.projectiles.set(p.id, maillage);
-        this.groupe.add(maillage);
+      const { cote, arc } = PROJECTILES[p.type];
+      let s = this.projectiles.get(p.id);
+      if (!s) {
+        s = { cadre: new THREE.Sprite(CADRE), coeur: new THREE.Sprite(COEURS.get(p.type)), trainee: new THREE.Sprite(TRAINEES.get(p.type)) };
+        s.cadre.renderOrder = 1;
+        s.coeur.renderOrder = 2;
+        this.projectiles.set(p.id, s);
+        this.dessus.add(s.trainee, s.cadre, s.coeur);
       }
       const a = anciens.get(p.id) ?? p.position;
-      versMonde({ x: a.x + (p.position.x - a.x) * alpha, y: a.y + (p.position.y - a.y) * alpha }, ile, maillage.position);
-      maillage.position.y = 0.55;
+      const ici = { x: a.x + (p.position.x - a.x) * alpha, y: a.y + (p.position.y - a.y) * alpha };
+      // Un pas plus tôt : la traînée.
+      const avant = { x: ici.x - (p.position.x - a.x), y: ici.y - (p.position.y - a.y) };
+      versMonde(ici, ile, s.coeur.position).setY(this.hauteurTir(p, ici, instant));
+      versMonde(avant, ile, s.trainee.position).setY(this.hauteurTir(p, avant, instant));
+      s.cadre.position.copy(s.coeur.position);
+      s.coeur.scale.set(cote * parPixel, cote * parPixel, 1);
+      s.cadre.scale.set((cote + 2) * parPixel, (cote + 2) * parPixel, 1);
+      s.trainee.scale.set(Math.max(1, cote - 1) * parPixel, Math.max(1, cote - 1) * parPixel, 1);
+      s.trainee.visible = arc > 0 || p.type !== 'ruche';
     }
-    for (const [id, maillage] of this.projectiles) {
+    for (const [id, s] of this.projectiles) {
       if (vus.has(id)) continue;
-      this.groupe.remove(maillage);
-      maillage.geometry.dispose();
+      this.dessus.remove(s.cadre, s.coeur, s.trainee);
       this.projectiles.delete(id);
     }
   }
 
+  /** Obus en cloche entre la tour et le point visé ; abeille qui volette à hauteur fixe. */
+  private hauteurTir(p: ProjectileVu, ici: { x: number; y: number }, instant: number): number {
+    const { arc } = PROJECTILES[p.type];
+    if (arc === 0) return 0.6 + Math.sin(instant / 45 + p.id) * 0.05;
+    const total = Math.hypot(p.but.x - p.depart.x, p.but.y - p.depart.y);
+    const fait = Math.hypot(ici.x - p.depart.x, ici.y - p.depart.y);
+    const f = total > 0 ? Math.min(1, fait / total) : 1;
+    // Part du haut de la tour (≈ 0,9) et retombe au sol.
+    return 0.9 * (1 - f) + 0.15 * f + arc * 4 * f * (1 - f);
+  }
+
   /** Explosions : un anneau qui s'élargit et s'efface en quelques pas. */
-  private afficherImpacts(ile: Ile, vue: Instantane, alpha: number): void {
+  private afficherImpacts(ile: Ile, vue: Instantane, alpha: number, t: number): void {
+    const cle = (i: ImpactVu) => `${i.pas}:${i.position.x.toFixed(2)},${i.position.y.toFixed(2)}`;
+    for (const i of vue.impacts) {
+      if (this.impactsVus.has(cle(i))) continue;
+      const depart = versMonde(i.position, ile).setY(0.15);
+      this.eclats.lancer(depart, t, { couleurs: GERBE_IMPACT[i.type], nombre: 7, taille: 0.11, force: i.rayon * 1.6, duree: 0.4 });
+    }
+    this.impactsVus = new Set(vue.impacts.map(cle));
     while (this.impacts.length < vue.impacts.length) {
       const m = anneau(0xffffff, 1);
       this.impacts.push(m);
@@ -216,28 +307,47 @@ export class ToursRendu {
     });
   }
 
-  /** Éclair du cristal, visible quelques pas après le tir. */
-  private afficherEclairs(ile: Ile, vue: Instantane): void {
+  /** Éclair du cristal, visible quelques pas après le tir : zigzag blanc doublé d'un halo cyan d'un pixel. */
+  private afficherEclairs(ile: Ile, vue: Instantane, parPixel: number): void {
     for (const t of vue.tours) {
       let ligne = this.eclairs.get(t.id);
       const visible = t.type === 'cristal' && t.dernierTir >= 0 && vue.pas - t.dernierTir < 4 && t.chaine.length > 1;
       if (!visible) {
-        if (ligne) ligne.visible = false;
+        if (ligne) ligne.coeur.visible = ligne.halo.visible = false;
         continue;
       }
       if (!ligne) {
-        ligne = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xdffaff }));
+        ligne = { coeur: new THREE.Line(new THREE.BufferGeometry(), ECLAIR), halo: new THREE.Line(new THREE.BufferGeometry(), HALO) };
+        ligne.coeur.renderOrder = 2;
         this.eclairs.set(t.id, ligne);
-        this.groupe.add(ligne);
+        this.dessus.add(ligne.halo, ligne.coeur);
       }
-      const points = t.chaine.map((p, i) => versMonde(p, ile).setY(i === 0 ? 0.9 : 0.3));
-      ligne.geometry.setFromPoints(points);
-      ligne.visible = true;
+      const sommets = t.chaine.map((p, i) => versMonde(p, ile).setY(i === 0 ? 1.1 : 0.3));
+      const points: THREE.Vector3[] = [];
+      sommets.forEach((p, i) => {
+        if (i > 0) {
+          const q = sommets[i - 1]!;
+          // Trois coudes entre deux maillons, qui changent à chaque tir.
+          for (let k = 1; k <= 3; k++) {
+            const m = q.clone().lerp(p, k / 4);
+            const g = Math.sin(t.dernierTir * 7.3 + i * 3.1 + k * 5.7) * 0.12;
+            m.x += g;
+            m.z -= g;
+            m.y += Math.cos(t.dernierTir * 3.7 + k * 2.3) * 0.08;
+            points.push(m);
+          }
+        }
+        points.push(p);
+      });
+      ligne.coeur.geometry.setFromPoints(points);
+      ligne.halo.geometry.setFromPoints(points.map((p) => p.clone().setY(p.y - parPixel)));
+      ligne.coeur.visible = ligne.halo.visible = true;
     }
     for (const [id, ligne] of this.eclairs) {
       if (vue.tours.some((t) => t.id === id)) continue;
-      this.groupe.remove(ligne);
-      ligne.geometry.dispose();
+      this.dessus.remove(ligne.coeur, ligne.halo);
+      ligne.coeur.geometry.dispose();
+      ligne.halo.geometry.dispose();
       this.eclairs.delete(id);
     }
   }

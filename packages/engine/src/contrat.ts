@@ -70,6 +70,8 @@ export interface ProjectileVu {
   id: number;
   type: TypeTour;
   position: Position;
+  depart: Position;
+  but: Position;
 }
 
 /** Explosion d'un projectile de zone, gardée quelques pas pour l'afficher. */

@@ -40,3 +40,22 @@ export function ecrireDecouverts(decouverts: ReadonlySet<TypeMonstre>): void {
     // Stockage indisponible : la collection ne sera pas retenue, le jeu continue.
   }
 }
+
+const CLE_SONS = 'spore-siege:sons';
+
+/** Son allumé ? Coupé par défaut. */
+export function lireSons(): boolean {
+  try {
+    return localStorage.getItem(CLE_SONS) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function ecrireSons(allume: boolean): void {
+  try {
+    localStorage.setItem(CLE_SONS, allume ? '1' : '0');
+  } catch {
+    // Stockage indisponible : le choix ne sera pas retenu.
+  }
+}

@@ -52,6 +52,8 @@ interface Projectile {
   id: number;
   type: TypeTour;
   position: Position;
+  /** Centre de la tour qui l'a tiré (pour l'arc des obus). */
+  depart: Position;
   /** Point visé ; suit la cible si le projectile est guidé. */
   but: Position;
   cible: number;
@@ -247,7 +249,7 @@ export class Partie {
       monstres,
       spores: this.spores,
       tours,
-      projectiles: this.projectiles.map((p) => ({ id: p.id, type: p.type, position: { ...p.position } })),
+      projectiles: this.projectiles.map((p) => ({ id: p.id, type: p.type, position: { ...p.position }, depart: { ...p.depart }, but: { ...p.but } })),
       impacts: this.impacts.map((i) => ({ ...i, position: { ...i.position } })),
       evenements: this.evenements.map((e) => (e.type === 'mort' ? { ...e, position: { ...e.position } } : { ...e })),
       ronces: [...this.ronces].map((k) => {
@@ -391,7 +393,7 @@ export class Partie {
         this.eclair(t, cible, stade.degats, stade.rebonds ?? 0, fiche.eclair);
       } else if (fiche.projectile) {
         const but = fiche.projectile.guide ? { ...cible.position } : this.ouSera(cible, t.centre, fiche.projectile.vitesse);
-        this.projectiles.push({ id: this.prochainId++, type: t.type, position: { ...t.centre }, but, cible: cible.id, degats: stade.degats });
+        this.projectiles.push({ id: this.prochainId++, type: t.type, position: { ...t.centre }, depart: { ...t.centre }, but, cible: cible.id, degats: stade.degats });
       }
     }
   }
