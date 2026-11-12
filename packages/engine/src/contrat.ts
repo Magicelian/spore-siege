@@ -104,6 +104,8 @@ export interface Instantane {
   bonusLancer: number;
   /** Étoiles gagnées, une fois la partie gagnée (1 à 3) ; 0 sinon. */
   etoiles: number;
+  /** Sortes de monstres de la vague en cours ou à venir (pour annoncer les nouveaux). */
+  monstresVague: TypeMonstre[];
 }
 
 /** Ce que le frontend peut demander ; le moteur refuse ce qui n'a pas de sens. */

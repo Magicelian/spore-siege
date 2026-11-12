@@ -97,3 +97,14 @@ describe('partie', () => {
     expect([20, 19, 10, 9, 1].map(etoiles)).toEqual([3, 2, 2, 1, 1]);
   });
 });
+
+describe('monstres annoncés', () => {
+  it('donne les sortes de la vague à venir, avec les petits de l’amas', () => {
+    const vagues: Vague[] = [[{ type: 'limace', nombre: 2, intervalle: 1 }], [{ type: 'amas', nombre: 1, intervalle: 1 }, { type: 'limace', nombre: 1, intervalle: 1 }]];
+    const partie = new Partie(ile, vagues, 1);
+    expect(partie.instantane().monstresVague).toEqual(['limace']);
+    partie.executer({ type: 'lancerVague' });
+    jouerJusqua(partie, () => partie.instantane().vague === 2);
+    expect(partie.instantane().monstresVague).toEqual(['amas', 'petitAmas', 'limace']);
+  });
+});

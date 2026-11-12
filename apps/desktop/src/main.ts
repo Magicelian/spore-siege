@@ -58,6 +58,7 @@ function jeuDe(p: Partie): Jeu {
 
 const ui = new ControleurInterface(document.getElementById('interface')!, jeuDe(partie), {
   vignette: (type, stade) => rendu.vignettes.tour(type, stade),
+  vignetteMonstre: (type) => rendu.vignettes.monstre(type),
   recommencer,
   fenetre,
 });

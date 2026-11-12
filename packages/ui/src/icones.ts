@@ -1,7 +1,7 @@
 // Petites icônes pixel (9 × 9) dessinées depuis des motifs texte, converties une fois en images
 // (même principe que Tiny Shrooms).
 
-export type Icone = 'spore' | 'vie' | 'vague' | 'pause' | 'lecture' | 'rapide' | 'reglages' | 'degats' | 'portee' | 'cadence' | 'etoile' | 'etoileVide';
+export type Icone = 'spore' | 'vie' | 'vague' | 'pause' | 'lecture' | 'rapide' | 'reglages' | 'degats' | 'portee' | 'cadence' | 'etoile' | 'etoileVide' | 'armure' | 'livre';
 
 /** `.` transparent, `#` encre ; les autres lettres renvoient à la palette de l'icône. */
 const MOTIFS: Record<Icone, { motif: string[]; palette: Record<string, string> }> = {
@@ -88,6 +88,14 @@ const MOTIFS: Record<Icone, { motif: string[]; palette: Record<string, string> }
   etoile: {
     motif: ['....#....', '...#j#...', '####jj###', '#jjjwjjj#', '.#jjjjj#.', '..#jjj#..', '.#jj#jj#.', '.#j#.#j#.', '.##...##.'],
     palette: { j: '#e8a33d', w: '#fbe7a8' },
+  },
+  armure: {
+    motif: ['#########', '#mmmwmmm#', '#mmmwmmm#', '#mmmwmmm#', '#mmmwmmm#', '.#mmwmm#.', '.#mmwmm#.', '..#mwm#..', '...###...'],
+    palette: { m: '#8d9198', w: '#dfe3e8' },
+  },
+  livre: {
+    motif: ['.#######.', '#rrrrrrw#', '#rjjjrrw#', '#rrrrrrw#', '#rjjrrrw#', '#rrrrrrw#', '#rrrrrrw#', '#########', '.........'],
+    palette: { r: '#8a3a2a', j: '#e8a33d', w: '#f3e6c8' },
   },
   etoileVide: {
     motif: ['....#....', '...#g#...', '####gg###', '#ggggggg#', '.#ggggg#.', '..#ggg#..', '.#gg#gg#.', '.#g#.#g#.', '.##...##.'],

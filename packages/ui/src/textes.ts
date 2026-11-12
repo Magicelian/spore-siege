@@ -1,11 +1,39 @@
 // Tous les textes de l'interface, en un seul endroit : l'anglais s'ajoutera ici plus tard.
-import type { TypeTour } from '@spore-siege/engine';
+import type { TypeMonstre, TypeTour } from '@spore-siege/engine';
 
 export const TOURS_TEXTES: Record<TypeTour, { nom: string; role: string }> = {
   ruche: { nom: 'Poste-ruche', role: 'Ses abeilles piquent vite, un monstre à la fois.' },
   cristal: { nom: 'Obélisque', role: 'Un éclair qui saute de monstre en monstre et perce les carapaces.' },
   mortier: { nom: 'Mortier à tourbe', role: 'Un obus lent qui éclabousse et englue toute une zone.' },
   canon: { nom: 'Canon à spores', role: 'Gros dégâts en zone, mais il recharge lentement.' },
+};
+
+export const MONSTRES_TEXTES: Record<TypeMonstre, { nom: string; description: string; conseil: string }> = {
+  limace: {
+    nom: 'Limace rouillée',
+    description: 'Elle bave une rouille qui ronge tout ce qu’elle touche. Lente, mais elles arrivent par dizaines.',
+    conseil: 'N’importe quelle tour en vient à bout.',
+  },
+  moucheron: {
+    nom: 'Moucheron de fer',
+    description: 'Un essaim nerveux qui file le long du sentier avant qu’on ait eu le temps de viser.',
+    conseil: 'Les abeilles de la ruche tirent assez vite pour les suivre.',
+  },
+  scarabee: {
+    nom: 'Scarabée blindé',
+    description: 'Sa carapace de vieux métal encaisse les coups. Il avance sans se presser, et il mord fort.',
+    conseil: 'Son armure retient une partie de chaque coup : l’éclair de l’obélisque la traverse.',
+  },
+  amas: {
+    nom: 'Amas de rouille',
+    description: 'Un tas de ferraille qui a pris vie. Frappé à mort, il éclate en deux petits amas.',
+    conseil: 'Les tirs de zone règlent l’amas et ses petits d’un coup.',
+  },
+  petitAmas: {
+    nom: 'Petit amas',
+    description: 'Un éclat d’amas qui a gardé assez de rage pour continuer jusqu’à la souche.',
+    conseil: 'Fragile, mais plus rapide que l’amas dont il sort.',
+  },
 };
 
 export const TEXTES = {
@@ -51,6 +79,28 @@ export const TEXTES = {
   etoilesAide: '1 étoile : finir · 2 : 10 PV ou plus · 3 : souche intacte',
   rejouer: 'Rejouer',
   fermer: 'Fermer',
+  nouveauMonstre: 'Nouveau monstre !',
+  nouveauAide: (nom: string) => `Nouveau monstre : ${nom}. Clique pour lire sa fiche.`,
+  grimoire: 'Grimoire',
+  grimoireAide: 'Monstres rencontrés et tours, avec leurs chiffres',
+  ouvrirGrimoire: 'Ouvrir le grimoire',
+  ongletMonstres: (vus: number, total: number) => `Monstres ${vus}/${total}`,
+  ongletTours: 'Tours',
+  inconnu: '???',
+  inconnuDetail: 'Pas encore rencontré. Sa fiche s’écrira quand il croisera ta route.',
+  pv: 'Points de vie',
+  vitesse: 'Vitesse (cases par seconde)',
+  armure: 'Armure : retirée à chaque coup',
+  morsure: 'Vie arrachée à la souche',
+  butin: 'Spores lâchées',
+  prix: 'Prix',
+  pvCourt: 'PV',
+  vitesseCourt: 'Vitesse',
+  armureCourt: 'Armure',
+  morsureCourt: 'Morsure',
+  butinCourt: 'Butin',
+  rebondsStades: (n: number[]) => `rebonds ${n.join(' / ')}`,
+  stadeCourt: (n: number) => `St. ${n}`,
 };
 
 /** Nombre à la française : virgule, au plus deux décimales. */

@@ -45,7 +45,7 @@ function amas(rayon: number): Voxels {
 }
 
 let modeles: Record<TypeMonstre, Modele> | null = null;
-function modelesMonstres(): Record<TypeMonstre, Modele> {
+export function modelesMonstres(): Record<TypeMonstre, Modele> {
   modeles ??= {
     limace: limace().modele(false),
     moucheron: moucheron().modele(false),

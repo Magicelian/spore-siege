@@ -2,10 +2,11 @@
 // visible, bulles au clic sur l'île (construire, tour, ronce), menu des réglages.
 // Le contrôleur garde l'état de l'interface ; le frontend lui donne les instantanés et lit l'aperçu à dessiner.
 import { render } from 'preact';
-import type { Case, Commande, Ile, Instantane, TourVue, TypeTour } from '@spore-siege/engine';
-import { PART_RONCE_RENDUE, PRIX_RONCE, TOURS } from '@spore-siege/engine';
+import type { Case, Commande, Ile, Instantane, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
+import { MONSTRES, PART_RONCE_RENDUE, PRIX_RONCE, TOURS } from '@spore-siege/engine';
 import { icone, type Icone } from './icones';
-import { nombre, TEXTES, TOURS_TEXTES } from './textes';
+import { ecrireDecouverts, lireDecouverts } from './sauvegarde';
+import { MONSTRES_TEXTES, nombre, TEXTES, TOURS_TEXTES } from './textes';
 
 /** Ce que l'interface peut demander à la partie. */
 export interface Jeu {
@@ -27,6 +28,7 @@ export interface Fenetre {
 
 export interface OptionsInterface {
   vignette(type: TypeTour | 'ronce', stade: number): string;
+  vignetteMonstre(type: TypeMonstre): string;
   recommencer(): void;
   fenetre?: Fenetre;
 }
@@ -50,8 +52,10 @@ export interface Marque {
 export type Vitesse = 0 | 1 | 2;
 
 type Bulle = { case: Case; enHaut: boolean };
+type Livre = { onglet: 'monstres'; choix: TypeMonstre } | { onglet: 'tours'; choix: TypeTour };
 
 const TYPES = Object.keys(TOURS) as TypeTour[];
+const TYPES_MONSTRES = Object.keys(MONSTRES) as TypeMonstre[];
 const memeCase = (a: Case, b: Case) => a.x === b.x && a.y === b.y;
 
 export class ControleurInterface {
@@ -65,6 +69,15 @@ export class ControleurInterface {
   private tailleFenetre = 0;
   /** Case sous la souris (null hors de l'île ou pendant un glisser). */
   private caseSurvolee: Case | null = null;
+  /** Monstres déjà rencontrés (fiche lue ou vague jouée), gardés d'une partie à l'autre. */
+  private readonly decouverts = lireDecouverts();
+  /** Fiche d'un nouveau monstre, ouverte depuis son médaillon. */
+  private fiche: TypeMonstre | null = null;
+  private livre: Livre | null = null;
+  /** Vitesse à rétablir en refermant la fiche ou le grimoire (qui mettent le jeu en pause). */
+  private reprendreA: 1 | 2 | null = null;
+  /** Vague qu'on est en train de jouer : ses monstres comptent comme rencontrés quand elle s'achève. */
+  private vagueJouee: { n: number; types: TypeMonstre[] } | null = null;
 
   constructor(
     private readonly element: HTMLElement,
@@ -81,6 +94,12 @@ export class ControleurInterface {
   maj(instantane: Instantane): void {
     this.instantane = instantane;
     if (instantane.phase === 'victoire' || instantane.phase === 'defaite') this.bulle = null;
+    const v = this.vagueJouee;
+    if (v && (instantane.phase !== 'vague' || instantane.vague !== v.n)) {
+      this.decouvrir(v.types);
+      this.vagueJouee = null;
+    }
+    if (instantane.phase === 'vague' && !this.vagueJouee) this.vagueJouee = { n: instantane.vague, types: instantane.monstresVague };
     this.dessiner();
   }
 
@@ -89,6 +108,7 @@ export class ControleurInterface {
    * bulle en haut de la fenêtre (clic dans la moitié basse). Ferme tout si la case n'offre rien.
    */
   cliquer(c: Case | null, enHaut: boolean): void {
+    if (this.fiche || this.livre) return this.fermer();
     this.menu = false;
     this.survol = null;
     this.bulle = c && this.natureCase(c) ? { case: c, enHaut } : null;
@@ -106,7 +126,7 @@ export class ControleurInterface {
    */
   get marque(): Marque | null {
     const i = this.instantane;
-    if (!i || this.menu) return null;
+    if (!i || this.menu || this.fiche || this.livre) return null;
     const c = this.bulle ? this.bulle.case : this.caseSurvolee;
     if (!c) return null;
     const nature = this.natureCase(c);
@@ -124,7 +144,40 @@ export class ControleurInterface {
     this.bulle = null;
     this.menu = false;
     this.survol = null;
+    this.fiche = null;
+    this.livre = null;
+    if (this.reprendreA !== null) this.vitesse = this.reprendreA;
+    this.reprendreA = null;
     this.dessiner();
+  }
+
+  /** Grimoire des monstres et des tours ; met le jeu en pause le temps de le lire. */
+  ouvrirLivre(): void {
+    this.fermer();
+    this.livre = { onglet: 'monstres', choix: TYPES_MONSTRES[0]! };
+    this.suspendre();
+    this.dessiner();
+  }
+
+  private ouvrirFiche(type: TypeMonstre): void {
+    this.fermer();
+    this.decouvrir([type]);
+    this.fiche = type;
+    this.suspendre();
+    this.dessiner();
+  }
+
+  /** Pause le temps d'une lecture, sans toucher à une pause demandée par le joueur. */
+  private suspendre(): void {
+    if (this.vitesse === 0) return;
+    this.reprendreA = this.vitesse;
+    this.vitesse = 0;
+  }
+
+  private decouvrir(types: readonly TypeMonstre[]): void {
+    const avant = this.decouverts.size;
+    for (const t of types) this.decouverts.add(t);
+    if (this.decouverts.size !== avant) ecrireDecouverts(this.decouverts);
   }
 
   /** Tour ou ronce à dessiner en fantôme : la carte survolée dans la bulle « Construire ». */
@@ -172,6 +225,7 @@ export class ControleurInterface {
   }
 
   private changerVitesse(v: Vitesse): void {
+    this.reprendreA = null;
     if (v !== 0) this.vitesseAvantPause = v;
     this.vitesse = v;
     this.dessiner();
@@ -195,10 +249,117 @@ export class ControleurInterface {
           }}
         />
         {(i.phase === 'victoire' || i.phase === 'defaite') && <EcranFin i={i} rejouer={this.options.recommencer} />}
+        {this.dessinerMedaillons(i)}
         {this.bulle && this.dessinerBulle(i, this.bulle)}
         {this.menu && this.dessinerMenu()}
+        {this.fiche && (
+          <section class="bulle haut fiche">
+            <Entete
+              titre={MONSTRES_TEXTES[this.fiche].nom}
+              sous={TEXTES.nouveauMonstre}
+              vignette={this.options.vignetteMonstre(this.fiche)}
+              fermer={() => this.fermer()}
+            />
+            <div class="corps">
+              <FicheMonstre type={this.fiche} />
+            </div>
+          </section>
+        )}
+        {this.livre && this.dessinerLivre(this.livre)}
       </div>,
       this.element,
+    );
+  }
+
+  /** Médaillons des monstres jamais vus qui arrivent avec la vague en cours ou à venir. */
+  private dessinerMedaillons(i: Instantane) {
+    if (i.phase !== 'pause' && i.phase !== 'vague') return null;
+    if (this.bulle || this.menu || this.fiche || this.livre) return null;
+    const nouveaux = i.monstresVague.filter((t) => !this.decouverts.has(t));
+    if (nouveaux.length === 0) return null;
+    return (
+      <div class="medaillons">
+        {nouveaux.map((t) => (
+          <button class="medaillon" title={TEXTES.nouveauAide(MONSTRES_TEXTES[t].nom)} onClick={() => this.ouvrirFiche(t)}>
+            <img class="vignette" src={this.options.vignetteMonstre(t)} alt="" />
+            <span class="nouveau">!</span>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  private dessinerLivre(livre: Livre) {
+    const choisir = (l: Livre) => {
+      this.livre = l;
+      this.dessiner();
+    };
+    const vus = TYPES_MONSTRES.filter((t) => this.decouverts.has(t)).length;
+    return (
+      <section class="bulle haut livre">
+        <Entete titre={TEXTES.grimoire} fermer={() => this.fermer()} />
+        <div class="corps">
+          <div class="rang onglets">
+            <button
+              class={`bouton${livre.onglet === 'monstres' ? ' actif' : ''}`}
+              onClick={() => choisir({ onglet: 'monstres', choix: TYPES_MONSTRES[0]! })}
+            >
+              {TEXTES.ongletMonstres(vus, TYPES_MONSTRES.length)}
+            </button>
+            <button class={`bouton${livre.onglet === 'tours' ? ' actif' : ''}`} onClick={() => choisir({ onglet: 'tours', choix: TYPES[0]! })}>
+              {TEXTES.ongletTours}
+            </button>
+          </div>
+          {livre.onglet === 'monstres' ? (
+            <>
+              <ul class="collection">
+                {TYPES_MONSTRES.map((t) => {
+                  const vu = this.decouverts.has(t);
+                  return (
+                    <li>
+                      <button class={`carte${livre.choix === t ? ' choisie' : ''}`} onClick={() => choisir({ onglet: 'monstres', choix: t })}>
+                        <img class={`vignette${vu ? '' : ' silhouette'}`} src={this.options.vignetteMonstre(t)} alt="" />
+                        <span class="nom">{vu ? MONSTRES_TEXTES[t].nom : TEXTES.inconnu}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div class="detail">
+                {this.decouverts.has(livre.choix) ? (
+                  <>
+                    <h3>{MONSTRES_TEXTES[livre.choix].nom}</h3>
+                    <FicheMonstre type={livre.choix} />
+                  </>
+                ) : (
+                  <>
+                    <h3>{TEXTES.inconnu}</h3>
+                    <p class="discret">{TEXTES.inconnuDetail}</p>
+                  </>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <ul class="catalogue">
+                {TYPES.map((t) => (
+                  <li>
+                    <button class={`carte${livre.choix === t ? ' choisie' : ''}`} onClick={() => choisir({ onglet: 'tours', choix: t })}>
+                      <img class="vignette" src={this.options.vignette(t, 3)} alt="" />
+                      <span class="nom">{TOURS_TEXTES[t].nom}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <div class="detail">
+                <h3>{TOURS_TEXTES[livre.choix].nom}</h3>
+                <p>{TOURS_TEXTES[livre.choix].role}</p>
+                <TableTour type={livre.choix} />
+              </div>
+            </>
+          )}
+        </div>
+      </section>
     );
   }
 
@@ -283,6 +444,10 @@ export class ControleurInterface {
               </div>
             </>
           )}
+          <h3>{TEXTES.grimoire}</h3>
+          <button class="bouton large" title={TEXTES.grimoireAide} onClick={() => this.ouvrirLivre()}>
+            <Ico nom="livre" /> {TEXTES.ouvrirGrimoire}
+          </button>
           <h3>{TEXTES.partie}</h3>
           <button
             class="bouton large"
@@ -435,6 +600,78 @@ function EcranFin({ i, rejouer }: { i: Instantane; rejouer: () => void }) {
         </div>
       </section>
     </div>
+  );
+}
+
+/** Description, chiffres et conseil d'un monstre (fiche « nouveau monstre » et grimoire). */
+function FicheMonstre({ type }: { type: TypeMonstre }) {
+  const f = MONSTRES[type];
+  const t = MONSTRES_TEXTES[type];
+  const chiffres: [Icone, string, string, string][] = [
+    ['vie', TEXTES.pvCourt, TEXTES.pv, String(f.pv)],
+    ['rapide', TEXTES.vitesseCourt, TEXTES.vitesse, nombre(f.vitesse)],
+    ['armure', TEXTES.armureCourt, TEXTES.armure, String(f.armure)],
+    ['degats', TEXTES.morsureCourt, TEXTES.morsure, String(f.morsure)],
+    ['spore', TEXTES.butinCourt, TEXTES.butin, String(f.butin)],
+  ];
+  return (
+    <>
+      <p>{t.description}</p>
+      <ul class="chiffres">
+        {chiffres.map(([ico, court, long, valeur]) => (
+          <li title={long}>
+            <Ico nom={ico} />
+            <span class="libelle">{court}</span>
+            <b>{valeur}</b>
+          </li>
+        ))}
+      </ul>
+      <p class="conseil">{t.conseil}</p>
+    </>
+  );
+}
+
+/** Les trois stades d'une tour côte à côte : prix, dégâts, portée, recharge. */
+function TableTour({ type }: { type: TypeTour }) {
+  const fiche = TOURS[type];
+  const extras = [
+    fiche.projectile && fiche.projectile.rayon > 0 ? TEXTES.zone : null,
+    fiche.ralenti ? TEXTES.ralentit : null,
+    fiche.stades.some((s) => s.rebonds) ? TEXTES.rebondsStades(fiche.stades.map((s) => s.rebonds ?? 0)) : null,
+  ].filter(Boolean);
+  const colonnes: [Icone, string][] = [
+    ['spore', TEXTES.prix],
+    ['degats', TEXTES.degats],
+    ['portee', TEXTES.portee],
+    ['cadence', TEXTES.cadence],
+  ];
+  return (
+    <>
+      <table class="stades">
+        <thead>
+          <tr>
+            <th />
+            {colonnes.map(([ico, nom]) => (
+              <th title={nom}>
+                <Ico nom={ico} />
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {fiche.stades.map((s, n) => (
+            <tr>
+              <th>{TEXTES.stadeCourt(n + 1)}</th>
+              <td>{s.prix}</td>
+              <td>{nombre(s.degats)}</td>
+              <td>{nombre(s.portee)}</td>
+              <td>{TEXTES.secondes(s.cadence)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {extras.length > 0 && <p class="discret">{extras.join(' · ')}</p>}
+    </>
   );
 }
 

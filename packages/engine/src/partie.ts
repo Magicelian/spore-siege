@@ -251,7 +251,18 @@ export class Partie {
       }),
       bonusLancer: this.bonusLancer(),
       etoiles: this.phase === 'victoire' ? etoiles(this.pvSouche) : 0,
+      monstresVague: this.monstresVague(),
     };
+  }
+
+  /** Sortes de monstres de la vague en cours ou à venir, dans l'ordre ; l'amas amène ses petits. */
+  private monstresVague(): TypeMonstre[] {
+    const types = new Set<TypeMonstre>();
+    for (const g of this.vagues[this.vague - 1] ?? []) {
+      types.add(g.type);
+      if (g.type === 'amas') types.add('petitAmas');
+    }
+    return [...types];
   }
 
   /** Spores gagnées en lançant la vague maintenant : une par seconde de pause écourtée. */
