@@ -1,8 +1,9 @@
 // Rendu de l'île : scène Three.js pixelisée, dans le style de Tiny Shrooms.
 import * as THREE from 'three';
-import type { Ile } from '@spore-siege/engine';
+import type { Ile, Instantane } from '@spore-siege/engine';
 import { CameraIso } from './camera';
 import { construireIle } from './ile';
+import { MonstresRendu } from './monstres';
 import { Pixelisation } from './pixelisation';
 import { SoucheRendu } from './souche';
 
@@ -27,6 +28,10 @@ export class Rendu {
   private readonly vue = new CameraIso();
   private readonly pixelisation: Pixelisation;
   private readonly souche = new SoucheRendu();
+  private readonly monstres = new MonstresRendu();
+  private ile: Ile | null = null;
+  /** Appelé avant chaque image, avec l'instant en millisecondes : c'est là que le frontend fait tourner le moteur. */
+  surImage: ((instant: number) => void) | null = null;
   private decor: THREE.Group | null = null;
   private actif = false;
   private derniereImage = 0;
@@ -48,7 +53,7 @@ export class Rendu {
     soleil.shadow.mapSize.set(1024, 1024);
     soleil.shadow.bias = -0.002;
     Object.assign(soleil.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 50 });
-    this.scene.add(ciel, soleil, this.souche.groupe);
+    this.scene.add(ciel, soleil, this.souche.groupe, this.monstres.groupe);
     this.redimensionner();
   }
 
@@ -57,7 +62,13 @@ export class Rendu {
     this.decor = construireIle(ile);
     this.scene.add(this.decor);
     this.souche.changerIle(ile);
+    this.ile = ile;
     this.vue.cadrer(ile.largeur, ile.profondeur);
+  }
+
+  /** Montre la partie entre deux pas du moteur ; `alpha` de 0 (précédent) à 1 (actuel). */
+  afficherPartie(precedent: Instantane | null, actuel: Instantane, alpha: number): void {
+    if (this.ile) this.monstres.afficher(this.ile, precedent, actuel, alpha, performance.now());
   }
 
   tourner(sens: 1 | -1): void {
@@ -100,6 +111,7 @@ export class Rendu {
     if (ecart < 1000 / IMAGES_PAR_SECONDE - 2) return;
     const dt = this.derniereImage === 0 ? 0 : ecart / 1000;
     this.derniereImage = instant;
+    this.surImage?.(instant);
     this.vue.animer(dt);
     this.pixelisation.rendre(this.scene, this.vue.camera, []);
     this.images++;

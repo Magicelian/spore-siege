@@ -5,6 +5,12 @@ mod reglages;
 
 use tauri::{Manager, RunEvent};
 
+/// Messages du frontend recopiés dans le terminal de `pnpm dev`, pour mesurer dans la vraie fenêtre.
+#[tauri::command]
+fn journal(message: String) {
+    println!("[jeu] {message}");
+}
+
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
@@ -16,7 +22,7 @@ fn main() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![reglages::regler_taille, reglages::taille_actuelle, reglages::quitter])
+        .invoke_handler(tauri::generate_handler![reglages::regler_taille, reglages::taille_actuelle, reglages::quitter, journal])
         .build(tauri::generate_context!())
         .expect("échec du lancement de Spore Siege")
         .run(|app, evenement| {

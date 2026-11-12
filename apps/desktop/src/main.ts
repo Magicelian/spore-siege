@@ -1,7 +1,7 @@
 // Point d'entrée : l'île-forêt dans une fenêtre qui flotte par-dessus les applications.
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { ileForet } from '@spore-siege/engine';
+import { ileForet, Partie, PAS_MS, VAGUES_FORET, type Instantane } from '@spore-siege/engine';
 import { Rendu } from '@spore-siege/renderer';
 
 const dansTauri = '__TAURI_INTERNALS__' in window;
@@ -16,8 +16,75 @@ const TAILLES = [
 
 const conteneur = document.getElementById('jeu')!;
 const rendu = new Rendu(conteneur);
-rendu.appliquerIle(ileForet());
+const ile = ileForet();
+rendu.appliquerIle(ile);
+
+// ─── Partie : le moteur avance à pas fixes, l'affichage glisse entre deux pas ──────────
+/** Au-delà, on lâche du retard plutôt que de rattraper (fenêtre restée cachée, par exemple). */
+const PAS_MAX_PAR_IMAGE = 10;
+let partie = new Partie(ile, VAGUES_FORET, Date.now() >>> 0);
+let precedent: Instantane | null = null;
+let actuel = partie.instantane();
+let reserve = 0;
+let dernierInstant: number | null = null;
+
+rendu.surImage = (instant) => {
+  reserve += dernierInstant === null ? 0 : instant - dernierInstant;
+  dernierInstant = instant;
+  let pas = 0;
+  while (reserve >= PAS_MS && pas < PAS_MAX_PAR_IMAGE) {
+    partie.avancer();
+    precedent = actuel;
+    actuel = partie.instantane();
+    reserve -= PAS_MS;
+    pas++;
+  }
+  if (pas === PAS_MAX_PAR_IMAGE) reserve = 0;
+  rendu.afficherPartie(precedent, actuel, reserve / PAS_MS);
+  if (pas > 0) {
+    if (precedent && precedent.phase !== actuel.phase) {
+      if (actuel.phase === 'vague') departVague = instant;
+      journal(`vague ${actuel.vague} : ${actuel.phase} après ${((instant - departVague) / 1000).toFixed(1)} s`);
+    }
+    if (precedent && precedent.souche.pv !== actuel.souche.pv)
+      journal(`souche ${actuel.souche.pv}/${actuel.souche.pvMax}, ${((instant - departVague) / 1000).toFixed(1)} s après le départ de la vague`);
+    afficherCompteur(actuel);
+  }
+};
 rendu.demarrer();
+// Pour mesurer depuis la console en développement : `debogage()`.
+if (import.meta.env.DEV) Object.assign(window, { debogage: () => ({ actuel, reserve, images: rendu.images }) });
+/** En développement dans Tauri : écrit dans le terminal de `pnpm dev`. */
+const journal = (message: string) => {
+  if (import.meta.env.DEV && dansTauri) void invoke('journal', { message });
+};
+let departVague = 0;
+
+// Compteur provisoire (l'interface définitive vient à l'étape 4).
+const compteur = document.getElementById('compteur')!;
+const texte = compteur.querySelector('span')!;
+const action = compteur.querySelector('button')!;
+action.addEventListener('click', () => {
+  if (actuel.phase === 'victoire' || actuel.phase === 'defaite') {
+    partie = new Partie(ile, VAGUES_FORET, Date.now() >>> 0);
+    precedent = null;
+  } else partie.executer({ type: 'lancerVague' });
+  actuel = partie.instantane();
+  afficherCompteur(actuel);
+});
+function afficherCompteur(i: Instantane): void {
+  const souche = `Souche ${i.souche.pv}/${i.souche.pvMax}`;
+  const etat = {
+    pause: `Vague ${i.vague}/${i.vagues} dans ${i.pauseRestante} s`,
+    vague: `Vague ${i.vague}/${i.vagues}`,
+    victoire: `Victoire ${'★'.repeat(i.etoiles)}${'☆'.repeat(3 - i.etoiles)}`,
+    defaite: 'La souche est tombée',
+  }[i.phase];
+  texte.textContent = `${etat} · ${souche}`;
+  action.hidden = i.phase === 'vague';
+  action.textContent = i.phase === 'pause' ? 'Lancer' : 'Rejouer';
+}
+afficherCompteur(actuel);
 
 window.addEventListener('resize', () => rendu.redimensionner());
 

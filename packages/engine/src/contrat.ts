@@ -29,3 +29,38 @@ export interface Ile {
   /** Côté de l'emprise carrée de la souche, en cases. */
   tailleSouche: number;
 }
+
+// ─── Partie ──────────────────────────────────────────────────────────────────
+
+/** `petitAmas` : ce que laisse un amas de Rouille en mourant. */
+export type TypeMonstre = 'limace' | 'moucheron' | 'scarabee' | 'amas' | 'petitAmas';
+
+export interface MonstreVu {
+  id: number;
+  type: TypeMonstre;
+  /** Position continue, en cases (centre d'une case : x + 0,5). */
+  position: Position;
+  pv: number;
+  pvMax: number;
+}
+
+/** `pause` : on construit avant la vague `numero` ; `vague` : la vague `numero` est en cours. */
+export type Phase = 'pause' | 'vague' | 'victoire' | 'defaite';
+
+export interface Instantane {
+  /** Pas de simulation écoulés depuis le début. */
+  pas: number;
+  phase: Phase;
+  /** Vague en cours ou à venir, à partir de 1. */
+  vague: number;
+  vagues: number;
+  /** En pause : secondes avant que la vague parte d'elle-même. */
+  pauseRestante: number;
+  souche: { pv: number; pvMax: number };
+  monstres: MonstreVu[];
+  /** Étoiles gagnées, une fois la partie gagnée (1 à 3) ; 0 sinon. */
+  etoiles: number;
+}
+
+/** Ce que le frontend peut demander ; le moteur refuse ce qui n'a pas de sens. */
+export type Commande = { type: 'lancerVague' };

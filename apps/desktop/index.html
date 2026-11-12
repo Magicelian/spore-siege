@@ -77,12 +77,38 @@
         margin-top: 4px;
         color: #ffb3a8;
       }
+      #compteur {
+        position: fixed;
+        top: 8px;
+        left: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 4px 4px 12px;
+        border-radius: 14px;
+        background: rgba(40, 30, 25, 0.7);
+        color: #fff;
+        font: 12px -apple-system, 'Segoe UI', sans-serif;
+        min-height: 20px;
+      }
+      #compteur button {
+        border: none;
+        border-radius: 10px;
+        padding: 3px 10px;
+        background: #e8a33d;
+        color: #2a1d10;
+        font: 600 12px -apple-system, 'Segoe UI', sans-serif;
+      }
+      #compteur button[hidden] {
+        display: none;
+      }
     </style>
   </head>
   <body>
     <div id="jeu"></div>
     <button id="bouton-menu" title="Fenêtre" hidden>⚙</button>
     <div id="menu" hidden></div>
+    <div id="compteur"><span></span><button></button></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
