@@ -160,7 +160,7 @@ export class ControleurInterface {
     if (!c) return null;
     const nature = this.natureCase(c);
     const tour = this.tourDe(c);
-    if (tour) return { case: c, sorte: 'boite', hauteur: 0.35 + tour.stade * 0.25 };
+    if (tour) return { case: c, sorte: 'boite', hauteur: 0.45 + tour.stade * 0.4 };
     const ronce = i.ronces.some((r) => memeCase(r, c));
     if (ronce) return { case: c, sorte: 'boite', hauteur: 0.6 };
     // Bulle ouverte sur une case vide : le fantôme suffit.
