@@ -102,6 +102,47 @@
       #compteur button[hidden] {
         display: none;
       }
+      /* Barre des tours et fiche de la tour choisie : provisoires, refaites à l'étape 4. */
+      #barre,
+      #fiche {
+        position: fixed;
+        bottom: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 4px;
+        padding: 4px;
+        border-radius: 14px;
+        background: rgba(40, 30, 25, 0.7);
+        font: 600 11px -apple-system, 'Segoe UI', sans-serif;
+        white-space: nowrap;
+      }
+      #fiche {
+        bottom: 44px;
+        align-items: center;
+        color: #fff;
+        padding-left: 10px;
+      }
+      #fiche[hidden] {
+        display: none;
+      }
+      #barre button,
+      #fiche button {
+        border: none;
+        border-radius: 10px;
+        padding: 4px 8px;
+        background: rgba(255, 255, 255, 0.15);
+        color: #fff;
+        font: inherit;
+      }
+      #barre button.choisi {
+        background: #e8a33d;
+        color: #2a1d10;
+      }
+      #barre button:disabled,
+      #fiche button:disabled {
+        opacity: 0.4;
+      }
     </style>
   </head>
   <body>
@@ -109,6 +150,8 @@
     <button id="bouton-menu" title="Fenêtre" hidden>⚙</button>
     <div id="menu" hidden></div>
     <div id="compteur"><span></span><button></button></div>
+    <div id="fiche" hidden><span></span><button data-action="ameliorer"></button><button data-action="vendre"></button></div>
+    <div id="barre"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

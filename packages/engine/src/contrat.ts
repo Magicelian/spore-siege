@@ -42,6 +42,42 @@ export interface MonstreVu {
   position: Position;
   pv: number;
   pvMax: number;
+  /** Touché par le mortier, il avance moins vite. */
+  ralenti: boolean;
+}
+
+export type TypeTour = 'ruche' | 'cristal' | 'mortier' | 'canon';
+
+export interface TourVue {
+  id: number;
+  type: TypeTour;
+  /** 1 à 3 : chaque amélioration fait pousser la tour d'un stade. */
+  stade: number;
+  case: Case;
+  portee: number;
+  /** Monstre visé, s'il y en a un à portée. */
+  cible: number | null;
+  /** Pas du dernier tir (-1 : jamais tiré). */
+  dernierTir: number;
+  /** Cristal : points touchés par le dernier éclair, de la tour au dernier rebond. */
+  chaine: Position[];
+  /** Prix de l'amélioration suivante (null au stade 3) et spores rendues à la revente. */
+  prixAmelioration: number | null;
+  revente: number;
+}
+
+export interface ProjectileVu {
+  id: number;
+  type: TypeTour;
+  position: Position;
+}
+
+/** Explosion d'un projectile de zone, gardée quelques pas pour l'afficher. */
+export interface ImpactVu {
+  type: TypeTour;
+  position: Position;
+  rayon: number;
+  pas: number;
 }
 
 /** `pause` : on construit avant la vague `numero` ; `vague` : la vague `numero` est en cours. */
@@ -58,9 +94,17 @@ export interface Instantane {
   pauseRestante: number;
   souche: { pv: number; pvMax: number };
   monstres: MonstreVu[];
+  spores: number;
+  tours: TourVue[];
+  projectiles: ProjectileVu[];
+  impacts: ImpactVu[];
   /** Étoiles gagnées, une fois la partie gagnée (1 à 3) ; 0 sinon. */
   etoiles: number;
 }
 
 /** Ce que le frontend peut demander ; le moteur refuse ce qui n'a pas de sens. */
-export type Commande = { type: 'lancerVague' };
+export type Commande =
+  | { type: 'lancerVague' }
+  | { type: 'poserTour'; tour: TypeTour; case: Case }
+  | { type: 'ameliorerTour'; id: number }
+  | { type: 'vendreTour'; id: number };
