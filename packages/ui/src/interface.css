@@ -1,0 +1,443 @@
+/* Interface de Spore Siege : la base pixel de Tiny Shrooms (aplats cerclés, coins pixel, police pixel), en version
+   guerre : bois brûlé, rivets de métal rouillé, accents rouges. */
+@import '@fontsource/pixelify-sans/latin-500.css';
+@import '@fontsource/pixelify-sans/latin-700.css';
+
+/* Les chiffres de Pixelify Sans se confondent (5 et S, 8 et 6) : Jersey 10 les remplace (comme Tiny Shrooms). */
+@font-face {
+  font-family: 'Chiffres';
+  src: url('@fontsource/jersey-10/files/jersey-10-latin-400-normal.woff2') format('woff2');
+  unicode-range: U+0030-0039;
+  size-adjust: 143%;
+  font-display: block;
+}
+
+:root {
+  --encre: #1a1214;
+  --bois: #4a3326;
+  --bois-clair: #6e4c36;
+  --bois-fonce: #2a1a12;
+  --metal: #8d9198;
+  --rouille: #b8572b;
+  --parchemin: #eadfc4;
+  --parchemin-clair: #f6eedb;
+  --accent: #e8a33d;
+  --vert: #6f9a3a;
+  --rouge: #c8402f;
+  --discret: #6b5a52;
+  /* Contour de 2 px sans les coins : l'arrondi « pixel ». */
+  --contour: 0 -2px 0 var(--encre), 0 2px 0 var(--encre), -2px 0 0 var(--encre), 2px 0 0 var(--encre);
+  --texte-cerne: 1px 0 var(--encre), -1px 0 var(--encre), 0 1px var(--encre), 0 -1px var(--encre);
+}
+
+/* Fenêtre agrandie : l'interface grossit d'un facteur entier, comme les pixels de l'île. */
+#interface {
+  position: fixed;
+  inset: 0;
+  zoom: var(--echelle, 1);
+  pointer-events: none;
+  font: 500 13px/1.25 'Chiffres', 'Pixelify Sans', ui-monospace, monospace;
+  color: var(--encre);
+  -webkit-font-smoothing: none;
+  font-synthesis: none;
+  user-select: none;
+}
+.interface {
+  position: absolute;
+  inset: 0;
+}
+.interface :is(button, .planche, .bulle) {
+  pointer-events: auto;
+}
+
+.icone {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  image-rendering: pixelated;
+}
+.vignette {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  image-rendering: pixelated;
+}
+.discret {
+  color: var(--discret);
+}
+
+/* ─── Bandeau : planches de bois brûlé cloutées, en haut ────────────────────────────────── */
+.bandeau {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bandeau .espace {
+  flex: 1;
+}
+.planche {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 7px 0 4px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--parchemin-clair);
+  text-shadow: var(--texte-cerne);
+  background:
+    linear-gradient(transparent 45%, rgb(0 0 0 / 0.22) 45% 55%, transparent 55%),
+    var(--bois);
+  box-shadow:
+    inset 0 2px 0 var(--bois-clair),
+    var(--contour),
+    0 4px 0 var(--encre);
+}
+/* Deux rivets de métal par planche. */
+.planche::before,
+.planche::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  width: 2px;
+  height: 2px;
+  background: var(--metal);
+  box-shadow: 0 1px 0 var(--encre);
+}
+.planche::before {
+  left: 2px;
+}
+.planche::after {
+  right: 2px;
+}
+.planche .discret {
+  color: #c8b8a4;
+}
+.planche.alerte {
+  background: var(--rouge);
+  animation: alerte 0.8s steps(2) infinite;
+}
+@keyframes alerte {
+  50% {
+    background: #7a2a20;
+  }
+}
+
+/* ─── Boutons : planchettes biseautées qui s'enfoncent au clic ──────────────────────────── */
+.bouton {
+  font: inherit;
+  font-weight: 700;
+  color: var(--encre);
+  background: var(--parchemin-clair);
+  border: none;
+  border-radius: 0;
+  margin: 2px;
+  padding: 3px 7px 4px;
+  box-shadow:
+    inset 0 -3px 0 rgb(0 0 0 / 0.16),
+    inset 0 2px 0 rgb(255 255 255 / 0.6),
+    var(--contour),
+    0 4px 0 var(--encre);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+.bouton:hover {
+  filter: brightness(1.08);
+}
+.bouton:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 2px 0 rgb(0 0 0 / 0.16),
+    var(--contour);
+}
+.bandeau .bouton {
+  height: 22px;
+  margin: 0;
+  padding: 0 6px 1px;
+}
+.bouton.carre {
+  width: 24px;
+  padding: 0;
+  background: var(--bois-clair);
+}
+.bouton.carre.actif {
+  background: var(--rouille);
+}
+.bouton.actif {
+  background: var(--accent);
+}
+.bouton.valider {
+  background: var(--vert);
+  color: var(--parchemin-clair);
+  text-shadow: var(--texte-cerne);
+}
+.bouton.danger {
+  background: var(--rouge);
+  color: var(--parchemin-clair);
+  text-shadow: var(--texte-cerne);
+}
+.bouton.manque,
+.bouton:disabled {
+  background: #d8ccb6;
+  color: var(--discret);
+  text-shadow: none;
+  cursor: default;
+  filter: saturate(0.4);
+}
+.bouton.large {
+  display: flex;
+  width: calc(100% - 4px);
+  margin: 6px 2px 8px;
+  padding: 5px;
+}
+.bouton .bonus {
+  color: #ffe08a;
+}
+.bouton.fermer {
+  width: 20px;
+  height: 20px;
+  margin: 0 2px 2px;
+  padding: 0;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--parchemin-clair);
+  background: var(--rouge);
+  text-shadow: var(--texte-cerne);
+}
+.resultat {
+  padding: 0 8px;
+}
+
+/* ─── Bulles : cadre de bois brûlé, rivets, parchemin tramé ──────────────────────────────── */
+.bulle {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(272px, calc(100% - 16px));
+  max-height: calc(100% - 60px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  background: var(--bois);
+  box-shadow:
+    inset 0 2px 0 var(--bois-clair),
+    inset 0 -2px 0 var(--bois-fonce),
+    var(--contour),
+    0 5px 0 var(--encre);
+}
+.bulle.haut {
+  top: 40px;
+}
+.bulle.bas {
+  bottom: 12px;
+}
+.bulle.menu {
+  left: auto;
+  right: 8px;
+  transform: none;
+  width: min(220px, calc(100% - 16px));
+}
+.bulle header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 0 4px 8px;
+  color: var(--parchemin-clair);
+  text-shadow: var(--texte-cerne);
+}
+.bulle header .vignette {
+  margin: -18px 0 -4px -6px;
+  filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.35));
+}
+.bulle header .icone {
+  margin-left: -4px;
+}
+.bulle .titres {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.bulle h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.bulle .sous {
+  font-size: 11px;
+  color: #d8c8b0;
+}
+/* Rivets rouillés aux coins du cadre. */
+.bulle header::before,
+.bulle header::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  width: 2px;
+  height: 2px;
+  background: var(--rouille);
+  box-shadow: 0 1px 0 var(--encre);
+}
+.bulle header::before {
+  left: -1px;
+}
+.bulle header::after {
+  right: -1px;
+}
+.bulle .corps {
+  overflow-y: auto;
+  padding: 4px 8px 8px;
+  background:
+    repeating-conic-gradient(rgb(74 51 38 / 0.06) 0 25%, transparent 0 50%) 0 0 / 4px 4px,
+    var(--parchemin);
+  box-shadow:
+    inset 0 2px 0 var(--bois-fonce),
+    inset 2px 0 0 rgb(0 0 0 / 0.08);
+  scrollbar-width: thin;
+  scrollbar-color: var(--bois) transparent;
+}
+.bulle h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 4px;
+  font-size: 13px;
+  color: var(--bois-fonce);
+}
+.bulle h3::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--bois-clair) 0 4px, transparent 4px 6px);
+}
+.bulle p {
+  margin: 4px 0;
+  font-size: 12px;
+}
+.bulle p.manque {
+  color: var(--rouge);
+}
+.rang {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+/* Coûts et chiffres */
+.qte {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  white-space: nowrap;
+}
+.qte.manque {
+  color: var(--rouge);
+}
+.qte .icone {
+  width: 14px;
+  height: 14px;
+}
+.stats {
+  list-style: none;
+  margin: 2px 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.stats li {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.stats .icone {
+  width: 14px;
+  height: 14px;
+}
+.mieux {
+  color: #3f7a24;
+}
+
+/* Catalogue : tuiles avec la vignette de la tour */
+.catalogue {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 2px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.carte {
+  width: 100%;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 4px;
+  align-items: center;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--parchemin-clair);
+  border: none;
+  border-radius: 0;
+  padding: 3px 4px 4px 2px;
+  box-shadow:
+    inset 0 -3px 0 rgb(0 0 0 / 0.08),
+    var(--contour),
+    0 3px 0 var(--encre);
+  cursor: pointer;
+}
+.carte:hover:not(:disabled) {
+  background: #fff;
+  transform: translateY(-1px);
+}
+.carte .vignette {
+  grid-row: 1 / span 2;
+  width: 34px;
+  height: 34px;
+}
+.carte .nom {
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.05;
+}
+.carte .qte {
+  font-size: 12px;
+  font-weight: 700;
+}
+.carte.choisie {
+  background: #ffe7a3;
+  box-shadow:
+    inset 0 0 0 2px var(--accent),
+    var(--contour),
+    0 3px 0 var(--encre);
+}
+.carte.manque {
+  background: #e3d8c4;
+  cursor: default;
+}
+.carte.manque .vignette {
+  opacity: 0.6;
+}
+.detail {
+  margin: 8px -8px -8px;
+  padding: 4px 8px 6px;
+  box-shadow: 0 -2px 0 var(--bois-clair);
+}

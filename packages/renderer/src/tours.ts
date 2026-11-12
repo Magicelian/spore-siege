@@ -62,7 +62,7 @@ function ronce(): Voxels {
 }
 
 const modeles = new Map<string, Modele>();
-function modeleTour(type: TypeTour | 'ronce', stade: number): Modele {
+export function modeleTour(type: TypeTour | 'ronce', stade: number): Modele {
   const cle = `${type}${stade}`;
   let m = modeles.get(cle);
   if (!m) modeles.set(cle, (m = (type === 'ronce' ? ronce() : tour(type, stade)).modele(false)));
@@ -94,6 +94,16 @@ function anneau(couleur: number, opacite: number): THREE.Mesh {
   return new THREE.Mesh(g, m);
 }
 
+/** Ce que la souris peut cliquer : une case libre (carré vert au sol) ou une tour, une ronce (boîte claire). */
+export interface Marque {
+  case: Case;
+  sorte: 'case' | 'boite';
+  hauteur: number;
+}
+
+const SOL = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+const BOITE = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
+
 export interface Pose {
   type: TypeTour | 'ronce';
   case: Case;
@@ -110,18 +120,36 @@ export class ToursRendu {
   private readonly ronces = new Map<string, THREE.Mesh>();
   private readonly portee = anneau(0xffffff, 0.7);
   private fantome: { maillage: THREE.Mesh; cle: string } | null = null;
+  private readonly sol = new THREE.Mesh(SOL, new THREE.MeshBasicMaterial({ color: 0xb6ff5c, transparent: true, opacity: 0.6, depthWrite: false }));
+  private readonly surlignage = new THREE.Group();
   private readonly v = new THREE.Vector3();
 
   constructor() {
     this.portee.visible = false;
-    this.groupe.add(this.portee);
+    this.sol.visible = false;
+    const clair = 0xfff4d8;
+    this.surlignage.add(
+      new THREE.Mesh(BOITE, new THREE.MeshBasicMaterial({ color: clair, transparent: true, opacity: 0.18, depthWrite: false })),
+      new THREE.LineSegments(new THREE.EdgesGeometry(BOITE), new THREE.LineBasicMaterial({ color: clair, transparent: true, opacity: 0.9, depthWrite: false })),
+    );
+    this.surlignage.visible = false;
+    this.groupe.add(this.portee, this.sol, this.surlignage);
   }
 
   /**
    * `selection` : tour dont on montre la portée ; `pose` : tour fantôme sous la souris.
    * `alpha` de 0 (précédent) à 1 (actuel), comme pour les monstres.
    */
-  afficher(ile: Ile, precedent: Instantane | null, actuel: Instantane, alpha: number, selection: number | null, pose: Pose | null): void {
+  afficher(
+    ile: Ile,
+    precedent: Instantane | null,
+    actuel: Instantane,
+    alpha: number,
+    selection: number | null,
+    pose: Pose | null,
+    marque: Marque | null = null,
+  ): void {
+    this.afficherMarque(ile, marque);
     this.afficherTours(ile, actuel);
     this.afficherRonces(ile, actuel);
     this.afficherProjectiles(ile, precedent, actuel, alpha);
@@ -129,6 +157,17 @@ export class ToursRendu {
     this.afficherEclairs(ile, actuel);
     this.afficherPortee(ile, actuel, selection, pose);
     this.afficherFantome(ile, pose);
+  }
+
+  private afficherMarque(ile: Ile, marque: Marque | null): void {
+    this.sol.visible = marque?.sorte === 'case';
+    this.surlignage.visible = marque?.sorte === 'boite';
+    if (!marque) return;
+    if (marque.sorte === 'case') centreCase(marque.case.x, marque.case.y, ile, this.sol.position).setY(0.02);
+    else {
+      centreCase(marque.case.x, marque.case.y, ile, this.surlignage.position);
+      this.surlignage.scale.set(1, marque.hauteur + 0.05, 1);
+    }
   }
 
   private afficherTours(ile: Ile, vue: Instantane): void {

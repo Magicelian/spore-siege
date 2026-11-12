@@ -8,9 +8,11 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.11.1",
     "@spore-siege/engine": "workspace:*",
     "@spore-siege/renderer": "workspace:*",
+    "@spore-siege/ui": "workspace:*",
+    "@tauri-apps/api": "^2.11.1",
+    "preact": "^10.29.8",
     "three": "^0.186.0"
   },
   "devDependencies": {

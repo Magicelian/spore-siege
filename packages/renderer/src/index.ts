@@ -6,9 +6,10 @@ import { construireIle } from './ile';
 import { MonstresRendu } from './monstres';
 import { Pixelisation } from './pixelisation';
 import { SoucheRendu } from './souche';
-import { caseSous, ToursRendu, type Pose } from './tours';
+import { caseSous, ToursRendu, type Marque, type Pose } from './tours';
+import { Vignettes } from './vignettes';
 
-export type { Pose } from './tours';
+export type { Marque, Pose } from './tours';
 
 export const IMAGES_PAR_SECONDE = 60;
 /** Facteur de réduction de la résolution de rendu par rapport à la fenêtre, à l'échelle 1. */
@@ -27,6 +28,8 @@ export class Rendu {
   images = 0;
 
   private readonly moteur: THREE.WebGLRenderer;
+  /** Images des tours pour l'interface. */
+  readonly vignettes: Vignettes;
   private readonly scene = new THREE.Scene();
   private readonly vue = new CameraIso();
   private readonly pixelisation: Pixelisation;
@@ -50,6 +53,7 @@ export class Rendu {
     conteneur.prepend(this.canevas);
 
     this.pixelisation = new Pixelisation(this.moteur);
+    this.vignettes = new Vignettes(this.moteur);
     const ciel = new THREE.HemisphereLight(0xfff4e0, 0x5a4a6a, 1.2);
     const soleil = new THREE.DirectionalLight(0xfff0d0, 2.2);
     soleil.position.set(6, 12, 4);
@@ -74,10 +78,17 @@ export class Rendu {
    * Montre la partie entre deux pas du moteur ; `alpha` de 0 (précédent) à 1 (actuel).
    * `selection` : tour dont on montre la portée ; `pose` : tour fantôme à l'endroit visé.
    */
-  afficherPartie(precedent: Instantane | null, actuel: Instantane, alpha: number, selection: number | null = null, pose: Pose | null = null): void {
+  afficherPartie(
+    precedent: Instantane | null,
+    actuel: Instantane,
+    alpha: number,
+    selection: number | null = null,
+    pose: Pose | null = null,
+    marque: Marque | null = null,
+  ): void {
     if (!this.ile) return;
     this.monstres.afficher(this.ile, precedent, actuel, alpha, performance.now());
-    this.tours.afficher(this.ile, precedent, actuel, alpha, selection, pose);
+    this.tours.afficher(this.ile, precedent, actuel, alpha, selection, pose, marque);
   }
 
   /** Case de l'île sous un point de la fenêtre (pixels CSS), ou null. */
