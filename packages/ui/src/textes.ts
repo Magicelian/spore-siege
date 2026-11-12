@@ -41,8 +41,14 @@ export const TEXTES = {
   partie: 'Partie',
   recommencer: 'Recommencer l’île',
   quitter: 'Quitter le jeu',
-  victoire: 'Victoire',
+  victoire: 'Victoire !',
   defaite: 'La souche est tombée',
+  victoireSous: 'La Rouille a reculé.',
+  defaiteSous: (n: number, total: number) => `Emportée à la vague ${n}/${total}.`,
+  vieRestante: (pv: number, max: number) => `Souche : ${pv}/${max} PV`,
+  etoileSuivante: (etoiles: number) =>
+    etoiles >= 3 ? 'Souche intacte : trois étoiles !' : etoiles === 2 ? '3e étoile : finir avec la souche intacte.' : '2e étoile : finir avec 10 PV ou plus.',
+  etoilesAide: '1 étoile : finir · 2 : 10 PV ou plus · 3 : souche intacte',
   rejouer: 'Rejouer',
   fermer: 'Fermer',
 };

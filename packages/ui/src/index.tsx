@@ -193,8 +193,8 @@ export class ControleurInterface {
             this.bulle = null;
             this.dessiner();
           }}
-          recommencer={this.options.recommencer}
         />
+        {(i.phase === 'victoire' || i.phase === 'defaite') && <EcranFin i={i} rejouer={this.options.recommencer} />}
         {this.bulle && this.dessinerBulle(i, this.bulle)}
         {this.menu && this.dessinerMenu()}
       </div>,
@@ -326,7 +326,6 @@ function Bandeau(p: {
   pause: () => void;
   rapide: () => void;
   menu: () => void;
-  recommencer: () => void;
 }) {
   const { i } = p;
   const fin = i.phase === 'victoire' || i.phase === 'defaite';
@@ -350,16 +349,6 @@ function Bandeau(p: {
         <button class="bouton valider" title={TEXTES.lancerAide(i.bonusLancer)} onClick={p.lancer}>
           {TEXTES.lancer} <span class="bonus">+{i.bonusLancer}</span>
         </button>
-      )}
-      {fin && (
-        <>
-          <span class="planche resultat">
-            {i.phase === 'victoire' ? `${TEXTES.victoire} ${'★'.repeat(i.etoiles)}${'☆'.repeat(3 - i.etoiles)}` : TEXTES.defaite}
-          </span>
-          <button class="bouton valider" onClick={p.recommencer}>
-            {TEXTES.rejouer}
-          </button>
-        </>
       )}
       {!fin && (
         <>
@@ -416,6 +405,36 @@ function Stats({ type, stade, suivant }: { type: TypeTour; stade: number; suivan
       </ul>
       {extras.length > 0 && <p class="discret">{extras.join(' · ')}</p>}
     </>
+  );
+}
+
+/** Fin de partie : titre, étoiles qui tombent une à une, vie restante, Rejouer (la carte viendra en 4c). */
+function EcranFin({ i, rejouer }: { i: Instantane; rejouer: () => void }) {
+  const victoire = i.phase === 'victoire';
+  return (
+    <div class="voile">
+      <section class={`bulle fin ${victoire ? 'gagne' : 'perdu'}`}>
+        <header>
+          <h2>{victoire ? TEXTES.victoire : TEXTES.defaite}</h2>
+        </header>
+        <div class="corps">
+          <div class="etoiles" title={TEXTES.etoilesAide}>
+            {[1, 2, 3].map((n) => (
+              <img class={`etoile${n <= i.etoiles ? ' gagnee' : ''}`} style={{ animationDelay: `${0.25 + n * 0.3}s` }} src={icone(n <= i.etoiles ? 'etoile' : 'etoileVide')} alt="" />
+            ))}
+          </div>
+          <p class="sous-titre">{victoire ? TEXTES.victoireSous : TEXTES.defaiteSous(i.vague, i.vagues)}</p>
+          <p class="vie">
+            <Ico nom="vie" />
+            {TEXTES.vieRestante(i.souche.pv, i.souche.pvMax)}
+          </p>
+          {victoire && <p class="discret">{TEXTES.etoileSuivante(i.etoiles)}</p>}
+          <button class="bouton valider large" onClick={rejouer}>
+            {TEXTES.rejouer}
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 

@@ -118,14 +118,9 @@
 .planche .discret {
   color: #c8b8a4;
 }
+/* Souche à 5 PV ou moins : la planche vire au rouge, sans clignoter (demande de Celian, 12/11). */
 .planche.alerte {
   background: var(--rouge);
-  animation: alerte 0.8s steps(2) infinite;
-}
-@keyframes alerte {
-  50% {
-    background: #7a2a20;
-  }
 }
 
 /* ─── Boutons : planchettes biseautées qui s'enfoncent au clic ──────────────────────────── */
@@ -212,9 +207,6 @@
   color: var(--parchemin-clair);
   background: var(--rouge);
   text-shadow: var(--texte-cerne);
-}
-.resultat {
-  padding: 0 8px;
 }
 
 /* ─── Bulles : cadre de bois brûlé, rivets, parchemin tramé ──────────────────────────────── */
@@ -440,4 +432,84 @@
   margin: 8px -8px -8px;
   padding: 4px 8px 6px;
   box-shadow: 0 -2px 0 var(--bois-clair);
+}
+
+/* ─── Écran de fin : voile sombre, cadre au centre, étoiles qui tombent une à une ────────── */
+.voile {
+  position: absolute;
+  inset: 36px 0 0;
+  display: grid;
+  place-items: center;
+  background: rgb(20 12 14 / 0.45);
+  pointer-events: auto;
+  animation: voile 0.4s steps(4) both;
+}
+.bulle.fin {
+  position: relative;
+  left: auto;
+  transform: none;
+  width: min(232px, calc(100% - 16px));
+  animation: monte 0.3s steps(3) both;
+}
+.bulle.fin header {
+  justify-content: center;
+  padding-left: 0;
+}
+.bulle.fin h2 {
+  flex: none;
+  font-size: 17px;
+}
+.bulle.fin.perdu header {
+  color: #f0a090;
+}
+.bulle.fin .corps {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.bulle.fin p {
+  margin: 0;
+}
+.etoiles {
+  display: flex;
+  gap: 4px;
+  margin: 2px 0;
+}
+.etoile {
+  width: 36px;
+  height: 36px;
+  image-rendering: pixelated;
+}
+.etoile.gagnee {
+  animation: etoile 0.35s steps(4) both;
+}
+.etoile:nth-child(2) {
+  margin-top: -6px;
+}
+.bulle.fin .vie {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.bulle.fin .bouton.large {
+  margin-top: 2px;
+}
+@keyframes voile {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes monte {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+}
+@keyframes etoile {
+  from {
+    transform: scale(2.2) rotate(-30deg);
+    opacity: 0;
+  }
 }
