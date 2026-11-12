@@ -1,50 +1,9 @@
-// Tours, projectiles, explosions et éclairs. Modèles provisoires en voxels (les vrais, 3 stades soignés,
-// viendront à l'étape 6) : chaque stade est plus haut et plus hérissé que le précédent.
+// Tours, projectiles, explosions et éclairs. Modèles des tours dans `fortins.ts`.
 import * as THREE from 'three';
 import type { Case, Ile, Instantane, TypeTour } from '@spore-siege/engine';
 import { centreCase, versMonde } from './repere';
+import { fortin } from './fortins';
 import { Voxels, type Modele } from './voxels';
-
-const BOIS = 0x6b4a2f;
-const PIERRE = 0x8a8478;
-const COULEURS: Record<TypeTour, { corps: number; vif: number }> = {
-  ruche: { corps: 0xd9a03a, vif: 0x6b4a2f },
-  cristal: { corps: 0x7fd8e8, vif: 0xb7f2ff },
-  mortier: { corps: 0x5a4632, vif: 0x8fa04a },
-  canon: { corps: 0xc8403a, vif: 0xf3e6c8 },
-};
-
-/** Socle commun, puis la silhouette propre à chaque tour ; `stade` de 1 à 3. */
-function tour(type: TypeTour, stade: number): Voxels {
-  const { corps, vif } = COULEURS[type];
-  const v = new Voxels().boite(-5, 0, -5, 4, 1, 4, PIERRE);
-  const h = 4 + stade * 3;
-  switch (type) {
-    case 'ruche':
-      for (let i = 0; i < stade + 1; i++) v.cylindre(-0.5, -0.5, 2 + i * 3, 4 + i * 3, 4 - i * 0.5, i % 2 ? vif : corps);
-      v.boite(-1, 3, 3, 0, 4, 4, 0x2a1d12);
-      break;
-    case 'cristal':
-      v.cylindre(-0.5, -0.5, 2, 4, 3, PIERRE);
-      v.cylindre(-0.5, -0.5, 4, 4 + h, 2, corps, 0.5);
-      if (stade >= 2) v.cylindre(-3, 1, 4, 6 + stade, 1, vif, 0.3);
-      if (stade >= 3) v.cylindre(2, -2, 4, 9, 1, vif, 0.3);
-      break;
-    case 'mortier':
-      v.cylindre(-0.5, -0.5, 2, 3 + stade * 2, 4, corps, 3.5);
-      v.disque(-0.5, 3 + stade * 2, -0.5, 2.5, 0x2a1d12);
-      v.boite(-5, 2, -5, 4, 2, 4, vif);
-      break;
-    case 'canon':
-      v.cylindre(-0.5, -0.5, 2, 2 + h - 2, 1.6, vif);
-      v.dome(-0.5, -0.5, 2 + h - 2, 3.5 + stade * 0.5, 3, corps);
-      v.peindre((x, y, z, c) => c === corps && (x * 7 + z * 13 + y) % 5 === 0, vif);
-      break;
-  }
-  // Épines du dernier stade : la tour se hérisse.
-  if (stade >= 3) for (const [x, z] of [[-5, -5], [4, -5], [-5, 4], [4, 4]] as const) v.boite(x, 2, z, x, 4, z, BOIS);
-  return v;
-}
 
 /** Ronce : buisson de tiges épineuses qui barre le sentier, quelques baies. */
 function ronce(): Voxels {
@@ -65,7 +24,7 @@ const modeles = new Map<string, Modele>();
 export function modeleTour(type: TypeTour | 'ronce', stade: number): Modele {
   const cle = `${type}${stade}`;
   let m = modeles.get(cle);
-  if (!m) modeles.set(cle, (m = (type === 'ronce' ? ronce() : tour(type, stade)).modele(false)));
+  if (!m) modeles.set(cle, (m = (type === 'ronce' ? ronce() : fortin(type, stade)).modele(false)));
   return m;
 }
 

@@ -92,10 +92,17 @@ function injecterNeige(shader: THREE.WebGLProgramParametersWithUniforms): void {
  * Matériau toon partagé pour une couleur donnée. L'attribut `color` des géométries nuance la couleur
  * (voxels) : toute géométrie dessinée avec ces matériaux doit en avoir un (`sansNuance` sinon).
  */
+/** Couleurs qui brillent un peu dans l'ombre (cristal, yeux) ; à déclarer avant le premier modèle qui les emploie. */
+const lumineuses = new Set<number>();
+export function lumineuse(...couleurs: number[]): void {
+  for (const c of couleurs) lumineuses.add(c);
+}
+
 export function materiau(couleur: number): THREE.MeshToonMaterial {
   let m = cache.get(couleur);
   if (!m) {
     m = new THREE.MeshToonMaterial({ color: couleur, gradientMap: paliers, vertexColors: true });
+    if (lumineuses.has(couleur)) m.emissive.setHex(couleur).multiplyScalar(0.45);
     m.onBeforeCompile = injecterNeige;
     cache.set(couleur, m);
   }
