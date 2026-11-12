@@ -652,3 +652,99 @@ table.stades .icone {
   height: 14px;
   vertical-align: middle;
 }
+
+.bulle.fin .choix {
+  width: 100%;
+}
+.bulle.fin .choix .bouton {
+  flex: 1;
+  justify-content: center;
+}
+
+/* ─── Accueil : titre sur un cadre de bois, au-dessus de l'archipel ──────────────────────── */
+.accueil {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(20 12 14 / 0.35);
+  pointer-events: auto;
+}
+.bulle.titre {
+  position: relative;
+  left: auto;
+  transform: none;
+  width: min(232px, calc(100% - 16px));
+  padding: 10px 12px 4px;
+  align-items: center;
+  text-align: center;
+  color: var(--parchemin-clair);
+  text-shadow: var(--texte-cerne);
+  animation: monte 0.3s steps(3) both;
+}
+.bulle.titre .surtitre {
+  font-size: 11px;
+  color: #d8c8b0;
+  letter-spacing: 1px;
+}
+.bulle.titre h1 {
+  margin: 0 0 2px;
+  font-size: 30px;
+  line-height: 1;
+  color: var(--accent);
+  text-shadow:
+    var(--texte-cerne),
+    0 3px 0 var(--encre);
+}
+.bulle.titre p {
+  margin: 6px 0 2px;
+  font-size: 12px;
+}
+
+/* ─── Carte des îles : étiquette au-dessus de chaque îlot ────────────────────────────────── */
+.repere {
+  position: absolute;
+  width: 96px;
+  height: 70px;
+  transform: translate(-50%, -62%);
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font: inherit;
+}
+.repere.ferme {
+  cursor: default;
+}
+.repere .etiquette {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transform: translateY(-16px);
+}
+.repere:hover:not(:disabled) .etiquette {
+  transform: translateY(-18px);
+}
+.repere .planche {
+  height: 18px;
+  padding: 0 7px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.repere.ferme .planche {
+  color: #c8b8a4;
+  background: var(--bois-fonce);
+}
+.petites-etoiles {
+  display: flex;
+  gap: 1px;
+}
+.petites-etoiles img {
+  width: 18px;
+  height: 18px;
+  image-rendering: pixelated;
+}

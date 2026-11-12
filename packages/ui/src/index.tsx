@@ -2,11 +2,11 @@
 // visible, bulles au clic sur l'île (construire, tour, ronce), menu des réglages.
 // Le contrôleur garde l'état de l'interface ; le frontend lui donne les instantanés et lit l'aperçu à dessiner.
 import { render } from 'preact';
-import type { Case, Commande, Ile, Instantane, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
+import type { Biome, Case, Commande, Ile, Instantane, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
 import { MONSTRES, PART_RONCE_RENDUE, PRIX_RONCE, TOURS } from '@spore-siege/engine';
 import { icone, type Icone } from './icones';
-import { ecrireDecouverts, lireDecouverts } from './sauvegarde';
-import { MONSTRES_TEXTES, nombre, TEXTES, TOURS_TEXTES } from './textes';
+import { ecrireDecouverts, ecrireEtoiles, lireDecouverts, lireEtoiles } from './sauvegarde';
+import { ILES_TEXTES, MONSTRES_TEXTES, nombre, TEXTES, TOURS_TEXTES } from './textes';
 
 /** Ce que l'interface peut demander à la partie. */
 export interface Jeu {
@@ -31,7 +31,16 @@ export interface OptionsInterface {
   vignetteMonstre(type: TypeMonstre): string;
   recommencer(): void;
   fenetre?: Fenetre;
+  /** Le canevas doit montrer la carte des îles ou l'île de la partie. */
+  changerEcran(ecran: Ecran): void;
+  /** Îles dans l'ordre du parcours, avec le dessus de leur îlot à l'écran (pixels de l'interface). */
+  positionsCarte(): { biome: Biome; x: number; y: number }[];
+  /** Îles qui ont déjà leurs vagues. */
+  ilesJouables: readonly Biome[];
 }
+
+/** Accueil (titre + Jouer), carte des îles, ou partie en cours. */
+export type Ecran = 'accueil' | 'carte' | 'partie';
 
 /** Tour ou ronce fantôme à dessiner sur l'île, avec sa portée. */
 export interface Apercu {
@@ -60,6 +69,9 @@ const memeCase = (a: Case, b: Case) => a.x === b.x && a.y === b.y;
 
 export class ControleurInterface {
   vitesse: Vitesse = 1;
+  ecran: Ecran = 'accueil';
+  /** Meilleures étoiles de chaque île, gardées d'une partie à l'autre. */
+  private readonly etoiles = lireEtoiles();
   /** Vitesse choisie avant la pause, pour reprendre au même rythme. */
   private vitesseAvantPause: 1 | 2 = 1;
   private bulle: Bulle | null = null;
@@ -94,6 +106,10 @@ export class ControleurInterface {
   maj(instantane: Instantane): void {
     this.instantane = instantane;
     if (instantane.phase === 'victoire' || instantane.phase === 'defaite') this.bulle = null;
+    if (instantane.phase === 'victoire' && instantane.etoiles > (this.etoiles[this.jeu.ile.biome] ?? 0)) {
+      this.etoiles[this.jeu.ile.biome] = instantane.etoiles;
+      ecrireEtoiles(this.etoiles);
+    }
     const v = this.vagueJouee;
     if (v && (instantane.phase !== 'vague' || instantane.vague !== v.n)) {
       this.decouvrir(v.types);
@@ -148,6 +164,27 @@ export class ControleurInterface {
     this.livre = null;
     if (this.reprendreA !== null) this.vitesse = this.reprendreA;
     this.reprendreA = null;
+    this.dessiner();
+  }
+
+  /** Change d'écran : accueil, carte des îles ou partie. */
+  aller(ecran: Ecran): void {
+    this.fermer();
+    this.ecran = ecran;
+    this.options.changerEcran(ecran);
+    this.dessiner();
+  }
+
+  /** Lance une partie neuve sur cette île. */
+  jouer(_biome: Biome): void {
+    // Une seule île jouable en V1 : `recommencer` la relance ; le choix de l'île viendra avec les autres.
+    this.options.recommencer();
+    this.vitesse = 1;
+    this.aller('partie');
+  }
+
+  /** À rappeler quand la fenêtre change de taille (les îlots de la carte bougent à l'écran). */
+  rafraichir(): void {
     this.dessiner();
   }
 
@@ -232,6 +269,8 @@ export class ControleurInterface {
   }
 
   private dessiner(): void {
+    if (this.ecran === 'accueil') return render(this.dessinerAccueil(), this.element);
+    if (this.ecran === 'carte') return render(this.dessinerCarte(), this.element);
     const i = this.instantane;
     if (!i) return;
     render(
@@ -248,7 +287,7 @@ export class ControleurInterface {
             this.dessiner();
           }}
         />
-        {(i.phase === 'victoire' || i.phase === 'defaite') && <EcranFin i={i} rejouer={this.options.recommencer} />}
+        {(i.phase === 'victoire' || i.phase === 'defaite') && <EcranFin i={i} rejouer={this.options.recommencer} carte={() => this.aller('carte')} />}
         {this.dessinerMedaillons(i)}
         {this.bulle && this.dessinerBulle(i, this.bulle)}
         {this.menu && this.dessinerMenu()}
@@ -268,6 +307,91 @@ export class ControleurInterface {
         {this.livre && this.dessinerLivre(this.livre)}
       </div>,
       this.element,
+    );
+  }
+
+  private dessinerAccueil() {
+    const f = this.options.fenetre;
+    return (
+      <div class="interface">
+        <div class="accueil">
+          <section class="bulle titre">
+            <span class="surtitre">{TEXTES.surtitre}</span>
+            <h1>{TEXTES.titre}</h1>
+            <p>{TEXTES.accroche}</p>
+            <button class="bouton valider large" onClick={() => this.aller('carte')}>
+              {TEXTES.jouer}
+            </button>
+            {f && (
+              <button class="bouton large danger" onClick={() => f.quitter()}>
+                {TEXTES.quitter}
+              </button>
+            )}
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  private dessinerCarte() {
+    const iles = this.options.positionsCarte();
+    const total = iles.reduce((n, { biome }) => n + (this.etoiles[biome] ?? 0), 0);
+    return (
+      <div class="interface">
+        <div class="bandeau">
+          <span class="planche" title={TEXTES.etoilesTotal}>
+            <Ico nom="etoile" />
+            {`${total}/${iles.length * 3}`}
+          </span>
+          <span class="planche">{TEXTES.archipel}</span>
+          <span class="espace" />
+          <button class="bouton carre" title={TEXTES.grimoire} onClick={() => (this.livre ? this.fermer() : this.ouvrirLivre())}>
+            <Ico nom="livre" />
+          </button>
+          <button
+            class="bouton carre"
+            title={TEXTES.reglages}
+            onClick={() => {
+              const ouvert = this.menu;
+              this.fermer();
+              this.menu = !ouvert;
+              this.dessiner();
+            }}
+          >
+            <Ico nom="reglages" />
+          </button>
+        </div>
+        {iles.map(({ biome, x, y }, n) => {
+          const precedente = iles[n - 1];
+          const ouverte = !precedente || (this.etoiles[precedente.biome] ?? 0) >= 1;
+          const jouable = ouverte && this.options.ilesJouables.includes(biome);
+          const etoiles = this.etoiles[biome] ?? 0;
+          return (
+            <button
+              class={`repere${jouable ? '' : ' ferme'}`}
+              style={{ left: `${x}px`, top: `${y}px` }}
+              title={jouable ? TEXTES.jouerIle(ILES_TEXTES[biome]) : ouverte ? TEXTES.pasEncore : TEXTES.verrouillee}
+              disabled={!jouable}
+              onClick={() => this.jouer(biome)}
+            >
+              <span class="etiquette">
+                {jouable ? (
+                  <span class="petites-etoiles">
+                    {[1, 2, 3].map((k) => (
+                      <img src={icone(k <= etoiles ? 'etoile' : 'etoileVide')} alt="" />
+                    ))}
+                  </span>
+                ) : (
+                  <Ico nom="cadenas" />
+                )}
+                <span class="planche">{jouable ? ILES_TEXTES[biome] : `${ILES_TEXTES[biome]} · ${TEXTES.bientot}`}</span>
+              </span>
+            </button>
+          );
+        })}
+        {this.menu && this.dessinerMenu()}
+        {this.livre && this.dessinerLivre(this.livre)}
+      </div>
     );
   }
 
@@ -448,16 +572,23 @@ export class ControleurInterface {
           <button class="bouton large" title={TEXTES.grimoireAide} onClick={() => this.ouvrirLivre()}>
             <Ico nom="livre" /> {TEXTES.ouvrirGrimoire}
           </button>
-          <h3>{TEXTES.partie}</h3>
-          <button
-            class="bouton large"
-            onClick={() => {
-              this.fermer();
-              this.options.recommencer();
-            }}
-          >
-            {TEXTES.recommencer}
-          </button>
+          {this.ecran === 'partie' && (
+            <>
+              <h3>{TEXTES.partie}</h3>
+              <button
+                class="bouton large"
+                onClick={() => {
+                  this.fermer();
+                  this.options.recommencer();
+                }}
+              >
+                {TEXTES.recommencer}
+              </button>
+              <button class="bouton large" onClick={() => this.aller('carte')}>
+                {TEXTES.retourCarte}
+              </button>
+            </>
+          )}
           {f && (
             <button class="bouton large danger" onClick={() => f.quitter()}>
               {TEXTES.quitter}
@@ -574,7 +705,7 @@ function Stats({ type, stade, suivant }: { type: TypeTour; stade: number; suivan
 }
 
 /** Fin de partie : titre, étoiles qui tombent une à une, vie restante, Rejouer (la carte viendra en 4c). */
-function EcranFin({ i, rejouer }: { i: Instantane; rejouer: () => void }) {
+function EcranFin({ i, rejouer, carte }: { i: Instantane; rejouer: () => void; carte: () => void }) {
   const victoire = i.phase === 'victoire';
   return (
     <div class="voile">
@@ -594,9 +725,14 @@ function EcranFin({ i, rejouer }: { i: Instantane; rejouer: () => void }) {
             {TEXTES.vieRestante(i.souche.pv, i.souche.pvMax)}
           </p>
           {victoire && <p class="discret">{TEXTES.etoileSuivante(i.etoiles)}</p>}
-          <button class="bouton valider large" onClick={rejouer}>
-            {TEXTES.rejouer}
-          </button>
+          <div class="rang choix">
+            <button class="bouton" onClick={carte}>
+              {TEXTES.carte}
+            </button>
+            <button class="bouton valider" onClick={rejouer}>
+              {TEXTES.rejouer}
+            </button>
+          </div>
         </div>
       </section>
     </div>

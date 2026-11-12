@@ -1,6 +1,7 @@
 // Rendu de l'île : scène Three.js pixelisée, dans le style de Tiny Shrooms.
 import * as THREE from 'three';
-import type { Case, Ile, Instantane } from '@spore-siege/engine';
+import type { Biome, Case, Ile, Instantane } from '@spore-siege/engine';
+import { Archipel, COTE_ARCHIPEL } from './archipel';
 import { CameraIso } from './camera';
 import { construireIle } from './ile';
 import { MonstresRendu } from './monstres';
@@ -10,6 +11,10 @@ import { caseSous, ToursRendu, type Marque, type Pose } from './tours';
 import { Vignettes } from './vignettes';
 
 export type { Marque, Pose } from './tours';
+export { ORDRE_ILES } from './archipel';
+
+/** Ce que montre le canevas : l'île de la partie, ou la carte des îles. */
+export type Scene = 'ile' | 'carte';
 
 export const IMAGES_PAR_SECONDE = 60;
 /** Facteur de réduction de la résolution de rendu par rapport à la fenêtre, à l'échelle 1. */
@@ -36,6 +41,10 @@ export class Rendu {
   private readonly souche = new SoucheRendu();
   private readonly monstres = new MonstresRendu();
   private readonly tours = new ToursRendu();
+  private readonly sceneCarte = new THREE.Scene();
+  private readonly vueCarte = new CameraIso();
+  private readonly archipel = new Archipel();
+  private montree: Scene = 'ile';
   private ile: Ile | null = null;
   /** Appelé avant chaque image, avec l'instant en millisecondes : c'est là que le frontend fait tourner le moteur. */
   surImage: ((instant: number) => void) | null = null;
@@ -62,7 +71,34 @@ export class Rendu {
     soleil.shadow.bias = -0.002;
     Object.assign(soleil.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 50 });
     this.scene.add(ciel, soleil, this.souche.groupe, this.monstres.groupe, this.tours.groupe);
+
+    // Carte des îles : mêmes lumières, ombres sur toute l'étendue de l'archipel.
+    const soleilCarte = soleil.clone();
+    Object.assign(soleilCarte.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 80 });
+    soleilCarte.position.set(12, 24, 8);
+    this.sceneCarte.add(ciel.clone(), soleilCarte, this.archipel.groupe);
+    this.vueCarte.cadrer(COTE_ARCHIPEL, COTE_ARCHIPEL);
+    this.vueCarte.animer(0);
     this.redimensionner();
+  }
+
+  montrer(scene: Scene): void {
+    this.montree = scene;
+  }
+
+  /**
+   * Où tombe, dans la fenêtre (pixels CSS), le dessus de chaque îlot de la carte : l'interface y pose les étoiles
+   * et les cadenas.
+   */
+  positionsCarte(): { biome: Biome; x: number; y: number }[] {
+    const r = this.canevas.getBoundingClientRect();
+    const p = new THREE.Vector3();
+    // Sans image dessinée depuis (fenêtre cachée), la matrice de la caméra peut ne pas être à jour.
+    this.vueCarte.camera.updateMatrixWorld();
+    return this.archipel.ilots.map(({ biome, centre }) => {
+      p.copy(centre).project(this.vueCarte.camera);
+      return { biome, x: r.left + ((p.x + 1) / 2) * r.width, y: r.top + ((1 - p.y) / 2) * r.height };
+    });
   }
 
   appliquerIle(ile: Ile): void {
@@ -119,6 +155,7 @@ export class Rendu {
     this.moteur.setSize(largeur, hauteur, false);
     this.pixelisation.redimensionner(largeur, hauteur);
     this.vue.redimensionner(largeur / hauteur);
+    this.vueCarte.redimensionner(largeur / hauteur);
   }
 
   demarrer(): void {
@@ -140,8 +177,14 @@ export class Rendu {
     const dt = this.derniereImage === 0 ? 0 : ecart / 1000;
     this.derniereImage = instant;
     this.surImage?.(instant);
-    this.vue.animer(dt);
-    this.pixelisation.rendre(this.scene, this.vue.camera, []);
+    if (this.montree === 'carte') {
+      this.archipel.animer(instant / 1000);
+      this.vueCarte.animer(dt);
+      this.pixelisation.rendre(this.sceneCarte, this.vueCarte.camera, []);
+    } else {
+      this.vue.animer(dt);
+      this.pixelisation.rendre(this.scene, this.vue.camera, []);
+    }
     this.images++;
   };
 }

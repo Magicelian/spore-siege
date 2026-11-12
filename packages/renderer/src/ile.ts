@@ -17,6 +17,9 @@ interface Piece {
   ombre: 'porte' | 'recoit';
 }
 
+/** Ce qui pousse sur les cases `foret` selon le biome. */
+const ARBRE_PAR_BIOME: Record<Ile['biome'], Decor> = { foret: 'arbre', marais: 'roseau', prairie: 'arbre', grotte: 'luisant', futaie: 'chene' };
+
 const HAUT_TERRE = -0.25;
 const HAUT_ROCHE = -1;
 
@@ -52,7 +55,7 @@ export function construireIle(ile: Ile): THREE.Group {
       const decalage = centre.clone().add(new THREE.Vector3((bruit(x, y, 1) - 0.5) * 0.3, 0, (bruit(x, y, 2) - 0.5) * 0.3));
       if (terrain === 'foret') {
         const t = 0.8 + b * 0.4;
-        poser('arbre', 0, 'porte', decalage, echelle.set(t, t * (0.9 + bruit(x, y, 4) * 0.2), t), quart(b));
+        poser(ARBRE_PAR_BIOME[ile.biome], 0, 'porte', decalage, echelle.set(t, t * (0.9 + bruit(x, y, 4) * 0.2), t), quart(b));
       } else if (terrain === 'fleurs') {
         poser('fleur', 0, 'porte', decalage, echelle.setScalar(0.85 + b * 0.3), quart(b));
       } else if (terrain === 'buisson') {

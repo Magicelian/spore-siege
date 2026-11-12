@@ -1,5 +1,5 @@
 // Tous les textes de l'interface, en un seul endroit : l'anglais s'ajoutera ici plus tard.
-import type { TypeMonstre, TypeTour } from '@spore-siege/engine';
+import type { Biome, TypeMonstre, TypeTour } from '@spore-siege/engine';
 
 export const TOURS_TEXTES: Record<TypeTour, { nom: string; role: string }> = {
   ruche: { nom: 'Poste-ruche', role: 'Ses abeilles piquent vite, un monstre à la fois.' },
@@ -34,6 +34,14 @@ export const MONSTRES_TEXTES: Record<TypeMonstre, { nom: string; description: st
     description: 'Un éclat d’amas qui a gardé assez de rage pour continuer jusqu’à la souche.',
     conseil: 'Fragile, mais plus rapide que l’amas dont il sort.',
   },
+};
+
+export const ILES_TEXTES: Record<Biome, string> = {
+  foret: 'Forêt',
+  marais: 'Marais',
+  prairie: 'Prairie',
+  grotte: 'Grotte',
+  futaie: 'Futaie',
 };
 
 export const TEXTES = {
@@ -100,6 +108,18 @@ export const TEXTES = {
   morsureCourt: 'Morsure',
   butinCourt: 'Butin',
   rebondsStades: (n: number[]) => `rebonds ${n.join(' / ')}`,
+  titre: 'Spore Siege',
+  surtitre: 'Tiny Shrooms',
+  accroche: 'La Rouille débarque. Défends la souche.',
+  jouer: 'Jouer',
+  archipel: 'Archipel',
+  etoilesTotal: 'Étoiles gagnées sur toutes les îles',
+  jouerIle: (nom: string) => `Défendre l’île : ${nom}`,
+  bientot: 'Bientôt',
+  verrouillee: 'Finis l’île précédente pour l’ouvrir.',
+  pasEncore: 'Cette île n’est pas encore prête.',
+  carte: 'Carte',
+  retourCarte: 'Retour à la carte',
   stadeCourt: (n: number) => `St. ${n}`,
 };
 

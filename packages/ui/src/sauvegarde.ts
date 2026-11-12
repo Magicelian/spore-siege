@@ -1,8 +1,28 @@
-// Ce qui reste d'une partie à l'autre, dans le stockage local de la fenêtre : monstres déjà rencontrés.
-// (Les étoiles des îles s'y ajouteront en 4c.)
-import type { TypeMonstre } from '@spore-siege/engine';
+// Ce qui reste d'une partie à l'autre, dans le stockage local de la fenêtre : monstres déjà rencontrés et
+// meilleures étoiles de chaque île.
+import type { Biome, TypeMonstre } from '@spore-siege/engine';
 
 const CLE_DECOUVERTS = 'spore-siege:decouverts';
+const CLE_ETOILES = 'spore-siege:etoiles';
+
+export type Etoiles = Partial<Record<Biome, number>>;
+
+export function lireEtoiles(): Etoiles {
+  try {
+    const brut = JSON.parse(localStorage.getItem(CLE_ETOILES) ?? '{}') as unknown;
+    return brut && typeof brut === 'object' ? (brut as Etoiles) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function ecrireEtoiles(etoiles: Etoiles): void {
+  try {
+    localStorage.setItem(CLE_ETOILES, JSON.stringify(etoiles));
+  } catch {
+    // Stockage indisponible : les étoiles ne seront pas retenues.
+  }
+}
 
 export function lireDecouverts(): Set<TypeMonstre> {
   try {

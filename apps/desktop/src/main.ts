@@ -2,7 +2,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { ileForet, Partie, PAS_MS, VAGUES_FORET, type Instantane } from '@spore-siege/engine';
-import { echelleAffichage, Rendu } from '@spore-siege/renderer';
+import { echelleAffichage, ORDRE_ILES, Rendu } from '@spore-siege/renderer';
 import { ControleurInterface, type Fenetre, type Jeu } from '@spore-siege/ui';
 import '@spore-siege/ui/interface.css';
 
@@ -61,7 +61,18 @@ const ui = new ControleurInterface(document.getElementById('interface')!, jeuDe(
   vignetteMonstre: (type) => rendu.vignettes.monstre(type),
   recommencer,
   fenetre,
+  changerEcran: (ecran) => {
+    rendu.montrer(ecran === 'partie' ? 'ile' : 'carte');
+    dernierInstant = null;
+  },
+  // L'interface est grossie (zoom CSS) : ses pixels valent `--echelle` pixels de la fenêtre.
+  positionsCarte: () => {
+    const e = Math.floor(echelleAffichage());
+    return rendu.positionsCarte().map((p) => ({ ...p, x: p.x / e, y: p.y / e }));
+  },
+  ilesJouables: ['foret'],
 });
+rendu.montrer('carte');
 ui.maj(actuel);
 
 function recommencer(): void {
@@ -74,6 +85,7 @@ function recommencer(): void {
 }
 
 rendu.surImage = (instant) => {
+  if (ui.ecran !== 'partie') return;
   reserve += dernierInstant === null ? 0 : (instant - dernierInstant) * ui.vitesse;
   dernierInstant = instant;
   let pas = 0;
@@ -108,6 +120,7 @@ function journal(message: string): void {
 function redimensionner(): void {
   rendu.redimensionner();
   document.documentElement.style.setProperty('--echelle', String(Math.floor(echelleAffichage())));
+  ui.rafraichir();
 }
 window.addEventListener('resize', redimensionner);
 redimensionner();
@@ -117,7 +130,7 @@ window.addEventListener(
   'wheel',
   (e) => {
     e.preventDefault();
-    if (Math.abs(e.deltaY) > 2) rendu.zoomer(e.deltaY < 0 ? 1 : -1);
+    if (ui.ecran === 'partie' && Math.abs(e.deltaY) > 2) rendu.zoomer(e.deltaY < 0 ? 1 : -1);
   },
   { passive: false },
 );
@@ -130,7 +143,7 @@ rendu.canevas.addEventListener('pointerdown', (e) => {
 });
 window.addEventListener('pointermove', (e) => {
   // Survol : ce qu'on pourrait cliquer, marqué sur l'île (pas pendant un glisser, ni sous l'interface).
-  ui.survoler(!appui && e.target === rendu.canevas ? rendu.caseSous(e.clientX, e.clientY) : null);
+  ui.survoler(!appui && e.target === rendu.canevas && ui.ecran === 'partie' ? rendu.caseSous(e.clientX, e.clientY) : null);
   if (!appui) return;
   if (appui.mode === 'attente' && Math.hypot(e.clientX - appui.x, e.clientY - appui.y) > SEUIL_GLISSER) {
     if (appui.fenetre) {
@@ -149,7 +162,7 @@ window.addEventListener('pointermove', (e) => {
 });
 window.addEventListener('pointerup', (e) => {
   // La bulle s'ouvre du côté opposé au clic, pour ne pas cacher la case.
-  if (appui?.mode === 'attente') ui.cliquer(rendu.caseSous(e.clientX, e.clientY), e.clientY > window.innerHeight / 2);
+  if (appui?.mode === 'attente' && ui.ecran === 'partie') ui.cliquer(rendu.caseSous(e.clientX, e.clientY), e.clientY > window.innerHeight / 2);
   appui = null;
 });
 window.addEventListener('blur', () => {
@@ -160,11 +173,12 @@ document.addEventListener('pointerleave', () => ui.survoler(null));
 
 // Q / E : un quart de tour ; espace : pause ; Échap : fermer la bulle.
 window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') ui.fermer();
+  if (ui.ecran !== 'partie') return;
   if (e.key === 'q' || e.key === 'a') rendu.tourner(-1);
   if (e.key === 'e') rendu.tourner(1);
   if (e.key === ' ') {
     e.preventDefault();
     ui.basculerPause();
   }
-  if (e.key === 'Escape') ui.fermer();
 });
