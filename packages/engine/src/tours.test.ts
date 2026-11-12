@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ileForet } from './carte';
-import { BONUS_VAGUE, PAUSE_SECONDES, PAS_PAR_SECONDE, SPORES_DEPART, TOURS, type Vague } from './contenu';
+import { BONUS_VAGUE, MONSTRES, PAUSE_SECONDES, PAS_PAR_SECONDE, SPORES_DEPART, TOURS, type Vague } from './contenu';
 import { Partie } from './partie';
 
 const ile = ileForet();
@@ -39,19 +39,20 @@ describe('tours', () => {
     const fin = partie.instantane();
     expect(fin.phase).toBe('victoire');
     expect(fin.souche.pv).toBe(20);
-    expect(fin.spores).toBe(avant + 3);
+    expect(fin.spores).toBe(avant + MONSTRES.limace.butin);
   });
 
   it('l’armure du scarabée ne laisse passer qu’un dégât par abeille', () => {
     const partie = new Partie(ile, seule('scarabee'), 1);
     partie.executer({ type: 'poserTour', tour: 'ruche', case: PRES });
-    jouerJusqua(partie, () => (partie.instantane().monstres[0]?.pv ?? 40) < 40);
-    expect(partie.instantane().monstres[0]!.pv).toBe(39);
+    const pv = MONSTRES.scarabee.pv;
+    jouerJusqua(partie, () => (partie.instantane().monstres[0]?.pv ?? pv) < pv);
+    expect(partie.instantane().monstres[0]!.pv).toBe(pv - 1);
   });
 
   it('l’amas se divise en deux petits en mourant', () => {
     const partie = new Partie(ile, seule('amas'), 1);
-    partie.executer({ type: 'poserTour', tour: 'ruche', case: PRES });
+    partie.executer({ type: 'poserTour', tour: 'canon', case: PRES });
     jouerJusqua(partie, () => partie.instantane().monstres.some((m) => m.type === 'petitAmas'));
     const types = partie.instantane().monstres.map((m) => m.type);
     expect(types).toEqual(['petitAmas', 'petitAmas']);

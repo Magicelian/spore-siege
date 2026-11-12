@@ -7,7 +7,7 @@ export const PAS_PAR_SECONDE = 1000 / PAS_MS;
 
 export const PV_SOUCHE = 20;
 /** Pause avant chaque vague, pour construire ; un bouton l'écourte. */
-export const PAUSE_SECONDES = 20;
+export const PAUSE_SECONDES = 25;
 
 export interface FicheMonstre {
   pv: number;
@@ -22,17 +22,17 @@ export interface FicheMonstre {
 }
 
 export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
-  limace: { pv: 10, vitesse: 0.8, morsure: 1, butin: 3, armure: 0 },
-  moucheron: { pv: 6, vitesse: 2, morsure: 1, butin: 2, armure: 0 },
-  scarabee: { pv: 40, vitesse: 0.6, morsure: 2, butin: 8, armure: 3 },
-  amas: { pv: 25, vitesse: 0.7, morsure: 2, butin: 6, armure: 0 },
-  petitAmas: { pv: 8, vitesse: 1, morsure: 1, butin: 1, armure: 0 },
+  limace: { pv: 12, vitesse: 0.8, morsure: 1, butin: 2, armure: 0 },
+  moucheron: { pv: 7, vitesse: 1.8, morsure: 1, butin: 1, armure: 0 },
+  scarabee: { pv: 65, vitesse: 0.55, morsure: 2, butin: 6, armure: 3 },
+  amas: { pv: 45, vitesse: 0.7, morsure: 2, butin: 4, armure: 0 },
+  petitAmas: { pv: 12, vitesse: 1, morsure: 1, butin: 1, armure: 0 },
 };
 
 /** Spores au départ : de quoi poser les deux premières tours. */
 export const SPORES_DEPART = 120;
 /** Bonus à la fin de chaque vague : fixe + par numéro de vague. */
-export const BONUS_VAGUE = { fixe: 15, parVague: 5 };
+export const BONUS_VAGUE = { fixe: 10, parVague: 3 };
 /** Lancer la vague plus tôt rapporte une spore par seconde de pause restante. */
 export const BONUS_PAR_SECONDE_GAGNEE = 1;
 /** Une ronce ferme une branche à un carrefour ; enlevée, elle rend la moitié de son prix. */
@@ -75,26 +75,26 @@ export const TOURS: Record<TypeTour, FicheTour> = {
   },
   cristal: {
     stades: [
-      { prix: 70, degats: 5, portee: 2.5, cadence: 1.5, rebonds: 2 },
-      { prix: 55, degats: 7, portee: 2.7, cadence: 1.3, rebonds: 3 },
-      { prix: 90, degats: 10, portee: 3, cadence: 1.1, rebonds: 4 },
+      { prix: 70, degats: 6, portee: 2.5, cadence: 1.2, rebonds: 2 },
+      { prix: 55, degats: 9, portee: 2.7, cadence: 1.1, rebonds: 3 },
+      { prix: 90, degats: 13, portee: 3, cadence: 1, rebonds: 4 },
     ],
     eclair: { distance: 1.8, attenuation: 0.75 },
   },
   mortier: {
     stades: [
-      { prix: 60, degats: 3, portee: 3.5, cadence: 2.5 },
-      { prix: 50, degats: 4, portee: 3.8, cadence: 2.2 },
-      { prix: 80, degats: 6, portee: 4.2, cadence: 2 },
+      { prix: 60, degats: 4, portee: 3.5, cadence: 2.2 },
+      { prix: 50, degats: 6, portee: 3.8, cadence: 2 },
+      { prix: 80, degats: 9, portee: 4.2, cadence: 1.8 },
     ],
     projectile: { vitesse: 3, guide: false, rayon: 1 },
     ralenti: { facteur: 0.5, duree: 2.5 },
   },
   canon: {
     stades: [
-      { prix: 90, degats: 8, portee: 3, cadence: 3 },
-      { prix: 70, degats: 12, portee: 3.2, cadence: 2.7 },
-      { prix: 110, degats: 18, portee: 3.5, cadence: 2.4 },
+      { prix: 90, degats: 12, portee: 3, cadence: 2.5 },
+      { prix: 70, degats: 18, portee: 3.2, cadence: 2.3 },
+      { prix: 110, degats: 26, portee: 3.5, cadence: 2.1 },
     ],
     projectile: { vitesse: 5, guide: false, rayon: 1.2 },
   },
@@ -116,34 +116,43 @@ export type Vague = Groupe[];
 
 /** Île-forêt : plage 0 au nord-est, plage 1 à l'ouest. */
 export const VAGUES_FORET: Vague[] = [
-  [{ type: 'limace', nombre: 6, intervalle: 1.5, plage: 1 }],
-  [{ type: 'limace', nombre: 8, intervalle: 1.2 }],
+  [{ type: 'limace', nombre: 8, intervalle: 3, plage: 1 }],
+  [{ type: 'limace', nombre: 14, intervalle: 2 }],
   [
-    { type: 'limace', nombre: 6, intervalle: 1.5, plage: 1 },
-    { type: 'moucheron', nombre: 6, intervalle: 1, debut: 4, plage: 0 },
-  ],
-  [{ type: 'moucheron', nombre: 12, intervalle: 0.6 }],
-  [
-    { type: 'scarabee', nombre: 3, intervalle: 3, plage: 1 },
-    { type: 'limace', nombre: 8, intervalle: 1, debut: 2, plage: 0 },
+    { type: 'limace', nombre: 10, intervalle: 2.2, plage: 1 },
+    { type: 'moucheron', nombre: 12, intervalle: 1.2, debut: 8, plage: 0 },
   ],
   [
-    { type: 'amas', nombre: 4, intervalle: 2.5 },
-    { type: 'moucheron', nombre: 8, intervalle: 0.7, debut: 5 },
-  ],
-  [{ type: 'scarabee', nombre: 6, intervalle: 2 }],
-  [
-    { type: 'amas', nombre: 6, intervalle: 2, plage: 0 },
-    { type: 'scarabee', nombre: 6, intervalle: 2, plage: 1 },
+    { type: 'moucheron', nombre: 30, intervalle: 0.8 },
+    { type: 'limace', nombre: 8, intervalle: 3, debut: 5 },
   ],
   [
-    { type: 'moucheron', nombre: 15, intervalle: 0.5 },
-    { type: 'limace', nombre: 6, intervalle: 1, debut: 3 },
-    { type: 'scarabee', nombre: 4, intervalle: 2.5, debut: 6 },
+    { type: 'scarabee', nombre: 5, intervalle: 5, plage: 1 },
+    { type: 'limace', nombre: 16, intervalle: 1.5, debut: 3, plage: 0 },
   ],
   [
-    { type: 'amas', nombre: 8, intervalle: 1.8, plage: 1 },
-    { type: 'scarabee', nombre: 8, intervalle: 1.8, plage: 0 },
-    { type: 'moucheron', nombre: 15, intervalle: 0.5, debut: 8 },
+    { type: 'amas', nombre: 10, intervalle: 3.5 },
+    { type: 'moucheron', nombre: 26, intervalle: 0.7, debut: 10 },
+  ],
+  [
+    { type: 'scarabee', nombre: 12, intervalle: 3 },
+    { type: 'limace', nombre: 18, intervalle: 1.5, debut: 6 },
+  ],
+  [
+    { type: 'amas', nombre: 12, intervalle: 2.6, plage: 0 },
+    { type: 'scarabee', nombre: 12, intervalle: 2.6, plage: 1 },
+    { type: 'moucheron', nombre: 24, intervalle: 0.8, debut: 15 },
+  ],
+  [
+    { type: 'moucheron', nombre: 25, intervalle: 0.6 },
+    { type: 'moucheron', nombre: 25, intervalle: 0.6, debut: 20 },
+    { type: 'limace', nombre: 16, intervalle: 1.5, debut: 5 },
+    { type: 'scarabee', nombre: 14, intervalle: 2.5, debut: 10 },
+  ],
+  [
+    { type: 'amas', nombre: 18, intervalle: 2, plage: 1 },
+    { type: 'scarabee', nombre: 18, intervalle: 2, plage: 0 },
+    { type: 'moucheron', nombre: 30, intervalle: 0.6, debut: 15 },
+    { type: 'limace', nombre: 20, intervalle: 1.2, debut: 25 },
   ],
 ];
