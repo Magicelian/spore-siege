@@ -98,6 +98,10 @@ export interface Instantane {
   tours: TourVue[];
   projectiles: ProjectileVu[];
   impacts: ImpactVu[];
+  /** Cases de sentier fermées par une ronce. */
+  ronces: Case[];
+  /** Spores gagnées en lançant la vague maintenant (0 hors pause). */
+  bonusLancer: number;
   /** Étoiles gagnées, une fois la partie gagnée (1 à 3) ; 0 sinon. */
   etoiles: number;
 }
@@ -107,4 +111,6 @@ export type Commande =
   | { type: 'lancerVague' }
   | { type: 'poserTour'; tour: TypeTour; case: Case }
   | { type: 'ameliorerTour'; id: number }
-  | { type: 'vendreTour'; id: number };
+  | { type: 'vendreTour'; id: number }
+  | { type: 'poserRonce'; case: Case }
+  | { type: 'enleverRonce'; case: Case };

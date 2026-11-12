@@ -18,7 +18,8 @@ export interface Sentier {
 
 const VOISINS = [[0, -1], [1, 0], [0, 1], [-1, 0]] as const;
 
-const cle = (c: Case) => `${c.x},${c.y}`;
+/** Clé d'une case, pour les ensembles (`bloquees`…). */
+export const cle = (c: Case) => `${c.x},${c.y}`;
 
 function terrain(ile: Ile, x: number, y: number) {
   if (x < 0 || y < 0 || x >= ile.largeur || y >= ile.profondeur) return 'vide';
@@ -35,6 +36,19 @@ export function bordeSouche(ile: Ile, c: Case): boolean {
   const dedansX = c.x >= souche.x && c.x < souche.x + t;
   const dedansY = c.y >= souche.y && c.y < souche.y + t;
   return (dedansX && (c.y === souche.y - 1 || c.y === souche.y + t)) || (dedansY && (c.x === souche.x - 1 || c.x === souche.x + t));
+}
+
+/** Où poser une ronce : les cases de sentier qui touchent un carrefour (l'entrée de chaque branche). */
+export function emplacementsRonces(ile: Ile, carrefours: readonly Case[]): Case[] {
+  const vus = new Set(carrefours.map(cle));
+  const cases: Case[] = [];
+  for (const c of carrefours)
+    for (const v of voisinsSentier(ile, c)) {
+      if (vus.has(cle(v))) continue;
+      vus.add(cle(v));
+      cases.push(v);
+    }
+  return cases;
 }
 
 export function lireSentier(ile: Ile): Sentier {

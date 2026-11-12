@@ -46,11 +46,26 @@ function tour(type: TypeTour, stade: number): Voxels {
   return v;
 }
 
+/** Ronce : buisson de tiges épineuses qui barre le sentier, quelques baies. */
+function ronce(): Voxels {
+  const v = new Voxels();
+  const tiges = 0x3f5a2a;
+  const epines = 0x8a6a3a;
+  for (let i = 0; i < 9; i++) {
+    const a = i * 2.4;
+    const r = 1.5 + (i % 3) * 1.4;
+    v.boule(Math.cos(a) * r - 0.5, 2 + (i % 4), Math.sin(a) * r - 0.5, 2.2, 1.8, 2.2, i % 2 ? tiges : 0x4f6e30);
+  }
+  v.peindre((x, y, z, c) => c === tiges && Math.abs(Math.sin(x * 12.9 + y * 78.2 + z * 37.7) * 43758.5) % 1 < 0.2, epines);
+  for (const [x, y, z] of [[3, 5, 0], [-3, 4, 2], [0, 6, -3]] as const) v.poser(x, y, z, 0x7a2a4a);
+  return v;
+}
+
 const modeles = new Map<string, Modele>();
-function modeleTour(type: TypeTour, stade: number): Modele {
+function modeleTour(type: TypeTour | 'ronce', stade: number): Modele {
   const cle = `${type}${stade}`;
   let m = modeles.get(cle);
-  if (!m) modeles.set(cle, (m = tour(type, stade).modele(false)));
+  if (!m) modeles.set(cle, (m = (type === 'ronce' ? ronce() : tour(type, stade)).modele(false)));
   return m;
 }
 
@@ -80,7 +95,7 @@ function anneau(couleur: number, opacite: number): THREE.Mesh {
 }
 
 export interface Pose {
-  type: TypeTour;
+  type: TypeTour | 'ronce';
   case: Case;
   possible: boolean;
   portee: number;
@@ -92,6 +107,7 @@ export class ToursRendu {
   private readonly projectiles = new Map<number, THREE.Mesh>();
   private readonly impacts: THREE.Mesh[] = [];
   private readonly eclairs = new Map<number, THREE.Line>();
+  private readonly ronces = new Map<string, THREE.Mesh>();
   private readonly portee = anneau(0xffffff, 0.7);
   private fantome: { maillage: THREE.Mesh; cle: string } | null = null;
   private readonly v = new THREE.Vector3();
@@ -107,6 +123,7 @@ export class ToursRendu {
    */
   afficher(ile: Ile, precedent: Instantane | null, actuel: Instantane, alpha: number, selection: number | null, pose: Pose | null): void {
     this.afficherTours(ile, actuel);
+    this.afficherRonces(ile, actuel);
     this.afficherProjectiles(ile, precedent, actuel, alpha);
     this.afficherImpacts(ile, actuel, alpha);
     this.afficherEclairs(ile, actuel);
@@ -134,6 +151,26 @@ export class ToursRendu {
       if (vus.has(id)) continue;
       this.groupe.remove(corps.maillage);
       this.tours.delete(id);
+    }
+  }
+
+  private afficherRonces(ile: Ile, vue: Instantane): void {
+    const vues = new Set<string>();
+    for (const c of vue.ronces) {
+      const cle = `${c.x},${c.y}`;
+      vues.add(cle);
+      if (this.ronces.has(cle)) continue;
+      const modele = modeleTour('ronce', 1);
+      const maillage = new THREE.Mesh(modele.geometrie, modele.materiaux);
+      maillage.castShadow = maillage.receiveShadow = true;
+      centreCase(c.x, c.y, ile, maillage.position);
+      this.ronces.set(cle, maillage);
+      this.groupe.add(maillage);
+    }
+    for (const [cle, maillage] of this.ronces) {
+      if (vues.has(cle)) continue;
+      this.groupe.remove(maillage);
+      this.ronces.delete(cle);
     }
   }
 
@@ -210,7 +247,7 @@ export class ToursRendu {
   private afficherPortee(ile: Ile, vue: Instantane, selection: number | null, pose: Pose | null): void {
     const tour = vue.tours.find((t) => t.id === selection);
     const cible = pose ?? (tour && { case: tour.case, portee: tour.portee, possible: true });
-    this.portee.visible = !!cible;
+    this.portee.visible = !!cible && cible.portee > 0;
     if (!cible) return;
     centreCase(cible.case.x, cible.case.y, ile, this.portee.position).setY(0.03);
     this.portee.scale.setScalar(cible.portee);

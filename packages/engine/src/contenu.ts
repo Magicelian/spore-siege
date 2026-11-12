@@ -35,6 +35,10 @@ export const SPORES_DEPART = 120;
 export const BONUS_VAGUE = { fixe: 15, parVague: 5 };
 /** Lancer la vague plus tôt rapporte une spore par seconde de pause restante. */
 export const BONUS_PAR_SECONDE_GAGNEE = 1;
+/** Une ronce ferme une branche à un carrefour ; enlevée, elle rend la moitié de son prix. */
+export const PRIX_RONCE = 40;
+export const PART_RONCE_RENDUE = 0.5;
+
 /** Part du prix payé (pose et améliorations) rendue à la revente. */
 export const PART_REVENTE = 0.7;
 

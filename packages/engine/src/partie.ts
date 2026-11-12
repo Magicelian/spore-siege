@@ -5,16 +5,18 @@ import {
   BONUS_PAR_SECONDE_GAGNEE,
   BONUS_VAGUE,
   MONSTRES,
+  PART_RONCE_RENDUE,
   PART_REVENTE,
   PAS_PAR_SECONDE,
   PAUSE_SECONDES,
+  PRIX_RONCE,
   PV_SOUCHE,
   SPORES_DEPART,
   TOURS,
   type Vague,
 } from './contenu';
 import { creerHasard } from './hasard';
-import { lireSentier, route, type Sentier } from './sentier';
+import { cle, emplacementsRonces, lireSentier, route, type Sentier } from './sentier';
 
 interface Monstre {
   id: number;
@@ -68,6 +70,9 @@ interface Lacher {
 
 export class Partie {
   readonly sentier: Sentier;
+  /** Cases où une ronce peut pousser : l'entrée de chaque branche, autour des carrefours. */
+  readonly emplacementsRonces: Case[];
+  private ronces = new Set<string>();
   private pas = 0;
   private phase: Phase = 'pause';
   private vague = 1;
@@ -89,6 +94,7 @@ export class Partie {
     graine: number,
   ) {
     this.sentier = lireSentier(ile);
+    this.emplacementsRonces = emplacementsRonces(ile, this.sentier.carrefours);
     this.hasard = creerHasard(graine);
     if (this.sentier.plages.length === 0) throw new Error("l'île n'a aucune plage reliée au sentier");
   }
@@ -98,7 +104,7 @@ export class Partie {
     switch (commande.type) {
       case 'lancerVague': {
         if (this.phase !== 'pause') return false;
-        this.spores += this.pauseRestante() * BONUS_PAR_SECONDE_GAGNEE;
+        this.spores += this.bonusLancer();
         this.commencerVague();
         return true;
       }
@@ -137,7 +143,37 @@ export class Partie {
         this.tours = this.tours.filter((t) => t !== tour);
         return true;
       }
+      case 'poserRonce': {
+        if (this.spores < PRIX_RONCE || !this.ronceLibre(commande.case)) return false;
+        this.spores -= PRIX_RONCE;
+        this.ronces.add(cle(commande.case));
+        this.rerouter();
+        return true;
+      }
+      case 'enleverRonce': {
+        if (!this.ronces.delete(cle(commande.case))) return false;
+        this.spores += Math.floor(PRIX_RONCE * PART_RONCE_RENDUE);
+        this.rerouter();
+        return true;
+      }
     }
+  }
+
+  /**
+   * Une ronce peut-elle pousser ici ? À l'entrée d'une branche, sans monstre dessus, et seulement si chaque plage
+   * et chaque monstre en route gardent un chemin vers la souche : il reste toujours une branche ouverte.
+   */
+  ronceLibre(c: Case): boolean {
+    const k = cle(c);
+    if (this.ronces.has(k) || !this.emplacementsRonces.some((e) => cle(e) === k)) return false;
+    const bloquees = new Set(this.ronces).add(k);
+    if (this.sentier.plages.some((p) => !route(this.ile, p.depart, bloquees))) return false;
+    for (const m of this.monstres) {
+      const voisines = casesAutour(m);
+      if (voisines.some((v) => cle(v) === k)) return false;
+      if (voisines.length > 0 && !this.nouvelleTrace(m, bloquees)) return false;
+    }
+    return true;
   }
 
   /** Une tour peut-elle être posée sur cette case ? */
@@ -209,8 +245,18 @@ export class Partie {
       tours,
       projectiles: this.projectiles.map((p) => ({ id: p.id, type: p.type, position: { ...p.position } })),
       impacts: this.impacts.map((i) => ({ ...i, position: { ...i.position } })),
+      ronces: [...this.ronces].map((k) => {
+        const [x, y] = k.split(',').map(Number) as [number, number];
+        return { x, y };
+      }),
+      bonusLancer: this.bonusLancer(),
       etoiles: this.phase === 'victoire' ? etoiles(this.pvSouche) : 0,
     };
+  }
+
+  /** Spores gagnées en lançant la vague maintenant : une par seconde de pause écourtée. */
+  private bonusLancer(): number {
+    return this.pauseRestante() * BONUS_PAR_SECONDE_GAGNEE;
   }
 
   private pauseRestante(): number {
@@ -236,7 +282,7 @@ export class Partie {
 
   private lacher({ type, plage }: Lacher): void {
     const { depart } = this.sentier.plages[plage]!;
-    const chemin = route(this.ile, depart);
+    const chemin = route(this.ile, depart, this.ronces);
     if (!chemin) return;
     this.monstres.push(this.nouveauMonstre(type, tracer(this.ile, chemin), 0));
   }
@@ -253,6 +299,35 @@ export class Partie {
       ralentiJusqua: 0,
       facteurRalenti: 1,
     };
+  }
+
+  /** Après une ronce posée ou enlevée : chaque monstre repart par le plus court chemin encore ouvert. */
+  private rerouter(): void {
+    for (const m of this.monstres) {
+      const trace = this.nouvelleTrace(m, this.ronces);
+      if (!trace) continue;
+      m.trace = trace;
+      m.longueur = longueur(trace);
+      m.avancement = 0;
+    }
+  }
+
+  /**
+   * Nouveau parcours depuis la position du monstre : par la case qu'il quitte ou par celle où il va, au plus court.
+   * Null s'il fait déjà son dernier demi-pas vers la souche (rien à changer) ou s'il est coincé.
+   */
+  private nouvelleTrace(m: Monstre, bloquees: ReadonlySet<string>): Position[] | null {
+    let meilleure: Position[] | null = null;
+    let plusCourte = Infinity;
+    for (const c of casesAutour(m)) {
+      if (bloquees.has(cle(c))) continue;
+      const chemin = route(this.ile, c, bloquees);
+      if (!chemin) continue;
+      const trace = [{ ...m.position }, ...tracer(this.ile, chemin)];
+      const l = longueur(trace);
+      if (l < plusCourte) [meilleure, plusCourte] = [trace, l];
+    }
+    return meilleure;
   }
 
   /** Vitesse actuelle, en cases par seconde. */
@@ -403,6 +478,29 @@ export function constructible(ile: Ile, c: Case): boolean {
   if (c.x >= souche.x && c.x < souche.x + tailleSouche && c.y >= souche.y && c.y < souche.y + tailleSouche) return false;
   const terrain = ile.terrain[c.y * ile.largeur + c.x];
   return terrain === 'herbe' || terrain === 'fleurs';
+}
+
+/**
+ * Les deux cases entre lesquelles marche le monstre : celle qu'il quitte et celle où il va.
+ * Vide pendant le dernier demi-pas, contre la souche.
+ */
+function casesAutour(m: Monstre): Case[] {
+  let reste = m.avancement;
+  for (let i = 1; i < m.trace.length; i++) {
+    const a = m.trace[i - 1]!;
+    const b = m.trace[i]!;
+    const segment = Math.hypot(b.x - a.x, b.y - a.y);
+    if (reste <= segment || i === m.trace.length - 1) {
+      if (i === m.trace.length - 1) return [];
+      return [versCase(a), versCase(b)];
+    }
+    reste -= segment;
+  }
+  return [];
+}
+
+function versCase(p: Position): Case {
+  return { x: Math.floor(p.x), y: Math.floor(p.y) };
 }
 
 function stadeDe(t: Tour) {
