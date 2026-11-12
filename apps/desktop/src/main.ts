@@ -1,5 +1,6 @@
 // Point d'entrée : l'île-forêt dans une fenêtre qui flotte par-dessus les applications.
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { ileForet, Partie, PAS_MS, VAGUES_FORET, type Commande, type EvenementVu, type Instantane, type Phase } from '@spore-siege/engine';
 import { echelleAffichage, ORDRE_ILES, Rendu } from '@spore-siege/renderer';
@@ -37,6 +38,7 @@ const fenetre: Fenetre | undefined = dansTauri
       regler: (taille) => invoke<number>('regler_taille', { taille }),
       actuelle: () => invoke<number>('taille_actuelle'),
       quitter: () => void invoke('quitter'),
+      son: (son) => void invoke('regler_son', { son }),
     }
   : undefined;
 
@@ -141,6 +143,11 @@ rendu.surImage = (instant) => {
   ui.maj(actuel);
 };
 rendu.demarrer();
+// Menu de l'icône de la barre des menus : le jeu suit le son et la taille choisis.
+if (dansTauri) {
+  void listen<boolean>('son', (e) => ui.signalerSon(e.payload));
+  void listen<number>('taille', (e) => ui.signalerTaille(e.payload));
+}
 // Pour mesurer depuis la console en développement : `debogage()`.
 if (import.meta.env.DEV) Object.assign(window, { debogage: () => ({ actuel, reserve, images: rendu.images, rendu, ui, partie }) });
 /** En développement dans Tauri : écrit dans le terminal de `pnpm dev`. */

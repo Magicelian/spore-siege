@@ -1,7 +1,10 @@
-//! Réglages gardés à part de la partie : taille et dernière position de la fenêtre.
+//! Réglages gardés à part de la partie : taille et dernière position de la fenêtre, son ; menu de l'icône de la
+//! barre des menus qui les montre (comme Tiny Shrooms).
 use serde::{Deserialize, Serialize};
 use std::fs;
-use tauri::{AppHandle, LogicalSize, Manager, PhysicalPosition, PhysicalSize, WebviewWindow};
+use std::sync::Mutex;
+use tauri::menu::{CheckMenuItem, MenuItem, Submenu};
+use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, PhysicalSize, WebviewWindow, Wry};
 
 /// Côtés proposés pour la fenêtre carrée, en pixels logiques. Le jeu est dessiné pour la petite :
 /// les autres ne montrent pas plus d'île, elles grossissent ses pixels. `ECRAN` (la géante) prend
@@ -15,6 +18,36 @@ pub struct Reglages {
     /// Coin haut-gauche de la fenêtre, en pixels physiques.
     pub position: Option<(i32, i32)>,
     pub taille: Option<u32>,
+    /// Le jeu le règle au lancement (il garde le choix du joueur) ; coupé par défaut.
+    pub son: bool,
+}
+
+/// Noms des tailles dans le menu, dans l'ordre de `TAILLES`.
+pub const NOMS_TAILLES: [&str; 3] = ["Petite", "Grande", "Géante"];
+
+/// Entrées du menu de l'icône qui changent pendant la partie.
+pub struct MenuReglages {
+    pub basculer: MenuItem<Wry>,
+    pub taille: Submenu<Wry>,
+    /// Une case par entrée de `TAILLES`, dans le même ordre.
+    pub tailles: Vec<CheckMenuItem<Wry>>,
+    pub son: CheckMenuItem<Wry>,
+    /// État des mises à jour ; cliquable seulement quand une version est prête (texte : `mises_a_jour`).
+    pub mettre_a_jour: MenuItem<Wry>,
+    pub quitter: MenuItem<Wry>,
+}
+
+pub struct EtatReglages {
+    pub reglages: Mutex<Reglages>,
+    pub menu: MenuReglages,
+}
+
+/// Coche la taille et le son des réglages.
+pub fn preparer_menu(menu: &MenuReglages, reglages: &Reglages) {
+    for (case, cote) in menu.tailles.iter().zip(TAILLES) {
+        let _ = case.set_checked(cote == reglages.taille_effective());
+    }
+    let _ = menu.son.set_checked(reglages.son);
 }
 
 impl Reglages {
@@ -106,20 +139,53 @@ pub fn enregistrer(app: &AppHandle) {
     ecrire(app, &reglages);
 }
 
-/// Taille choisie dans le menu du jeu : la fenêtre grandit, le frontend suit par l'événement `resize`.
+/// Taille choisie dans le menu de l'icône ou dans ⚙ : la fenêtre grandit, le frontend suit par l'événement
+/// `resize` et coche la bonne case de ⚙ grâce à l'événement `taille`.
+pub fn appliquer_taille(app: &AppHandle, taille: u32) {
+    if let Some(etat) = app.try_state::<EtatReglages>() {
+        for (case, cote) in etat.menu.tailles.iter().zip(TAILLES) {
+            let _ = case.set_checked(cote == taille);
+        }
+        etat.reglages.lock().unwrap().taille = Some(taille);
+    }
+    if let Some(fenetre) = app.get_webview_window("main") {
+        redimensionner(&fenetre, taille);
+    }
+    let mut reglages = lire(app);
+    reglages.taille = Some(taille);
+    ecrire(app, &reglages);
+    enregistrer(app);
+    let _ = app.emit("taille", taille);
+}
+
 #[tauri::command]
 pub fn regler_taille(app: AppHandle, taille: u32) -> u32 {
     if !TAILLES.contains(&taille) {
         return lire(&app).taille_effective();
     }
-    if let Some(fenetre) = app.get_webview_window("main") {
-        redimensionner(&fenetre, taille);
-    }
-    let mut reglages = lire(&app);
-    reglages.taille = Some(taille);
-    ecrire(&app, &reglages);
-    enregistrer(&app);
+    appliquer_taille(&app, taille);
     taille
+}
+
+/// Son allumé ou coupé dans le menu de l'icône : le jeu suit par l'événement `son`.
+pub fn appliquer_son(app: &AppHandle, son: bool) {
+    noter_son(app, son);
+    let _ = app.emit("son", son);
+}
+
+fn noter_son(app: &AppHandle, son: bool) {
+    let etat = app.state::<EtatReglages>();
+    let _ = etat.menu.son.set_checked(son);
+    etat.reglages.lock().unwrap().son = son;
+    let mut reglages = lire(app);
+    reglages.son = son;
+    ecrire(app, &reglages);
+}
+
+/// Son réglé dans ⚙ (ou au lancement, depuis le choix gardé par le jeu) : le menu de l'icône suit.
+#[tauri::command]
+pub fn regler_son(app: AppHandle, son: bool) {
+    noter_son(&app, son);
 }
 
 /// Taille retenue, pour cocher la bonne case du menu au lancement.
@@ -131,6 +197,5 @@ pub fn taille_actuelle(app: AppHandle) -> u32 {
 /// Quitter depuis le menu du jeu : la fenêtre n'a ni cadre ni bouton de fermeture.
 #[tauri::command]
 pub fn quitter(app: AppHandle) {
-    enregistrer(&app);
-    app.exit(0);
+    crate::sortir(&app);
 }

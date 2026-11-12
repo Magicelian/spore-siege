@@ -27,6 +27,8 @@ export interface Fenetre {
   regler(cote: number): Promise<number>;
   actuelle(): Promise<number>;
   quitter(): void;
+  /** Son allumé ou coupé dans ⚙ : le menu de l'icône de la barre des menus suit. */
+  son(allume: boolean): void;
 }
 
 export interface OptionsInterface {
@@ -106,6 +108,7 @@ export class ControleurInterface {
       // Le navigateur ne laisse jouer qu'après un geste du joueur.
       addEventListener('pointerdown', () => this.sons.activer(this.sons.actif), { once: true });
     }
+    options.fenetre?.son(this.sons.actif);
     void options.fenetre?.actuelle().then((t) => {
       this.tailleFenetre = t;
       this.dessiner();
@@ -167,6 +170,19 @@ export class ControleurInterface {
     if (this.bulle) return null;
     if (nature === 'construire' || (nature === 'ronce' && this.jeu.ronceLibre(c))) return { case: c, sorte: 'case', hauteur: 0 };
     return null;
+  }
+
+  /** Son allumé ou coupé (dans ⚙ ou dans le menu de l'icône) : choix retenu. */
+  signalerSon(allume: boolean): void {
+    this.sons.activer(allume);
+    ecrireSons(allume);
+    this.dessiner();
+  }
+
+  /** Taille de la fenêtre changée depuis le menu de l'icône : ⚙ coche la bonne. */
+  signalerTaille(cote: number): void {
+    this.tailleFenetre = cote;
+    this.dessiner();
   }
 
   fermer(): void {
@@ -587,10 +603,9 @@ export class ControleurInterface {
               <button
                 class={`bouton${this.sons.actif === allume ? ' actif' : ''}`}
                 onClick={() => {
-                  this.sons.activer(allume);
-                  ecrireSons(allume);
+                  this.signalerSon(allume);
+                  this.options.fenetre?.son(allume);
                   this.sons.jouer('ouvrir');
-                  this.dessiner();
                 }}
               >
                 {allume ? TEXTES.sonAllume : TEXTES.sonCoupe}
