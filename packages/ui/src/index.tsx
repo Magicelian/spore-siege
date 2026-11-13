@@ -373,6 +373,7 @@ export class ControleurInterface {
         />
         {(i.phase === 'victoire' || i.phase === 'defaite') && <EcranFin i={i} rejouer={this.options.recommencer} carte={() => this.aller('carte')} />}
         {this.dessinerMedaillons(i)}
+        {!this.livre && !this.fiche && !this.pauseMenu && <BarreBoss i={i} />}
         {this.bulle && this.dessinerBulle(i, this.bulle)}
         {this.fiche && (
           <section class="bulle haut fiche">
@@ -645,6 +646,24 @@ function Prix({ n, manque }: { n: number; manque?: boolean }) {
       <Ico nom="spore" />
       {n}
     </span>
+  );
+}
+
+/** Grande barre de vie du boss, sous le bandeau, tant qu'il est là ; encoches aux paliers où il pond. */
+function BarreBoss({ i }: { i: Instantane }) {
+  const boss = i.phase === 'vague' ? i.monstres.find((m) => MONSTRES[m.type].boss) : undefined;
+  if (!boss) return null;
+  const part = Math.max(0, boss.pv / boss.pvMax);
+  return (
+    <div class="barre-boss">
+      <span class="nom">{MONSTRES_TEXTES[boss.type].nom}</span>
+      <div class="jauge">
+        <div class="vie" style={{ width: `${part * 100}%` }} />
+        {MONSTRES[boss.type].boss!.paliers.map((p) => (
+          <span class={`encoche${part <= p.part ? ' passee' : ''}`} style={{ left: `${p.part * 100}%` }} />
+        ))}
+      </div>
+    </div>
   );
 }
 

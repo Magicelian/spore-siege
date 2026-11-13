@@ -90,3 +90,43 @@ describe('soigneur', () => {
     expect(partie.instantane().evenements.some((e) => e.type === 'soin')).toBe(false);
   });
 });
+
+describe('Limace-mère (boss)', () => {
+  const boss: Vague[] = [[{ type: 'limaceMere', nombre: 1, intervalle: 1, plage: 1 }]];
+  const interne = (p: PartieType) => (p as unknown as { monstres: { type: string; pv: number }[] }).monstres;
+  const lancee = () => {
+    const partie = new Partie(ile, boss, 1);
+    partie.executer({ type: 'lancerVague' });
+    jouerJusqua(partie, () => interne(partie).length === 1);
+    return partie;
+  };
+  const pv = MONSTRES.limaceMere.pv;
+  const paliers = MONSTRES.limaceMere.boss!.paliers;
+  const taille = (n: number) => paliers[n]!.escorte.reduce((s, g) => s + g.nombre, 0);
+
+  it('pond son escorte en passant sous 75 % de sa vie, une seule fois', () => {
+    const partie = lancee();
+    interne(partie)[0]!.pv = pv * 0.74;
+    partie.avancer();
+    const i = partie.instantane();
+    expect(i.monstres).toHaveLength(1 + taille(0));
+    expect(i.evenements.filter((e) => e.type === 'ponte')).toHaveLength(1);
+    partie.avancer();
+    expect(partie.instantane().monstres).toHaveLength(1 + taille(0));
+  });
+
+  it('un gros coup qui franchit plusieurs paliers les pond tous', () => {
+    const partie = lancee();
+    interne(partie)[0]!.pv = pv * 0.2;
+    partie.avancer();
+    expect(partie.instantane().monstres).toHaveLength(1 + taille(0) + taille(1) + taille(2));
+  });
+
+  it('si elle touche la souche, la partie est perdue d’un coup', () => {
+    const partie = lancee();
+    jouerJusqua(partie, () => partie.instantane().phase !== 'vague', 200_000);
+    const i = partie.instantane();
+    expect(i.phase).toBe('defaite');
+    expect(i.vague).toBe(1);
+  });
+});

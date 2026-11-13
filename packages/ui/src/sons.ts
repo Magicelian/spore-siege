@@ -23,7 +23,8 @@ export type Effet =
   | 'explosion'
   | 'mort'
   | 'morsure'
-  | 'soin';
+  | 'soin'
+  | 'ponte';
 
 const VOLUME = 0.22;
 /** Ambiance de fond, basse exprès (même niveau que Tiny Shrooms) ; le vent par-dessus en léger souffle. */
@@ -127,6 +128,11 @@ const EFFETS: Record<Effet, { notes: Note[]; souffles?: Souffle[] }> = {
   explosion: { notes: [{ f: 90, t: 0, d: 0.2, vers: 40, onde: 'triangle', v: 0.6 }], souffles: [{ t: 0, d: 0.25, f: 700, v: 0.55 }] },
   // Floc : une note qui tombe, puis un petit plop.
   mort: { notes: [{ f: 620, t: 0, d: 0.08, vers: 160, onde: 'sine', v: 0.45 }, { f: 900, t: 0.05, d: 0.04, onde: 'square', v: 0.15 }] },
+  // Ponte de la Limace-mère : grondement grave et éclatement mouillé.
+  ponte: {
+    notes: [{ f: 70, t: 0, d: 0.45, vers: 45, onde: 'sawtooth', v: 0.45 }, { f: 300, t: 0.12, d: 0.12, vers: 120, onde: 'sine', v: 0.3 }],
+    souffles: [{ t: 0.1, d: 0.25, f: 600, v: 0.45 }],
+  },
   // Soin du prêtre champignon : deux notes douces qui montent.
   soin: { notes: [{ f: 520, t: 0, d: 0.09, vers: 700, onde: 'sine', v: 0.16 }, { f: 780, t: 0.07, d: 0.1, vers: 1040, onde: 'sine', v: 0.12 }] },
   // Craquement grave, puis une alerte brève.

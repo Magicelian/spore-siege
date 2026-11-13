@@ -2,7 +2,7 @@
 // placées entre deux instantanés du moteur pour un mouvement fluide. Barre de vie dès le premier coup ;
 // à la mort, le monstre s'écrase puis éclate en cubes, et ses spores montent en « +N ».
 import * as THREE from 'three';
-import type { Ile, Instantane, TypeMonstre } from '@spore-siege/engine';
+import { MONSTRES, type Ile, type Instantane, type TypeMonstre } from '@spore-siege/engine';
 import { versMonde } from './repere';
 import { lumineuse } from './palette';
 import { Eclats } from './effets';
@@ -22,6 +22,7 @@ const M = {
   chapeau: 0x8a3b22,
   soin: 0x9be05a,
   phalene: 0xd9cfb8,
+  oeuf: 0xd6d2a8,
 };
 lumineuse(M.oeil, M.soin);
 const C = -0.5;
@@ -132,6 +133,22 @@ function soigneur(): Voxels {
   return v;
 }
 
+/** Limace-mère : une limace énorme, dos couvert d'œufs pâles et de moisissure, quatre cornes aux yeux qui luisent. */
+function limaceMere(): Voxels {
+  const v = new Voxels().boule(C - 2, 3, C, 7, 3, 3.8, M.gris);
+  v.boule(C + 4, 4.4, C, 3.4, 3.4, 3.2, M.gris);
+  v.peindre((_x, y, _z, c) => c === M.gris && y <= 1, M.ventre);
+  taches(v, M.gris, 0.2);
+  // Grappes d'œufs sur le dos.
+  for (const [x, z] of [[-6, -1], [-4, 1], [-2, -2], [-1, 1], [-5, -3], [-3, 3], [0, -1]] as const) v.boule(x, 6.2, z, 1.1, 0.9, 1.1, M.oeuf);
+  taches(v, M.oeuf, 0.15, M.rouille);
+  duvet(v, M.gris, 0.35);
+  for (const z of [-3, -1, 1, 3]) v.boite(5, 8, z - 1, 5, 9 + (Math.abs(z) === 1 ? 1 : 0), z - 1, M.sombre);
+  for (const z of [-3, -1, 1, 3]) v.poser(6, 10 + (Math.abs(z) === 1 ? 1 : 0), z - 1, M.oeil);
+  // Bouche sombre à l'avant.
+  return v.boite(8, 2, -2, 8, 3, 1, M.sombre);
+}
+
 /** Couleurs des éclats quand le monstre meurt. */
 export const ECLATS: Record<TypeMonstre, number[]> = {
   limace: [M.gris, M.rouille, M.grisClair],
@@ -141,6 +158,7 @@ export const ECLATS: Record<TypeMonstre, number[]> = {
   petitAmas: [M.gris, M.rouille, M.grisClair],
   volant: [M.phalene, M.sombre, M.rouille],
   soigneur: [M.chapeau, M.pied, M.soin],
+  limaceMere: [M.gris, M.oeuf, M.rouille],
 };
 
 let modeles: Record<TypeMonstre, Modele> | null = null;
@@ -153,6 +171,7 @@ export function modelesMonstres(): Record<TypeMonstre, Modele> {
     petitAmas: amas(1.8).modele(false),
     volant: volant().modele(false),
     soigneur: soigneur().modele(false),
+    limaceMere: limaceMere().modele(false),
   };
   return modeles;
 }
@@ -269,7 +288,7 @@ export class MonstresRendu {
       // La phalène bat des ailes (elles s'étendent le long de z).
       if (m.type === 'volant') corps.maillage.scale.set(1, 1, 1 + Math.sin(instant / 70 + m.id) * 0.3);
       // Limace et amas ondulent en avançant (et s'arrêtent avec eux).
-      if (m.type === 'limace' || m.type === 'amas' || m.type === 'petitAmas') {
+      if (m.type === 'limace' || m.type === 'amas' || m.type === 'petitAmas' || m.type === 'limaceMere') {
         const s = Math.sin((x + y) * 7 + m.id) * 0.07;
         corps.maillage.scale.set(1 + s, 1 - s, 1 + s);
       }
@@ -300,7 +319,8 @@ export class MonstresRendu {
 
   /** Barre de 10 × 2 pixels dans un cadre sombre, cachée tant que le monstre est intact. */
   private placerJauge(corps: Corps, part: number, parPixel: number): void {
-    const visible = part < 1;
+    // Le boss a sa grande barre en haut de l'écran (interface).
+    const visible = part < 1 && !MONSTRES[corps.type].boss;
     corps.fond.visible = corps.jauge.visible = visible;
     if (!visible) return;
     const p = corps.maillage.position;
@@ -337,6 +357,14 @@ export class MonstresRendu {
       if (m.mort) this.eclater(m, t);
       return false;
     });
+  }
+
+  /** Le boss pond : grosse gerbe d'œufs et de moisissure là où il est. */
+  pondre(id: number, instant: number): void {
+    const corps = this.corps.get(id);
+    if (!corps) return;
+    const depart = corps.maillage.position.clone().setY(corps.maillage.position.y + corps.hauteur * 0.7);
+    this.eclats.lancer(depart, instant / 1000, { couleurs: [M.oeuf, M.gris, M.rouille], nombre: 14, taille: 0.16, force: 1.8, duree: 0.5 });
   }
 
   /** Un soigneur a soigné : petite gerbe verte sur lui et sur chaque monstre soigné. */

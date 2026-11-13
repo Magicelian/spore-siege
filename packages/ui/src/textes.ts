@@ -56,6 +56,11 @@ export const MONSTRES_TEXTES: Record<TypeMonstre, { nom: string; description: st
     description: 'Un vieux champignon voûté qui répand des spores de rouille. Elles referment les blessures des monstres autour de lui.',
     conseil: 'Abats-le en premier : l’éclair de l’obélisque l’atteint au milieu de son troupeau.',
   },
+  limaceMere: {
+    nom: 'Limace-mère',
+    description: 'La reine de la Rouille, grosse comme une souche, le dos couvert d’œufs. Blessée, elle pond une nouvelle escorte. Si elle touche la souche, tout est perdu.',
+    conseil: 'Allonge son chemin avec les ronces et garde des tours pour ses petits : elle pond trois fois.',
+  },
 };
 
 export const ILES_TEXTES: Record<Biome, string> = {

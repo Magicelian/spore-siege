@@ -14,6 +14,11 @@ export interface FicheMonstre {
   volant?: boolean;
   /** Toutes les `cadence` secondes, rend `pv` aux autres monstres à moins de `rayon` cases. */
   soin?: { rayon: number; pv: number; cadence: number };
+  /**
+   * Boss : grande barre de vie en haut de l'écran ; s'il touche la souche, la partie est perdue. Sous chaque palier
+   * (part de sa vie), il pond une escorte derrière lui.
+   */
+  boss?: { paliers: { part: number; escorte: { type: TypeMonstre; nombre: number }[] }[] };
   pv: number;
   /** Cases par seconde. */
   vitesse: number;
@@ -35,6 +40,21 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
   volant: { pv: 14, vitesse: 0.9, morsure: 1, butin: 3, armure: 0, volant: true },
   // Forêt, niveau 4 : rend de la vie aux monstres autour de lui (pas à lui-même).
   soigneur: { pv: 40, vitesse: 0.6, morsure: 2, butin: 6, armure: 1, soin: { rayon: 1.8, pv: 6, cadence: 2 } },
+  // Boss de la forêt (niveau 5, dernière vague). Chiffres provisoires, équilibrés en 8d.
+  limaceMere: {
+    pv: 700,
+    vitesse: 0.3,
+    morsure: 20,
+    butin: 60,
+    armure: 4,
+    boss: {
+      paliers: [
+        { part: 0.75, escorte: [{ type: 'limace', nombre: 6 }] },
+        { part: 0.5, escorte: [{ type: 'limace', nombre: 4 }, { type: 'amas', nombre: 2 }] },
+        { part: 0.25, escorte: [{ type: 'scarabee', nombre: 2 }, { type: 'limace', nombre: 4 }] },
+      ],
+    },
+  },
 };
 
 /** Spores au départ : de quoi poser les deux premières tours. */

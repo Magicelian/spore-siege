@@ -41,6 +41,8 @@ interface Monstre {
   poisonParPas: number;
   /** Soigneur : pas à attendre avant le prochain soin. */
   soinRecharge: number;
+  /** Boss : paliers de vie déjà franchis. */
+  paliers: number;
 }
 
 interface Tour {
@@ -246,6 +248,7 @@ export class Partie {
     }
     this.tirer();
     this.voler();
+    this.pondre();
     this.enterrer();
     this.impacts = this.impacts.filter((i) => this.pas - i.pas < DUREE_IMPACT);
     this.flaques = this.flaques.filter((f) => this.pas < f.fin);
@@ -305,7 +308,11 @@ export class Partie {
       projectiles: this.projectiles.map((p) => ({ id: p.id, type: p.type, capacite: p.capacite, position: { ...p.position }, depart: { ...p.depart }, but: { ...p.but } })),
       impacts: this.impacts.map((i) => ({ ...i, position: { ...i.position } })),
       evenements: this.evenements.map((e) =>
-        e.type === 'mort' ? { ...e, position: { ...e.position } } : e.type === 'soin' ? { ...e, position: { ...e.position }, soignes: [...e.soignes] } : { ...e },
+        e.type === 'mort' ? { ...e, position: { ...e.position } } : e.type === 'soin'
+            ? { ...e, position: { ...e.position }, soignes: [...e.soignes] }
+            : e.type === 'ponte'
+              ? { ...e, position: { ...e.position }, petits: [...e.petits] }
+              : { ...e },
       ),
       flaques: this.flaques.map(
         (f): FlaqueVu => ({ id: f.id, position: { ...f.position }, rayon: f.rayon, reste: Math.max(0, (f.fin - this.pas) / (f.fin - f.debut)) }),
@@ -382,6 +389,7 @@ export class Partie {
       poisonJusqua: 0,
       poisonParPas: 0,
       soinRecharge: Math.round((MONSTRES[type].soin?.cadence ?? 0) * PAS_PAR_SECONDE),
+      paliers: 0,
     };
   }
 
@@ -454,7 +462,8 @@ export class Partie {
     for (const m of this.monstres) {
       m.avancement += this.vitesse(m) / PAS_PAR_SECONDE;
       if (m.avancement >= m.longueur) {
-        const degats = MONSTRES[m.type].morsure;
+        // Le boss qui touche la souche l'emporte : la partie est perdue.
+        const degats = MONSTRES[m.type].boss ? Math.max(this.pvSouche, MONSTRES[m.type].morsure) : MONSTRES[m.type].morsure;
         this.pvSouche -= degats;
         this.evenements.push({ type: 'morsure', id: m.id, monstre: m.type, degats, pas: this.pas });
       } else {
@@ -620,6 +629,28 @@ export class Partie {
   private blesser(m: Monstre, degats: number, percant = false): void {
     if (m.pv <= 0) return;
     m.pv -= percant ? degats : Math.max(1, degats - MONSTRES[m.type].armure);
+  }
+
+  /** Le boss blessé sous un palier pond son escorte juste derrière lui (plusieurs paliers d'un coup : tout). */
+  private pondre(): void {
+    const nes: Monstre[] = [];
+    for (const m of this.monstres) {
+      const paliers = MONSTRES[m.type].boss?.paliers;
+      if (!paliers || m.pv <= 0) continue;
+      while (m.paliers < paliers.length && m.pv <= paliers[m.paliers]!.part * MONSTRES[m.type].pv) {
+        const petits: number[] = [];
+        let rang = 0;
+        for (const { type, nombre } of paliers[m.paliers]!.escorte)
+          for (let k = 0; k < nombre; k++) {
+            const petit = this.nouveauMonstre(type, m.trace, Math.max(0, m.avancement - 0.3 - 0.35 * rang++));
+            nes.push(petit);
+            petits.push(petit.id);
+          }
+        m.paliers++;
+        this.evenements.push({ type: 'ponte', id: m.id, monstre: m.type, position: { ...m.position }, petits, pas: this.pas });
+      }
+    }
+    this.monstres.push(...nes);
   }
 
   /** Retire les morts : leurs spores tombent, l'amas se divise en deux petits. */

@@ -129,7 +129,7 @@ export class Rendu {
   ): EvenementVu[] {
     if (!this.ile) return [];
     const instant = performance.now();
-    const cle = (e: EvenementVu) => `${e.type}${e.id}`;
+    const cle = (e: EvenementVu) => `${e.type}${e.id}:${e.pas}`;
     const nouveaux = actuel.evenements.filter((e) => !this.evenementsVus.has(cle(e)));
     this.evenementsVus = new Set(actuel.evenements.map(cle));
     if (nouveaux.some((e) => e.type === 'morsure')) this.souche.mordre(instant);
@@ -137,7 +137,10 @@ export class Rendu {
     const camera = this.vue.camera;
     const parPixel = (camera.top - camera.bottom) / camera.zoom / this.canevas.height;
     this.monstres.afficher(this.ile, precedent, actuel, alpha, instant, parPixel);
-    for (const e of nouveaux) if (e.type === 'soin') this.monstres.soigner([e.id, ...e.soignes], instant);
+    for (const e of nouveaux) {
+      if (e.type === 'soin') this.monstres.soigner([e.id, ...e.soignes], instant);
+      if (e.type === 'ponte') this.monstres.pondre(e.id, instant);
+    }
     this.tours.afficher(this.ile, precedent, actuel, alpha, selection, pose, marque, instant, parPixel);
     return nouveaux;
   }

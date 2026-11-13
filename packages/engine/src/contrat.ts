@@ -33,7 +33,7 @@ export interface Ile {
 // ─── Partie ──────────────────────────────────────────────────────────────────
 
 /** `petitAmas` : ce que laisse un amas de Rouille en mourant. */
-export type TypeMonstre = 'limace' | 'moucheron' | 'scarabee' | 'amas' | 'petitAmas' | 'volant' | 'soigneur';
+export type TypeMonstre = 'limace' | 'moucheron' | 'scarabee' | 'amas' | 'petitAmas' | 'volant' | 'soigneur' | 'limaceMere';
 
 export interface MonstreVu {
   id: number;
@@ -101,7 +101,9 @@ export type EvenementVu =
   | { type: 'mort'; id: number; monstre: TypeMonstre; position: Position; butin: number; pas: number }
   | { type: 'morsure'; id: number; monstre: TypeMonstre; degats: number; pas: number }
   /** Le soigneur `id` vient de rendre de la vie aux monstres `soignes`. */
-  | { type: 'soin'; id: number; monstre: TypeMonstre; position: Position; soignes: number[]; pas: number };
+  | { type: 'soin'; id: number; monstre: TypeMonstre; position: Position; soignes: number[]; pas: number }
+  /** Le boss `id` a franchi un palier de vie et pondu les monstres `petits`. */
+  | { type: 'ponte'; id: number; monstre: TypeMonstre; position: Position; petits: number[]; pas: number };
 
 /** Flaque collante laissée par le mortier Glu : les monstres dedans sont ralentis. */
 export interface FlaqueVu {
