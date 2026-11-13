@@ -1,6 +1,6 @@
 // Tours, projectiles, explosions et éclairs. Modèles des tours dans `fortins.ts`.
 import * as THREE from 'three';
-import type { Case, ImpactVu, Ile, Instantane, ProjectileVu, TypeTour } from '@spore-siege/engine';
+import type { Capacite, Case, ImpactVu, Ile, Instantane, ProjectileVu, TypeTour } from '@spore-siege/engine';
 import { Eclats } from './effets';
 import { centreCase, versMonde } from './repere';
 import { fortin } from './fortins';
@@ -22,10 +22,10 @@ function ronce(): Voxels {
 }
 
 const modeles = new Map<string, Modele>();
-export function modeleTour(type: TypeTour | 'ronce', stade: number): Modele {
-  const cle = `${type}${stade}`;
+export function modeleTour(type: TypeTour | 'ronce', stade: number, capacite: Capacite | null = null): Modele {
+  const cle = `${type}${stade}${capacite ?? ''}`;
   let m = modeles.get(cle);
-  if (!m) modeles.set(cle, (m = (type === 'ronce' ? ronce() : fortin(type, stade)).modele(false)));
+  if (!m) modeles.set(cle, (m = (type === 'ronce' ? ronce() : fortin(type, stade, capacite)).modele(false)));
   return m;
 }
 
@@ -44,22 +44,39 @@ function fantome(modele: Modele): THREE.Material[] {
  * Projectiles dessinés par-dessus tout, à taille fixe à l'écran (en pixels de l'image) pour rester lisibles
  * en vue dézoomée : un cœur coloré dans un cadre sombre, une traînée derrière. `arc` : hauteur de la cloche.
  */
-const PROJECTILES: Record<TypeTour, { couleur: number; cote: number; arc: number }> = {
+const PROJECTILES: Record<TypeTour | Capacite, { couleur: number; cote: number; arc: number }> = {
   ruche: { couleur: 0xffd54a, cote: 2, arc: 0 },
   cristal: { couleur: 0xb7f2ff, cote: 2, arc: 0 },
   mortier: { couleur: 0x8fa04a, cote: 4, arc: 1.6 },
   canon: { couleur: 0xf3e6c8, cote: 3, arc: 0.7 },
+  // Stade 4 : chaque capacité a son allure.
+  essaim: { couleur: 0xffd54a, cote: 2, arc: 0 },
+  dard: { couleur: 0x8fd14f, cote: 2, arc: 0 },
+  tempete: { couleur: 0xb7f2ff, cote: 2, arc: 0 },
+  prisme: { couleur: 0xe0c8ff, cote: 2, arc: 0 },
+  salve: { couleur: 0x8fa04a, cote: 3, arc: 1.6 },
+  glu: { couleur: 0xc6cf3e, cote: 4, arc: 1.6 },
+  mitraille: { couleur: 0xffe08a, cote: 2, arc: 0.25 },
+  grosCalibre: { couleur: 0xf3e6c8, cote: 6, arc: 1 },
 };
+/** Allure d'un projectile : celle de sa capacité s'il en a une, sinon celle de sa tour. */
+const allure = (p: { type: TypeTour; capacite: Capacite | null }) => p.capacite ?? p.type;
 const sansProfondeur = { depthTest: false, depthWrite: false } as const;
 const CADRE = new THREE.SpriteMaterial({ color: 0x1a120c, ...sansProfondeur });
-const COEURS = new Map<TypeTour, THREE.SpriteMaterial>();
-const TRAINEES = new Map<TypeTour, THREE.SpriteMaterial>();
-for (const [type, { couleur }] of Object.entries(PROJECTILES) as [TypeTour, { couleur: number }][]) {
+const COEURS = new Map<TypeTour | Capacite, THREE.SpriteMaterial>();
+const TRAINEES = new Map<TypeTour | Capacite, THREE.SpriteMaterial>();
+for (const [type, { couleur }] of Object.entries(PROJECTILES) as [TypeTour | Capacite, { couleur: number }][]) {
   COEURS.set(type, new THREE.SpriteMaterial({ color: couleur, ...sansProfondeur }));
   TRAINEES.set(type, new THREE.SpriteMaterial({ color: couleur, transparent: true, opacity: 0.45, ...sansProfondeur }));
 }
 const ECLAIR = new THREE.LineBasicMaterial({ color: 0xffffff, ...sansProfondeur });
 const HALO = new THREE.LineBasicMaterial({ color: 0x6fd6ea, ...sansProfondeur });
+/** Prisme : rayon droit, blanc violacé, halo violet. */
+const RAYON = new THREE.LineBasicMaterial({ color: 0xf6eeff, ...sansProfondeur });
+const HALO_RAYON = new THREE.LineBasicMaterial({ color: 0xa77bff, ...sansProfondeur });
+const GLU = new THREE.MeshBasicMaterial({ color: 0xc6cf3e, transparent: true, opacity: 0.75, depthWrite: false });
+const DISQUE = new THREE.CircleGeometry(1, 24).rotateX(-Math.PI / 2);
+const BULLES_POISON = [0x8fd14f, 0xb8ef7a];
 
 /** Gerbes : explosions, fumée du tir, tour vendue. */
 const GERBE_IMPACT: Record<TypeTour, number[]> = {
@@ -117,7 +134,10 @@ export class ToursRendu {
   private readonly impacts: THREE.Mesh[] = [];
   private impactsVus = new Set<string>();
   private readonly eclats = new Eclats();
-  private readonly eclairs = new Map<number, { coeur: THREE.Line; halo: THREE.Line }>();
+  private readonly eclairs = new Map<number, { coeur: THREE.Line; halo: THREE.Line; halo2: THREE.Line }>();
+  private readonly flaques = new Map<number, THREE.Mesh>();
+  /** Dernière bulle de poison lâchée par chaque monstre empoisonné (secondes). */
+  private readonly bulles = new Map<number, number>();
   private readonly ronces = new Map<string, THREE.Mesh>();
   private readonly portee = anneau(0xffffff, 0.7);
   private fantome: { maillage: THREE.Mesh; cle: string } | null = null;
@@ -159,6 +179,8 @@ export class ToursRendu {
     this.afficherProjectiles(ile, precedent, actuel, alpha, instant, parPixel);
     this.afficherImpacts(ile, actuel, alpha, t);
     this.afficherEclairs(ile, actuel, parPixel);
+    this.afficherFlaques(ile, actuel);
+    this.afficherPoison(ile, actuel, t);
     this.eclats.animer(t);
     this.afficherPortee(ile, actuel, selection, pose);
     this.afficherFantome(ile, pose);
@@ -180,11 +202,11 @@ export class ToursRendu {
     const vus = new Set<number>();
     for (const tv of vue.tours) {
       vus.add(tv.id);
-      const cle = `${tv.type}${tv.stade}`;
+      const cle = `${tv.type}${tv.stade}${tv.capacite ?? ''}`;
       let corps = this.tours.get(tv.id);
       if (corps?.cle !== cle) {
         if (corps) this.groupe.remove(corps.maillage);
-        const modele = modeleTour(tv.type, tv.stade);
+        const modele = modeleTour(tv.type, tv.stade, tv.capacite);
         const maillage = new THREE.Mesh(modele.geometrie, modele.materiaux);
         maillage.castShadow = maillage.receiveShadow = true;
         centreCase(tv.case.x, tv.case.y, ile, maillage.position);
@@ -241,10 +263,10 @@ export class ToursRendu {
     const vus = new Set<number>();
     for (const p of actuel.projectiles) {
       vus.add(p.id);
-      const { cote, arc } = PROJECTILES[p.type];
+      const { cote, arc } = PROJECTILES[allure(p)];
       let s = this.projectiles.get(p.id);
       if (!s) {
-        s = { cadre: new THREE.Sprite(CADRE), coeur: new THREE.Sprite(COEURS.get(p.type)), trainee: new THREE.Sprite(TRAINEES.get(p.type)) };
+        s = { cadre: new THREE.Sprite(CADRE), coeur: new THREE.Sprite(COEURS.get(allure(p))), trainee: new THREE.Sprite(TRAINEES.get(allure(p))) };
         s.cadre.renderOrder = 1;
         s.coeur.renderOrder = 2;
         this.projectiles.set(p.id, s);
@@ -271,7 +293,7 @@ export class ToursRendu {
 
   /** Obus en cloche entre la tour et le point visé ; abeille qui volette à hauteur fixe. */
   private hauteurTir(p: ProjectileVu, ici: { x: number; y: number }, instant: number): number {
-    const { arc } = PROJECTILES[p.type];
+    const { arc } = PROJECTILES[allure(p)];
     if (arc === 0) return 0.6 + Math.sin(instant / 45 + p.id) * 0.05;
     const total = Math.hypot(p.but.x - p.depart.x, p.but.y - p.depart.y);
     const fait = Math.hypot(ici.x - p.depart.x, ici.y - p.depart.y);
@@ -286,7 +308,9 @@ export class ToursRendu {
     for (const i of vue.impacts) {
       if (this.impactsVus.has(cle(i))) continue;
       const depart = versMonde(i.position, ile).setY(0.15);
-      this.eclats.lancer(depart, t, { couleurs: GERBE_IMPACT[i.type], nombre: 7, taille: 0.11, force: i.rayon * 1.6, duree: 0.4 });
+      const gros = i.capacite === 'grosCalibre';
+      const couleurs = i.capacite === 'glu' ? [0xc6cf3e, 0x8f9a2a] : GERBE_IMPACT[i.type];
+      this.eclats.lancer(depart, t, { couleurs, nombre: gros ? 16 : 7, taille: gros ? 0.15 : 0.11, force: i.rayon * 1.6, duree: gros ? 0.5 : 0.4 });
     }
     this.impactsVus = new Set(vue.impacts.map(cle));
     while (this.impacts.length < vue.impacts.length) {
@@ -302,9 +326,42 @@ export class ToursRendu {
       versMonde(impact.position, ile, m.position).setY(0.04);
       m.scale.setScalar(impact.rayon * (0.4 + 0.6 * Math.min(1, age * 2)));
       const mat = m.material as THREE.MeshBasicMaterial;
-      mat.color.set(impact.type === 'mortier' ? 0x8fa04a : 0xf3e6c8);
+      mat.color.set(impact.capacite === 'glu' ? 0xc6cf3e : impact.type === 'mortier' ? 0x8fa04a : 0xf3e6c8);
       mat.opacity = Math.max(0, 1 - age);
     });
+  }
+
+  /** Flaques de glu : disques jaune-vert au ras du sol, qui pâlissent et rétrécissent en séchant. */
+  private afficherFlaques(ile: Ile, vue: Instantane): void {
+    const vues = new Set<number>();
+    for (const f of vue.flaques) {
+      vues.add(f.id);
+      let m = this.flaques.get(f.id);
+      if (!m) {
+        m = new THREE.Mesh(DISQUE, GLU.clone());
+        this.flaques.set(f.id, m);
+        this.groupe.add(m);
+      }
+      versMonde(f.position, ile, m.position).setY(0.03);
+      m.scale.setScalar(f.rayon * (0.75 + 0.25 * f.reste));
+      (m.material as THREE.MeshBasicMaterial).opacity = 0.2 + 0.55 * f.reste;
+    }
+    for (const [id, m] of this.flaques) {
+      if (vues.has(id)) continue;
+      this.groupe.remove(m);
+      (m.material as THREE.Material).dispose();
+      this.flaques.delete(id);
+    }
+  }
+
+  /** Monstres empoisonnés : une petite bulle verte qui monte, quatre fois par seconde. */
+  private afficherPoison(ile: Ile, vue: Instantane, t: number): void {
+    for (const m of vue.monstres) {
+      if (!m.empoisonne || t - (this.bulles.get(m.id) ?? -1) < 0.25) continue;
+      this.bulles.set(m.id, t);
+      this.eclats.lancer(versMonde(m.position, ile).setY(0.35), t, { couleurs: BULLES_POISON, nombre: 1, taille: 0.07, force: 0.25, duree: 0.45 });
+    }
+    if (this.bulles.size > 200) this.bulles.clear();
   }
 
   /** Éclair du cristal, visible quelques pas après le tir : zigzag blanc doublé d'un halo cyan d'un pixel. */
@@ -313,19 +370,27 @@ export class ToursRendu {
       let ligne = this.eclairs.get(t.id);
       const visible = t.type === 'cristal' && t.dernierTir >= 0 && vue.pas - t.dernierTir < 4 && t.chaine.length > 1;
       if (!visible) {
-        if (ligne) ligne.coeur.visible = ligne.halo.visible = false;
+        if (ligne) ligne.coeur.visible = ligne.halo.visible = ligne.halo2.visible = false;
         continue;
       }
+      const rayon = t.capacite === 'prisme';
       if (!ligne) {
-        ligne = { coeur: new THREE.Line(new THREE.BufferGeometry(), ECLAIR), halo: new THREE.Line(new THREE.BufferGeometry(), HALO) };
+        ligne = {
+          coeur: new THREE.Line(new THREE.BufferGeometry(), ECLAIR),
+          halo: new THREE.Line(new THREE.BufferGeometry(), HALO),
+          halo2: new THREE.Line(new THREE.BufferGeometry(), HALO_RAYON),
+        };
         ligne.coeur.renderOrder = 2;
         this.eclairs.set(t.id, ligne);
-        this.dessus.add(ligne.halo, ligne.coeur);
+        this.dessus.add(ligne.halo, ligne.halo2, ligne.coeur);
       }
-      const sommets = t.chaine.map((p, i) => versMonde(p, ile).setY(i === 0 ? 1.1 : 0.3));
+      ligne.coeur.material = rayon ? RAYON : ECLAIR;
+      ligne.halo.material = rayon ? HALO_RAYON : HALO;
+      const sommets = t.chaine.map((p, i) => versMonde(p, ile).setY(i === 0 ? (t.stade >= 4 ? 1.6 : 1.1) : 0.3));
       const points: THREE.Vector3[] = [];
       sommets.forEach((p, i) => {
-        if (i > 0) {
+        // Le Prisme tire droit ; l'éclair zigzague.
+        if (i > 0 && !rayon) {
           const q = sommets[i - 1]!;
           // Trois coudes entre deux maillons, qui changent à chaque tir.
           for (let k = 1; k <= 3; k++) {
@@ -341,7 +406,10 @@ export class ToursRendu {
       });
       ligne.coeur.geometry.setFromPoints(points);
       ligne.halo.geometry.setFromPoints(points.map((p) => p.clone().setY(p.y - parPixel)));
+      // Le rayon du Prisme est plus épais : un second halo au-dessus.
+      if (rayon) ligne.halo2.geometry.setFromPoints(points.map((p) => p.clone().setY(p.y + parPixel)));
       ligne.coeur.visible = ligne.halo.visible = true;
+      ligne.halo2.visible = rayon;
     }
     for (const [id, ligne] of this.eclairs) {
       if (vue.tours.some((t) => t.id === id)) continue;

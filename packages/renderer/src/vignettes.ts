@@ -1,7 +1,7 @@
 // Vignettes des modèles pour l'interface (copiées de Tiny Shrooms) : rendu en petit, vue iso, cerné de sombre
 // comme dans le jeu. Chaque vignette est dessinée une fois avec le moteur principal, puis gardée en image (data URL).
 import * as THREE from 'three';
-import type { TypeMonstre, TypeTour } from '@spore-siege/engine';
+import type { Capacite, TypeMonstre, TypeTour } from '@spore-siege/engine';
 import { modelesMonstres } from './monstres';
 import { modeleTour } from './tours';
 import type { Modele } from './voxels';
@@ -28,9 +28,9 @@ export class Vignettes {
     this.camera.updateMatrixWorld();
   }
 
-  /** Tour à son stade (1 à 3), ou la ronce. */
-  tour(type: TypeTour | 'ronce', stade = 1): string {
-    return this.dessiner(`${type}:${stade}`, () => modeleTour(type, stade));
+  /** Tour à son stade (1 à 3, ou 4 avec sa capacité), ou la ronce. */
+  tour(type: TypeTour | 'ronce', stade = 1, capacite: Capacite | null = null): string {
+    return this.dessiner(`${type}:${stade}:${capacite ?? ''}`, () => modeleTour(type, stade, capacite));
   }
 
   /** Monstre de la Rouille, tourné vers le spectateur. */

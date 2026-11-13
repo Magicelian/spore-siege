@@ -44,15 +44,22 @@ export interface MonstreVu {
   pvMax: number;
   /** Touché par le mortier, il avance moins vite. */
   ralenti: boolean;
+  /** Piqué par le Dard : il perd de la vie un moment. */
+  empoisonne: boolean;
 }
 
 export type TypeTour = 'ruche' | 'cristal' | 'mortier' | 'canon';
 
+/** Capacité spéciale choisie au stade 4 ; deux par tour (`CAPACITES_DE`). */
+export type Capacite = 'essaim' | 'dard' | 'tempete' | 'prisme' | 'salve' | 'glu' | 'mitraille' | 'grosCalibre';
+
 export interface TourVue {
   id: number;
   type: TypeTour;
-  /** 1 à 3 : chaque amélioration fait pousser la tour d'un stade. */
+  /** 1 à 4 : chaque amélioration fait pousser la tour d'un stade ; le 4e porte une capacité. */
   stade: number;
+  /** Capacité choisie au stade 4. */
+  capacite: Capacite | null;
   case: Case;
   portee: number;
   /** Monstre visé, s'il y en a un à portée. */
@@ -61,14 +68,17 @@ export interface TourVue {
   dernierTir: number;
   /** Cristal : points touchés par le dernier éclair, de la tour au dernier rebond. */
   chaine: Position[];
-  /** Prix de l'amélioration suivante (null au stade 3) et spores rendues à la revente. */
+  /** Prix de l'amélioration suivante (null au stade 3 et 4) et spores rendues à la revente. */
   prixAmelioration: number | null;
+  /** Au stade 3 seulement : prix de chacune des deux capacités (`CAPACITES_DE`), dans le même ordre. */
+  prixCapacites: [number, number] | null;
   revente: number;
 }
 
 export interface ProjectileVu {
   id: number;
   type: TypeTour;
+  capacite: Capacite | null;
   position: Position;
   depart: Position;
   but: Position;
@@ -77,6 +87,7 @@ export interface ProjectileVu {
 /** Explosion d'un projectile de zone, gardée quelques pas pour l'afficher. */
 export interface ImpactVu {
   type: TypeTour;
+  capacite: Capacite | null;
   position: Position;
   rayon: number;
   pas: number;
@@ -89,6 +100,15 @@ export interface ImpactVu {
 export type EvenementVu =
   | { type: 'mort'; id: number; monstre: TypeMonstre; position: Position; butin: number; pas: number }
   | { type: 'morsure'; id: number; monstre: TypeMonstre; degats: number; pas: number };
+
+/** Flaque collante laissée par le mortier Glu : les monstres dedans sont ralentis. */
+export interface FlaqueVu {
+  id: number;
+  position: Position;
+  rayon: number;
+  /** Part de vie restante, de 1 (posée) à 0 (sèche). */
+  reste: number;
+}
 
 /** `pause` : on construit avant la vague `numero` ; `vague` : la vague `numero` est en cours. */
 export type Phase = 'pause' | 'vague' | 'victoire' | 'defaite';
@@ -110,6 +130,8 @@ export interface Instantane {
   impacts: ImpactVu[];
   /** Morts et morsures des dernières secondes. */
   evenements: EvenementVu[];
+  /** Flaques de glu au sol (mortier Glu). */
+  flaques: FlaqueVu[];
   /** Cases de sentier fermées par une ronce. */
   ronces: Case[];
   /** Spores gagnées en lançant la vague maintenant (0 hors pause). */
@@ -125,6 +147,7 @@ export type Commande =
   | { type: 'lancerVague' }
   | { type: 'poserTour'; tour: TypeTour; case: Case }
   | { type: 'ameliorerTour'; id: number }
+  | { type: 'choisirCapacite'; id: number; capacite: Capacite }
   | { type: 'vendreTour'; id: number }
   | { type: 'poserRonce'; case: Case }
   | { type: 'enleverRonce'; case: Case };

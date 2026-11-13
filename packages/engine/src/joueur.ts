@@ -4,14 +4,15 @@
 //  - simple : deux ruches, puis varie les quatre tours, puis alterne construction et amélioration ; pas de ronces ;
 //  - bon : ferme des branches avec des ronces pour allonger le chemin, choisit ses tours selon les monstres à venir,
 //    améliore ses meilleures tours avant d'en poser d'autres ;
-//  - seul:<tour> : une seule sorte de tour, six au meilleur endroit puis améliore la plus faible (aucune tour ne doit
-//    suffire à elle seule).
-import type { Case, Ile, Phase, TypeMonstre, TypeTour } from './contrat';
-import { PAS_PAR_SECONDE, TOURS, type Vague } from './contenu';
+//  - seul:<tour ou capacité> : une seule sorte de tour, six au meilleur endroit, puis améliore la plus faible, puis
+//    (si une capacité est donnée) passe chacune au stade 4 avec cette capacité. Aucune tour ne doit suffire seule.
+// Les joueurs simple et bon prennent aussi le stade 4 quand ils ont une tour au stade 3.
+import type { Capacite, Case, Ile, Phase, TourVue, TypeMonstre, TypeTour } from './contrat';
+import { CAPACITES, CAPACITES_DE, PAS_PAR_SECONDE, TOURS, type Vague } from './contenu';
 import { Partie } from './partie';
 import { cle, route } from './sentier';
 
-export type Niveau = 'naif' | 'simple' | 'bon' | `seul:${TypeTour}`;
+export type Niveau = 'naif' | 'simple' | 'bon' | `seul:${TypeTour | Capacite}`;
 
 export interface Bilan {
   niveau: Niveau;
@@ -88,16 +89,29 @@ class Joueur {
       return c ? this.partie.executer({ type: 'poserTour', tour: type, case: c }) : false;
     };
 
+    /** Passe une tour du stade 3 au stade 4 ; `choix` donne la capacité. */
+    const auStade3 = tours.find((t) => t.prixCapacites !== null);
+    const specialiser = (choix: (t: TourVue) => Capacite) => () =>
+      auStade3 ? this.partie.executer({ type: 'choisirCapacite', id: auStade3.id, capacite: choix(auStade3) }) : false;
+
     if (this.niveau === 'naif') return poser('ruche');
 
     if (this.niveau.startsWith('seul:')) {
-      const type = this.niveau.slice('seul:'.length) as TypeTour;
-      return tours.length >= 6 && plusFaible ? ameliorer : poser(type);
+      const nom = this.niveau.slice('seul:'.length) as TypeTour | Capacite;
+      const capacite = nom in CAPACITES ? (nom as Capacite) : null;
+      const type = capacite ? CAPACITES[capacite].tour : (nom as TypeTour);
+      if (tours.length < 6) return poser(type);
+      if (plusFaible) return ameliorer;
+      return capacite && auStade3 ? specialiser(() => capacite) : poser(type);
     }
 
     if (this.niveau === 'simple') {
       const ameliorees = tours.reduce((n, t) => n + t.stade - 1, 0);
-      if (tours.length >= 4 && ameliorees < tours.length - 3 && plusFaible) return ameliorer;
+      if (tours.length >= 4 && ameliorees < tours.length - 3) {
+        if (plusFaible) return ameliorer;
+        // Pas de réflexion : une capacité sur deux, selon la tour.
+        if (auStade3) return specialiser((t) => CAPACITES_DE[t.type][t.id % 2]!);
+      }
       return poser(CYCLE_SIMPLE[tours.length % CYCLE_SIMPLE.length]!);
     }
 
@@ -108,7 +122,15 @@ class Joueur {
     if (tours.some((t) => t.stade < 2)) return ameliorer;
     if (tours.length < 7) return poser(this.typeVoulu());
     if (plusFaible) return ameliorer;
+    if (auStade3) return specialiser((t) => this.capaciteVoulue(t.type));
     return poser(this.typeVoulu());
+  }
+
+  /** Bon joueur : la capacité contre les gros monstres si les deux prochaines vagues en ont, sinon contre les groupes. */
+  private capaciteVoulue(type: TypeTour): Capacite {
+    const i = this.partie.instantane();
+    const gros = this.partie.vagues.slice(i.vague - 1, i.vague + 1).some((v) => v.some((g) => g.type === 'scarabee' || g.type === 'amas'));
+    return CAPACITES_DE[type][gros ? 1 : 0]!;
   }
 
   /** Bon joueur : la tour qui répond aux monstres des deux prochaines vagues et manque le plus. */

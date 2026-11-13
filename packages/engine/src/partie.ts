@@ -1,18 +1,22 @@
 // Une partie sur une île : vagues, monstres qui suivent le sentier, tours qui tirent, spores, vie de la souche.
 // Pur et déterministe : mêmes île, vagues, graine et commandes → même partie, pas pour pas.
-import type { Case, Commande, EvenementVu, ImpactVu, Ile, Instantane, MonstreVu, Phase, Position, TourVue, TypeMonstre, TypeTour } from './contrat';
+import type { Capacite, Case, Commande, EvenementVu, FlaqueVu, ImpactVu, Ile, Instantane, MonstreVu, Phase, Position, TourVue, TypeMonstre, TypeTour } from './contrat';
 import {
   BONUS_PAR_SECONDE_GAGNEE,
   BONUS_VAGUE,
+  CAPACITES,
+  CAPACITES_DE,
   MONSTRES,
   PART_RONCE_RENDUE,
   PART_REVENTE,
+  PART_REVENTE_CAPACITE,
   PAS_PAR_SECONDE,
   PAUSE_SECONDES,
   PRIX_RONCE,
   PV_SOUCHE,
   SPORES_DEPART,
   TOURS,
+  type StadeTour,
   type Vague,
 } from './contenu';
 import { creerHasard } from './hasard';
@@ -31,12 +35,16 @@ interface Monstre {
   /** Ralenti par le mortier jusqu'à ce pas, vitesse multipliée par `facteurRalenti`. */
   ralentiJusqua: number;
   facteurRalenti: number;
+  /** Empoisonné par le Dard jusqu'à ce pas, en perdant `poisonParPas` à chaque pas. */
+  poisonJusqua: number;
+  poisonParPas: number;
 }
 
 interface Tour {
   id: number;
   type: TypeTour;
   stade: number;
+  capacite: Capacite | null;
   case: Case;
   centre: Position;
   /** Pas à attendre avant de pouvoir tirer. */
@@ -51,6 +59,15 @@ interface Tour {
 interface Projectile {
   id: number;
   type: TypeTour;
+  capacite: Capacite | null;
+  /** Réglages du tir, figés au départ : une amélioration en vol ne les change pas. */
+  guide: boolean;
+  vitesse: number;
+  rayon: number;
+  percant: boolean;
+  ralenti: { facteur: number; duree: number } | null;
+  poison: { degatsParSeconde: number; duree: number } | null;
+  flaque: { rayon: number; duree: number; facteur: number } | null;
   position: Position;
   /** Centre de la tour qui l'a tiré (pour l'arc des obus). */
   depart: Position;
@@ -58,6 +75,15 @@ interface Projectile {
   but: Position;
   cible: number;
   degats: number;
+}
+
+interface Flaque {
+  id: number;
+  position: Position;
+  rayon: number;
+  facteur: number;
+  debut: number;
+  fin: number;
 }
 
 /** Pas pendant lesquels une explosion reste dans l'instantané. */
@@ -89,6 +115,7 @@ export class Partie {
   private tours: Tour[] = [];
   private projectiles: Projectile[] = [];
   private impacts: ImpactVu[] = [];
+  private flaques: Flaque[] = [];
   private evenements: EvenementVu[] = [];
   /** Réservé aux tirages des étapes suivantes (cibles, effets) ; fixé par la graine. */
   readonly hasard: () => number;
@@ -122,6 +149,7 @@ export class Partie {
           id: this.prochainId++,
           type: commande.tour,
           stade: 1,
+          capacite: null,
           case: { x: c.x, y: c.y },
           centre: { x: c.x + 0.5, y: c.y + 0.5 },
           recharge: 0,
@@ -138,6 +166,17 @@ export class Partie {
         if (!tour || prix == null || this.spores < prix) return false;
         this.spores -= prix;
         tour.stade++;
+        tour.depense += prix;
+        return true;
+      }
+      case 'choisirCapacite': {
+        const tour = this.tours.find((t) => t.id === commande.id);
+        if (!tour || tour.stade !== 3 || !CAPACITES_DE[tour.type].includes(commande.capacite)) return false;
+        const prix = CAPACITES[commande.capacite].prix;
+        if (this.spores < prix) return false;
+        this.spores -= prix;
+        tour.stade = 4;
+        tour.capacite = commande.capacite;
         tour.depense += prix;
         return true;
       }
@@ -194,11 +233,13 @@ export class Partie {
     if (this.phase === 'vague') {
       while (this.lachers[0] && this.lachers[0].pas <= this.pasPhase) this.lacher(this.lachers.shift()!);
       this.deplacer();
+      this.empoisonner();
     }
     this.tirer();
     this.voler();
     this.enterrer();
     this.impacts = this.impacts.filter((i) => this.pas - i.pas < DUREE_IMPACT);
+    this.flaques = this.flaques.filter((f) => this.pas < f.fin);
     this.evenements = this.evenements.filter((e) => this.pas - e.pas < DUREE_EVENEMENT);
     if (this.phase === 'pause') {
       if (this.pasPhase >= PAUSE_SECONDES * PAS_PAR_SECONDE) this.commencerVague();
@@ -225,18 +266,21 @@ export class Partie {
       position: { ...m.position },
       pv: m.pv,
       pvMax: MONSTRES[m.type].pv,
-      ralenti: this.pas < m.ralentiJusqua,
+      ralenti: this.facteurVitesse(m) < 1,
+      empoisonne: this.pas < m.poisonJusqua,
     }));
     const tours: TourVue[] = this.tours.map((t) => ({
       id: t.id,
       type: t.type,
       stade: t.stade,
+      capacite: t.capacite,
       case: { ...t.case },
       portee: stadeDe(t).portee,
       cible: t.cible,
       dernierTir: t.dernierTir,
       chaine: t.chaine.map((p) => ({ ...p })),
       prixAmelioration: prixAmelioration(t),
+      prixCapacites: t.stade === 3 ? [CAPACITES[CAPACITES_DE[t.type][0]].prix, CAPACITES[CAPACITES_DE[t.type][1]].prix] : null,
       revente: revente(t),
     }));
     return {
@@ -249,9 +293,12 @@ export class Partie {
       monstres,
       spores: this.spores,
       tours,
-      projectiles: this.projectiles.map((p) => ({ id: p.id, type: p.type, position: { ...p.position }, depart: { ...p.depart }, but: { ...p.but } })),
+      projectiles: this.projectiles.map((p) => ({ id: p.id, type: p.type, capacite: p.capacite, position: { ...p.position }, depart: { ...p.depart }, but: { ...p.but } })),
       impacts: this.impacts.map((i) => ({ ...i, position: { ...i.position } })),
       evenements: this.evenements.map((e) => (e.type === 'mort' ? { ...e, position: { ...e.position } } : { ...e })),
+      flaques: this.flaques.map(
+        (f): FlaqueVu => ({ id: f.id, position: { ...f.position }, rayon: f.rayon, reste: Math.max(0, (f.fin - this.pas) / (f.fin - f.debut)) }),
+      ),
       ronces: [...this.ronces].map((k) => {
         const [x, y] = k.split(',').map(Number) as [number, number];
         return { x, y };
@@ -316,6 +363,8 @@ export class Partie {
       position: pointSur(trace, avancement),
       ralentiJusqua: 0,
       facteurRalenti: 1,
+      poisonJusqua: 0,
+      poisonParPas: 0,
     };
   }
 
@@ -350,7 +399,18 @@ export class Partie {
 
   /** Vitesse actuelle, en cases par seconde. */
   private vitesse(m: Monstre): number {
-    return MONSTRES[m.type].vitesse * (this.pas < m.ralentiJusqua ? m.facteurRalenti : 1);
+    return MONSTRES[m.type].vitesse * this.facteurVitesse(m);
+  }
+
+  /** Le plus fort des ralentis en cours : coup de mortier, flaque de glu. */
+  private facteurVitesse(m: Monstre): number {
+    let facteur = this.pas < m.ralentiJusqua ? m.facteurRalenti : 1;
+    for (const f of this.flaques) if (distance(m.position, f.position) <= f.rayon) facteur = Math.min(facteur, f.facteur);
+    return facteur;
+  }
+
+  private empoisonner(): void {
+    for (const m of this.monstres) if (this.pas < m.poisonJusqua) this.blesser(m, m.poisonParPas, true);
   }
 
   private deplacer(): void {
@@ -389,11 +449,50 @@ export class Partie {
       t.recharge = Math.round(stade.cadence * PAS_PAR_SECONDE);
       t.dernierTir = this.pas;
       const fiche = TOURS[t.type];
+      const capacite = t.capacite ? CAPACITES[t.capacite] : null;
       if (fiche.eclair) {
-        this.eclair(t, cible, stade.degats, stade.rebonds ?? 0, fiche.eclair);
-      } else if (fiche.projectile) {
-        const but = fiche.projectile.guide ? { ...cible.position } : this.ouSera(cible, t.centre, fiche.projectile.vitesse);
-        this.projectiles.push({ id: this.prochainId++, type: t.type, position: { ...t.centre }, depart: { ...t.centre }, but, cible: cible.id, degats: stade.degats });
+        this.eclair(t, cible, stade.degats, stade.rebonds ?? 0, capacite?.eclair ?? fiche.eclair);
+        continue;
+      }
+      const tir = fiche.projectile!;
+      const base = {
+        type: t.type,
+        capacite: t.capacite,
+        depart: { ...t.centre },
+        degats: stade.degats,
+        guide: tir.guide,
+        vitesse: capacite?.vitesse ?? tir.vitesse,
+        rayon: capacite?.rayon ?? tir.rayon,
+        percant: capacite?.percant ?? false,
+        ralenti: fiche.ralenti ?? null,
+        poison: capacite?.poison ?? null,
+        flaque: capacite?.flaque ?? null,
+      };
+      const lancer = (m: Monstre, but: Position) => this.projectiles.push({ ...base, id: this.prochainId++, position: { ...t.centre }, but, cible: m.id });
+      const viserMonstre = (m: Monstre) => (base.guide ? { ...m.position } : this.ouSera(m, t.centre, base.vitesse));
+      const tirs = capacite?.tirs ?? 1;
+      if (capacite?.ecart) {
+        // Salve : les obus tombent devant, sur et derrière la cible, le long de son chemin.
+        const arrivee = this.avancementA(cible, t.centre, base.vitesse);
+        for (let i = 0; i < tirs; i++) {
+          const decalage = (i - (tirs - 1) / 2) * capacite.ecart;
+          lancer(cible, { ...pointSur(cible.trace, Math.max(0, Math.min(cible.longueur, arrivee + decalage))) });
+        }
+        continue;
+      }
+      // Essaim, Mitraille : un projectile par monstre, les plus proches de la souche d'abord ; s'il en manque,
+      // les suivants repartent sur la première cible.
+      const touches = new Set<Monstre>([cible]);
+      const cibles = [cible];
+      while (cibles.length < tirs) {
+        const autre = this.viser(t.centre, stade.portee, touches);
+        if (!autre) break;
+        touches.add(autre);
+        cibles.push(autre);
+      }
+      for (let i = 0; i < tirs; i++) {
+        const m = cibles[i % cibles.length]!;
+        lancer(m, viserMonstre(m));
       }
     }
   }
@@ -417,26 +516,32 @@ export class Partie {
 
   /** Où sera le monstre quand un projectile tiré de `depuis` l'atteindra. */
   private ouSera(m: Monstre, depuis: Position, vitesseProjectile: number): Position {
+    return { ...pointSur(m.trace, this.avancementA(m, depuis, vitesseProjectile)) };
+  }
+
+  /** Avancement du monstre (en cases le long de sa trace) quand un projectile tiré de `depuis` l'atteindra. */
+  private avancementA(m: Monstre, depuis: Position, vitesseProjectile: number): number {
     let point = m.position;
+    let avancement = m.avancement;
     for (let i = 0; i < 2; i++) {
       const duree = distance(depuis, point) / vitesseProjectile;
-      point = pointSur(m.trace, Math.min(m.longueur, m.avancement + this.vitesse(m) * duree));
+      avancement = Math.min(m.longueur, m.avancement + this.vitesse(m) * duree);
+      point = pointSur(m.trace, avancement);
     }
-    return { ...point };
+    return avancement;
   }
 
   private voler(): void {
     const parId = new Map(this.monstres.map((m) => [m.id, m]));
     const restants: Projectile[] = [];
     for (const p of this.projectiles) {
-      const fiche = TOURS[p.type].projectile!;
-      if (fiche.guide) {
+      if (p.guide) {
         const cible = parId.get(p.cible);
         // Sa cible morte, l'abeille s'en va.
         if (!cible || cible.pv <= 0) continue;
         p.but = { ...cible.position };
       }
-      const pasVol = fiche.vitesse / PAS_PAR_SECONDE;
+      const pasVol = p.vitesse / PAS_PAR_SECONDE;
       const reste = distance(p.position, p.but);
       if (reste > pasVol) {
         p.position.x += ((p.but.x - p.position.x) / reste) * pasVol;
@@ -444,22 +549,34 @@ export class Partie {
         restants.push(p);
         continue;
       }
-      if (fiche.guide) {
-        this.blesser(parId.get(p.cible)!, p.degats);
+      if (p.guide) {
+        this.toucher(parId.get(p.cible)!, p);
         continue;
       }
-      const ralenti = TOURS[p.type].ralenti;
       for (const m of this.monstres) {
-        if (m.pv <= 0 || distance(m.position, p.but) > fiche.rayon) continue;
-        this.blesser(m, p.degats);
-        if (ralenti) {
-          m.ralentiJusqua = this.pas + Math.round(ralenti.duree * PAS_PAR_SECONDE);
-          m.facteurRalenti = ralenti.facteur;
-        }
+        if (m.pv <= 0 || distance(m.position, p.but) > p.rayon) continue;
+        this.toucher(m, p);
       }
-      this.impacts.push({ type: p.type, position: { ...p.but }, rayon: fiche.rayon, pas: this.pas });
+      if (p.flaque) {
+        const duree = Math.round(p.flaque.duree * PAS_PAR_SECONDE);
+        this.flaques.push({ id: this.prochainId++, position: { ...p.but }, rayon: p.flaque.rayon, facteur: p.flaque.facteur, debut: this.pas, fin: this.pas + duree });
+      }
+      this.impacts.push({ type: p.type, capacite: p.capacite, position: { ...p.but }, rayon: p.rayon, pas: this.pas });
     }
     this.projectiles = restants;
+  }
+
+  /** Un projectile atteint un monstre : dégâts, puis ralenti ou poison selon la tour. */
+  private toucher(m: Monstre, p: Projectile): void {
+    this.blesser(m, p.degats, p.percant);
+    if (p.ralenti) {
+      m.ralentiJusqua = this.pas + Math.round(p.ralenti.duree * PAS_PAR_SECONDE);
+      m.facteurRalenti = p.ralenti.facteur;
+    }
+    if (p.poison) {
+      m.poisonJusqua = this.pas + Math.round(p.poison.duree * PAS_PAR_SECONDE);
+      m.poisonParPas = p.poison.degatsParSeconde / PAS_PAR_SECONDE;
+    }
   }
 
   private blesser(m: Monstre, degats: number, percant = false): void {
@@ -526,8 +643,8 @@ function versCase(p: Position): Case {
   return { x: Math.floor(p.x), y: Math.floor(p.y) };
 }
 
-function stadeDe(t: Tour) {
-  return TOURS[t.type].stades[t.stade - 1]!;
+function stadeDe(t: Tour): StadeTour {
+  return t.capacite ? CAPACITES[t.capacite] : TOURS[t.type].stades[t.stade - 1]!;
 }
 
 function prixAmelioration(t: Tour): number | null {
@@ -535,7 +652,7 @@ function prixAmelioration(t: Tour): number | null {
 }
 
 function revente(t: Tour): number {
-  return Math.floor(t.depense * PART_REVENTE + 1e-9);
+  return Math.floor(t.depense * (t.capacite ? PART_REVENTE_CAPACITE : PART_REVENTE) + 1e-9);
 }
 
 function distance(a: Position, b: Position): number {

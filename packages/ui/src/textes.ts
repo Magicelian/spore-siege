@@ -1,11 +1,23 @@
 // Tous les textes de l'interface, en un seul endroit : l'anglais s'ajoutera ici plus tard.
-import type { Biome, TypeMonstre, TypeTour } from '@spore-siege/engine';
+import type { Biome, Capacite, TypeMonstre, TypeTour } from '@spore-siege/engine';
 
 export const TOURS_TEXTES: Record<TypeTour, { nom: string; role: string }> = {
   ruche: { nom: 'Poste-ruche', role: 'Ses abeilles piquent vite, un monstre à la fois.' },
   cristal: { nom: 'Obélisque', role: 'Un éclair qui saute de monstre en monstre et perce les carapaces.' },
   mortier: { nom: 'Mortier à tourbe', role: 'Un obus lent qui éclabousse et englue toute une zone.' },
   canon: { nom: 'Canon à spores', role: 'Gros dégâts en zone, mais il recharge lentement.' },
+};
+
+/** Capacités du stade 4 (`CAPACITES_DE` : d'abord contre les groupes, puis contre les gros monstres). */
+export const CAPACITES_TEXTES: Record<Capacite, { nom: string; role: string }> = {
+  essaim: { nom: 'Essaim', role: 'Deux abeilles par tir, sur deux monstres différents.' },
+  dard: { nom: 'Dard', role: 'Une piqûre qui perce l’armure et empoisonne.' },
+  tempete: { nom: 'Tempête', role: 'L’éclair saute jusqu’à 5 fois, et plus loin.' },
+  prisme: { nom: 'Prisme', role: 'Un seul rayon concentré, énorme.' },
+  glu: { nom: 'Glu', role: 'L’obus laisse une flaque qui colle tout un groupe.' },
+  salve: { nom: 'Salve', role: 'Trois obus d’un coup, serrés sur la même cible.' },
+  mitraille: { nom: 'Mitraille', role: 'Trois petits obus rapides, sur trois monstres.' },
+  grosCalibre: { nom: 'Gros calibre', role: 'Un obus énorme, une grosse zone, très lent.' },
 };
 
 export const MONSTRES_TEXTES: Record<TypeMonstre, { nom: string; description: string; conseil: string }> = {
@@ -46,8 +58,14 @@ export const ILES_TEXTES: Record<Biome, string> = {
 
 export const TEXTES = {
   construire: 'Construire',
-  stade: (n: number) => `Stade ${n}/3`,
-  stadeMax: 'Stade 3/3, pleine puissance',
+  stade: (n: number) => `Stade ${n}/4`,
+  capaciteTitre: 'Stade 4 : une capacité au choix',
+  capaciteDefinitif: 'Définitif. Revente à 50 % ensuite.',
+  choisir: 'Choisir',
+  tirs: (n: number) => `${n} tirs`,
+  perce: 'perce l’armure',
+  poison: (dps: number, s: number) => `poison ${nombre(dps)}/s pendant ${nombre(s)} s`,
+  flaque: (s: number) => `flaque collante ${nombre(s)} s`,
   ameliorer: 'Améliorer',
   vendre: 'Vendre',
   degats: 'Dégâts',

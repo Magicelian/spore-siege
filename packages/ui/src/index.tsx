@@ -2,14 +2,14 @@
 // visible, bulles au clic sur l'île (construire, tour, ronce).
 // Le contrôleur garde l'état de l'interface ; le frontend lui donne les instantanés et lit l'aperçu à dessiner.
 import { render } from 'preact';
-import type { Biome, Case, Commande, Ile, Instantane, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
-import { MONSTRES, PART_RONCE_RENDUE, PRIX_RONCE, TOURS } from '@spore-siege/engine';
+import type { Biome, Capacite, Case, Commande, Ile, Instantane, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
+import { CAPACITES, CAPACITES_DE, MONSTRES, PART_RONCE_RENDUE, PRIX_RONCE, TOURS } from '@spore-siege/engine';
 import { icone, type Icone } from './icones';
 import { ecrireDecouverts, ecrireEtoiles, ecrireMusique, ecrireSons, lireDecouverts, lireEtoiles, lireMusique, lireSons } from './sauvegarde';
 import { Sons } from './sons';
 
 export type { Effet } from './sons';
-import { ILES_TEXTES, MONSTRES_TEXTES, nombre, TEXTES, TOURS_TEXTES } from './textes';
+import { CAPACITES_TEXTES, ILES_TEXTES, MONSTRES_TEXTES, nombre, TEXTES, TOURS_TEXTES } from './textes';
 
 /** Ce que l'interface peut demander à la partie. */
 export interface Jeu {
@@ -34,7 +34,8 @@ export interface Fenetre {
 }
 
 export interface OptionsInterface {
-  vignette(type: TypeTour | 'ronce', stade: number): string;
+  /** Image du modèle ; au stade 4, celui de la capacité. */
+  vignette(type: TypeTour | 'ronce', stade: number, capacite?: Capacite | null): string;
   vignetteMonstre(type: TypeMonstre): string;
   recommencer(): void;
   fenetre?: Fenetre;
@@ -85,6 +86,8 @@ export class ControleurInterface {
   private vitesseAvantPause: 1 | 2 = 1;
   private bulle: Bulle | null = null;
   private survol: TypeTour | null = null;
+  /** Capacité montrée dans la bulle d'une tour au stade 3 (la première tant qu'on n'a rien survolé). */
+  private capaciteVue: Capacite | null = null;
   private instantane: Instantane | null = null;
   private tailleFenetre = 0;
   /** Case sous la souris (null hors de l'île ou pendant un glisser). */
@@ -143,6 +146,7 @@ export class ControleurInterface {
   cliquer(c: Case | null, enHaut: boolean): void {
     if (this.fiche || this.livre || this.pauseMenu) return this.fermer();
     this.survol = null;
+    this.capaciteVue = null;
     if (this.vitesse === 0) {
       this.bulle = null;
       return this.dessiner();
@@ -201,6 +205,7 @@ export class ControleurInterface {
   fermer(): void {
     this.bulle = null;
     this.survol = null;
+    this.capaciteVue = null;
     this.fiche = null;
     this.livre = null;
     this.pauseMenu = false;
@@ -578,7 +583,14 @@ export class ControleurInterface {
           t={t}
           i={i}
           enHaut={b.enHaut}
-          vignette={this.options.vignette(t.type, t.stade)}
+          vignette={this.options.vignette(t.type, t.stade, t.capacite)}
+          vignetteCapacite={(c) => this.options.vignette(t.type, 4, c)}
+          capaciteVue={this.capaciteVue ?? CAPACITES_DE[t.type][0]}
+          voirCapacite={(c) => {
+            this.capaciteVue = c;
+            this.dessiner();
+          }}
+          choisirCapacite={(c) => this.executer({ type: 'choisirCapacite', id: t.id, capacite: c })}
           fermer={fermer}
           ameliorer={() => this.executer({ type: 'ameliorerTour', id: t.id })}
           vendre={() => this.executer({ type: 'vendreTour', id: t.id }) && fermer()}
@@ -693,21 +705,38 @@ function Bandeau(p: {
 }
 
 /** Dégâts, portée et recharge d'un stade de tour ; `suivant` montre l'amélioration. */
-function Stats({ type, stade, suivant }: { type: TypeTour; stade: number; suivant?: number }) {
+/** Chiffres d'une tour à un stade ; au stade 4, ceux de sa capacité. */
+function stadeVu(type: TypeTour, stade: number, capacite: Capacite | null = null): StadeTour {
+  return capacite ? CAPACITES[capacite] : TOURS[type].stades[stade - 1]!;
+}
+
+/** Ce que les trois chiffres ne disent pas : rebonds, zone, ralenti, et l'effet de la capacité. */
+function extrasDe(type: TypeTour, s: StadeTour, capacite: Capacite | null): string[] {
   const fiche = TOURS[type];
-  const a = fiche.stades[stade - 1]!;
-  const b = suivant ? fiche.stades[suivant - 1] : undefined;
+  const c = capacite ? CAPACITES[capacite] : null;
+  const rayon = c?.rayon ?? fiche.projectile?.rayon ?? 0;
+  return [
+    c?.tirs ? TEXTES.tirs(c.tirs) : null,
+    s.rebonds ? TEXTES.rebonds(s.rebonds) : null,
+    rayon > 0 ? TEXTES.zone : null,
+    fiche.ralenti ? TEXTES.ralentit : null,
+    c?.percant ? TEXTES.perce : null,
+    c?.poison ? TEXTES.poison(c.poison.degatsParSeconde, c.poison.duree) : null,
+    c?.flaque ? TEXTES.flaque(c.flaque.duree) : null,
+  ].filter((x): x is string => x !== null);
+}
+
+/** Les trois chiffres d'un stade, et la flèche vers le suivant (stade ou capacité) s'il y en a un. */
+function Stats({ type, stade, capacite = null, vers }: { type: TypeTour; stade: number; capacite?: Capacite | null; vers?: { stade: number; capacite?: Capacite } }) {
+  const a = stadeVu(type, stade, capacite);
+  const b = vers ? stadeVu(type, vers.stade, vers.capacite ?? null) : undefined;
   const fleche = (x: number, y: number | undefined, f: (n: number) => string = nombre) =>
     y === undefined || f(y) === f(x) ? f(x) : (
       <>
         {f(x)} <span class="mieux">→ {f(y)}</span>
       </>
     );
-  const extras = [
-    a.rebonds ? TEXTES.rebonds(b?.rebonds ?? a.rebonds) : null,
-    fiche.projectile && fiche.projectile.rayon > 0 ? TEXTES.zone : null,
-    fiche.ralenti ? TEXTES.ralentit : null,
-  ].filter(Boolean);
+  const extras = vers ? extrasDe(type, b!, vers.capacite ?? null) : extrasDe(type, a, capacite);
   return (
     <>
       <ul class="stats">
@@ -829,6 +858,18 @@ function TableTour({ type }: { type: TypeTour }) {
               <td>{TEXTES.secondes(s.cadence)}</td>
             </tr>
           ))}
+          {CAPACITES_DE[type].map((c) => {
+            const s = CAPACITES[c];
+            return (
+              <tr class="capacite" title={`${CAPACITES_TEXTES[c].role} ${extrasDe(type, s, c).join(' · ')}`}>
+                <th>{CAPACITES_TEXTES[c].nom}</th>
+                <td>{s.prix}</td>
+                <td>{nombre(s.degats)}</td>
+                <td>{nombre(s.portee)}</td>
+                <td>{TEXTES.secondes(s.cadence)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       {extras.length > 0 && <p class="discret">{extras.join(' · ')}</p>}
@@ -899,6 +940,10 @@ function BulleTour(p: {
   i: Instantane;
   enHaut: boolean;
   vignette: string;
+  vignetteCapacite: (c: Capacite) => string;
+  capaciteVue: Capacite;
+  voirCapacite: (c: Capacite) => void;
+  choisirCapacite: (c: Capacite) => void;
   fermer: () => void;
   ameliorer: () => void;
   vendre: () => void;
@@ -906,20 +951,69 @@ function BulleTour(p: {
   const { t } = p;
   const prix = t.prixAmelioration;
   const manque = prix !== null && p.i.spores < prix;
+  const sous = t.capacite ? CAPACITES_TEXTES[t.capacite].nom : TEXTES.stade(t.stade);
+  const vente = (
+    <button class="bouton danger" onClick={p.vendre}>
+      {TEXTES.vendre} +{t.revente}
+    </button>
+  );
+  if (t.prixCapacites) {
+    // Stade 3 : deux cartes de capacité ; la carte vue montre ses chiffres, « Choisir » l'achète pour de bon.
+    const deux = CAPACITES_DE[t.type];
+    const vue = p.capaciteVue;
+    const prixVue = t.prixCapacites[deux.indexOf(vue)]!;
+    const manqueVue = p.i.spores < prixVue;
+    return (
+      <section class={`bulle ${p.enHaut ? 'haut' : 'bas'}`}>
+        <Entete titre={TOURS_TEXTES[t.type].nom} sous={sous} vignette={p.vignette} fermer={p.fermer} />
+        <div class="corps">
+          <p class="discret">{TEXTES.capaciteTitre}</p>
+          <ul class="catalogue">
+            {deux.map((c, n) => {
+              const prixC = t.prixCapacites![n]!;
+              return (
+                <li>
+                  <button
+                    class={`carte${p.i.spores < prixC ? ' manque' : ''}${vue === c ? ' choisie' : ''}`}
+                    onMouseEnter={() => p.voirCapacite(c)}
+                    onClick={() => p.voirCapacite(c)}
+                  >
+                    <img class="vignette" src={p.vignetteCapacite(c)} alt="" />
+                    <span class="nom">{CAPACITES_TEXTES[c].nom}</span>
+                    <Prix n={prixC} manque={p.i.spores < prixC} />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <div class="detail">
+            <p>{CAPACITES_TEXTES[vue].role}</p>
+            <Stats type={t.type} stade={3} vers={{ stade: 4, capacite: vue }} />
+            <p class="discret">{TEXTES.capaciteDefinitif}</p>
+          </div>
+          <div class="rang">
+            <button class={`bouton valider${manqueVue ? ' manque' : ''}`} disabled={manqueVue} onClick={() => p.choisirCapacite(vue)}>
+              {TEXTES.choisir} {CAPACITES_TEXTES[vue].nom} <Prix n={prixVue} manque={manqueVue} />
+            </button>
+            {vente}
+          </div>
+        </div>
+      </section>
+    );
+  }
   return (
     <section class={`bulle ${p.enHaut ? 'haut' : 'bas'}`}>
-      <Entete titre={TOURS_TEXTES[t.type].nom} sous={prix === null ? TEXTES.stadeMax : TEXTES.stade(t.stade)} vignette={p.vignette} fermer={p.fermer} />
+      <Entete titre={TOURS_TEXTES[t.type].nom} sous={sous} vignette={p.vignette} fermer={p.fermer} />
       <div class="corps">
-        <Stats type={t.type} stade={t.stade} suivant={prix === null ? undefined : t.stade + 1} />
+        {t.capacite && <p>{CAPACITES_TEXTES[t.capacite].role}</p>}
+        <Stats type={t.type} stade={t.stade} capacite={t.capacite} vers={prix === null ? undefined : { stade: t.stade + 1 }} />
         <div class="rang">
           {prix !== null && (
             <button class={`bouton valider${manque ? ' manque' : ''}`} disabled={manque} onClick={p.ameliorer}>
               {TEXTES.ameliorer} <Prix n={prix} manque={manque} />
             </button>
           )}
-          <button class="bouton danger" onClick={p.vendre}>
-            {TEXTES.vendre} +{t.revente}
-          </button>
+          {vente}
         </div>
       </div>
     </section>

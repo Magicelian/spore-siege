@@ -1,5 +1,5 @@
 // Chiffres de la partie. Provisoires : la courbe des 10 vagues s'équilibre à l'étape 5 (joueur scripté).
-import type { TypeMonstre, TypeTour } from './contrat';
+import type { Capacite, TypeMonstre, TypeTour } from './contrat';
 
 /** Durée d'un pas de simulation : 20 pas par seconde. */
 export const PAS_MS = 50;
@@ -39,8 +39,9 @@ export const BONUS_PAR_SECONDE_GAGNEE = 1;
 export const PRIX_RONCE = 40;
 export const PART_RONCE_RENDUE = 0.5;
 
-/** Part du prix payé (pose et améliorations) rendue à la revente. */
+/** Part du prix payé (pose et améliorations) rendue à la revente ; moins pour une tour à capacité (stade 4). */
 export const PART_REVENTE = 0.7;
+export const PART_REVENTE_CAPACITE = 0.5;
 
 /** Un stade de tour ; `prix` : la pose pour le stade 1, l'amélioration pour les suivants. */
 export interface StadeTour {
@@ -99,6 +100,46 @@ export const TOURS: Record<TypeTour, FicheTour> = {
     ],
     projectile: { vitesse: 5, guide: false, rayon: 1.2 },
   },
+};
+
+/**
+ * Stade 4 : une capacité choisie parmi deux, chiffres complets du stade (prix = celui du stade 4). Les champs
+ * optionnels remplacent ceux de la fiche de la tour ou ajoutent un effet.
+ */
+export interface FicheCapacite extends StadeTour {
+  tour: TypeTour;
+  /** Projectiles par tir : sur autant de monstres différents (Essaim, Mitraille), ou autour de la cible (Salve). */
+  tirs?: number;
+  /** Salve : écart entre deux obus le long du chemin, en cases. */
+  ecart?: number;
+  /** Traverse l'armure. */
+  percant?: boolean;
+  /** Dard : perte de vie après la piqûre (traverse l'armure ; une nouvelle piqûre relance la durée). */
+  poison?: { degatsParSeconde: number; duree: number };
+  rayon?: number;
+  vitesse?: number;
+  eclair?: { distance: number; attenuation: number };
+  /** Glu : flaque laissée à l'impact ; les monstres dedans avancent à `facteur` de leur vitesse. */
+  flaque?: { rayon: number; duree: number; facteur: number };
+}
+
+/** Les deux capacités de chaque tour : d'abord celle contre les groupes, puis celle contre les gros monstres. */
+export const CAPACITES_DE: Record<TypeTour, readonly [Capacite, Capacite]> = {
+  ruche: ['essaim', 'dard'],
+  cristal: ['tempete', 'prisme'],
+  mortier: ['glu', 'salve'],
+  canon: ['mitraille', 'grosCalibre'],
+};
+
+export const CAPACITES: Record<Capacite, FicheCapacite> = {
+  essaim: { tour: 'ruche', prix: 130, degats: 6, portee: 3.4, cadence: 0.3, tirs: 2 },
+  dard: { tour: 'ruche', prix: 130, degats: 9, portee: 3.4, cadence: 0.35, percant: true, poison: { degatsParSeconde: 4, duree: 3 } },
+  tempete: { tour: 'cristal', prix: 150, degats: 13, portee: 3.2, cadence: 1.2, rebonds: 5, eclair: { distance: 2.4, attenuation: 0.8 } },
+  prisme: { tour: 'cristal', prix: 150, degats: 70, portee: 3.6, cadence: 1.3, rebonds: 0 },
+  salve: { tour: 'mortier', prix: 140, degats: 7, portee: 4.4, cadence: 1.8, tirs: 3, ecart: 0.35 },
+  glu: { tour: 'mortier', prix: 140, degats: 12, portee: 4.4, cadence: 1.8, rayon: 1.1, flaque: { rayon: 1.2, duree: 4, facteur: 0.35 } },
+  mitraille: { tour: 'canon', prix: 170, degats: 16, portee: 3.6, cadence: 0.9, tirs: 3, rayon: 0.7, vitesse: 7 },
+  grosCalibre: { tour: 'canon', prix: 170, degats: 85, portee: 4, cadence: 3, rayon: 1.2, vitesse: 4 },
 };
 
 /** Un groupe de monstres identiques, lâchés un par un sur une plage. */

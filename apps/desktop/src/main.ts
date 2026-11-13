@@ -46,6 +46,7 @@ const fenetre: Fenetre | undefined = dansTauri
 const SON_COMMANDE: Partial<Record<Commande['type'], Effet>> = {
   poserTour: 'poser',
   ameliorerTour: 'ameliorer',
+  choisirCapacite: 'capacite',
   vendreTour: 'vendre',
   poserRonce: 'ronce',
   enleverRonce: 'ronce',
@@ -64,7 +65,8 @@ function ecouter(vue: Instantane, evenements: EvenementVu[]): void {
     else if (vue.phase === 'defaite') sons.jouer('defaite');
   }
   for (const t of vue.tours) {
-    if (t.dernierTir >= 0 && entendu.tirs.get(t.id) !== t.dernierTir) sons.jouer(`tir-${t.type}`);
+    if (t.dernierTir >= 0 && entendu.tirs.get(t.id) !== t.dernierTir)
+      sons.jouer(t.capacite === 'prisme' ? 'tir-prisme' : t.capacite === 'grosCalibre' ? 'tir-gros' : `tir-${t.type}`);
     entendu.tirs.set(t.id, t.dernierTir);
   }
   if (vue.impacts.some((i) => i.pas > entendu.impact)) sons.jouer('explosion');
@@ -91,7 +93,7 @@ function jeuDe(p: Partie): Jeu {
 }
 
 const ui = new ControleurInterface(document.getElementById('interface')!, jeuDe(partie), {
-  vignette: (type, stade) => rendu.vignettes.tour(type, stade),
+  vignette: (type, stade, capacite) => rendu.vignettes.tour(type, stade, capacite),
   vignetteMonstre: (type) => rendu.vignettes.monstre(type),
   recommencer,
   fenetre,

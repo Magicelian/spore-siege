@@ -10,6 +10,9 @@ export type Effet =
   | 'fermer'
   | 'poser'
   | 'ameliorer'
+  | 'capacite'
+  | 'tir-prisme'
+  | 'tir-gros'
   | 'vendre'
   | 'ronce'
   | 'refus'
@@ -56,6 +59,25 @@ const EFFETS: Record<Effet, { notes: Note[]; souffles?: Souffle[] }> = {
     notes: [{ f: 180, t: 0, d: 0.06, vers: 90, onde: 'triangle' }, { f: 220, t: 0.1, d: 0.08, vers: 110, onde: 'triangle' }],
     souffles: [{ t: 0, d: 0.12, f: 900, v: 0.5 }],
   },
+  // Stade 4 : arpège montant plus long, puis un accord tenu.
+  capacite: {
+    notes: [
+      { f: 392, t: 0, d: 0.06, v: 0.35 },
+      { f: 523, t: 0.06, d: 0.06, v: 0.35 },
+      { f: 659, t: 0.12, d: 0.06, v: 0.35 },
+      { f: 784, t: 0.18, d: 0.06, v: 0.35 },
+      { f: 1047, t: 0.26, d: 0.35, v: 0.3 },
+      { f: 523, t: 0.26, d: 0.35, onde: 'triangle', v: 0.5 },
+    ],
+    souffles: [{ t: 0.26, d: 0.2, f: 3000, v: 0.2, aigu: true }],
+  },
+  // Rayon du Prisme : note aiguë qui descend lentement, plus pleine que l'éclair.
+  'tir-prisme': {
+    notes: [{ f: 2400, t: 0, d: 0.22, vers: 600, onde: 'sawtooth', v: 0.14 }, { f: 1200, t: 0, d: 0.22, vers: 300, onde: 'sine', v: 0.3 }],
+    souffles: [{ t: 0, d: 0.12, f: 4000, v: 0.2, aigu: true }],
+  },
+  // Gros calibre : détonation grave.
+  'tir-gros': { notes: [{ f: 160, t: 0, d: 0.25, vers: 45, onde: 'triangle', v: 0.7 }], souffles: [{ t: 0, d: 0.22, f: 900, v: 0.55 }] },
   ameliorer: {
     notes: [
       { f: 392, t: 0, d: 0.07, v: 0.35 },

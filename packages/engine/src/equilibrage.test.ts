@@ -12,7 +12,9 @@ declare const process: { stderr: { write(texte: string): void } };
 
 const [naif, simple, bon] = bilans as [Bilan, Bilan, Bilan];
 /** Une seule sorte de tour, jamais de ronce : aucune ne doit suffire à gagner. */
-const seuls = (['ruche', 'cristal', 'mortier', 'canon'] as const).map((t) => jouer(`seul:${t}`, ileForet(), VAGUES_FORET));
+const seuls = (['essaim', 'dard', 'tempete', 'prisme', 'salve', 'glu', 'mitraille', 'grosCalibre'] as const).map((c) =>
+  jouer(`seul:${c}`, ileForet(), VAGUES_FORET),
+);
 
 describe('équilibrage de l’île-forêt', () => {
   it('rapport (affiché dans la sortie des tests)', () => {
