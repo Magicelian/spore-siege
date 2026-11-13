@@ -3,9 +3,11 @@
 // automatiques.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod diagnostic;
 mod icone;
 mod mises_a_jour;
 mod pastille;
+mod pouls;
 mod reglages;
 
 use tauri::{
@@ -25,9 +27,10 @@ fn basculer_fenetre(app: &AppHandle) {
         return;
     };
     if fenetre.is_visible().unwrap_or(false) {
-        let _ = fenetre.hide();
-        // Fenêtre cachée : le jeu coupe son et musique (sans toucher au réglage Son).
+        diagnostic::ecrire(app, "fenêtre cachée");
+        // Fenêtre cachée : le jeu coupe son et musique (sans toucher au réglage Son). Prévenu avant, comme Tiny Shrooms.
         let _ = app.emit("visible", false);
+        let _ = fenetre.hide();
     } else {
         afficher_fenetre(app);
     }
@@ -37,6 +40,7 @@ fn afficher_fenetre(app: &AppHandle) {
     let Some(fenetre) = app.get_webview_window("main") else {
         return;
     };
+    diagnostic::ecrire(app, "fenêtre montrée");
     let _ = fenetre.show();
     let _ = fenetre.set_focus();
     let _ = app.emit("visible", true);
@@ -141,6 +145,8 @@ fn main() {
             });
             icone::surveiller(app.handle().clone(), menu, basculer_fenetre);
             mises_a_jour::surveiller(app.handle().clone());
+            diagnostic::surveiller_fil_principal(app.handle().clone());
+            pouls::battre_le_pouls(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
