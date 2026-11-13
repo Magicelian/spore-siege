@@ -3,9 +3,9 @@
 // Le contrôleur garde l'état de l'interface ; le frontend lui donne les instantanés et lit l'aperçu à dessiner.
 import { render } from 'preact';
 import type { Biome, Capacite, Case, Commande, Ile, Instantane, Niveau, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
-import { CAPACITES, CAPACITES_DE, MONSTRES, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, PRIX_RONCE, SEUIL_BOSS, TOURS } from '@spore-siege/engine';
+import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, MONSTRES, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, PRIX_RONCE, SEUIL_BOSS, TOURS, TOUTES_CAPACITES } from '@spore-siege/engine';
 import { icone, type Icone } from './icones';
-import { ecrireDecouverts, ecrireEtoiles, ecrireMusique, ecrireSons, lireDecouverts, lireEtoiles, lireMusique, lireSons } from './sauvegarde';
+import { ecrireAtelier, ecrireDecouverts, ecrireEtoiles, ecrireMusique, ecrireSons, lireAtelier, lireDecouverts, lireEtoiles, lireMusique, lireSons } from './sauvegarde';
 import { Sons } from './sons';
 
 export type { Effet } from './sons';
@@ -104,6 +104,10 @@ export class ControleurInterface {
   private fiche: TypeMonstre | null = null;
   private pauseMenu = false;
   private livre: Livre | null = null;
+  /** Capacités du stade 4 ouvertes avec les étoiles, gardées d'une partie à l'autre. */
+  private atelier: Capacite[] = lireAtelier();
+  /** Atelier ouvert sur cette capacité (null = fermé). */
+  private atelierVu: Capacite | null = null;
   /** Vitesse à rétablir en refermant la fiche ou le grimoire (qui mettent le jeu en pause). */
   private reprendreA: 1 | 2 | null = null;
   /** Vague qu'on est en train de jouer : ses monstres comptent comme rencontrés quand elle s'achève. */
@@ -214,6 +218,7 @@ export class ControleurInterface {
     this.capaciteVue = null;
     this.fiche = null;
     this.livre = null;
+    this.atelierVu = null;
     this.pauseMenu = false;
     if (this.reprendreA !== null) this.vitesse = this.reprendreA;
     this.reprendreA = null;
@@ -244,6 +249,39 @@ export class ControleurInterface {
   /** Étoiles gagnées sur les niveaux d'une île. */
   private etoilesIle(biome: Biome): number {
     return (NIVEAUX[biome] ?? []).reduce((n, x) => n + (this.etoiles[x.id] ?? 0), 0);
+  }
+
+  /** Capacités ouvertes dans l'Atelier, pour la prochaine partie. */
+  get capacitesOuvertes(): Capacite[] {
+    return [...this.atelier];
+  }
+
+  /** Étoiles gagnées (meilleures de chaque niveau) moins celles dépensées dans l'Atelier. */
+  private soldeEtoiles(): number {
+    const gagnees = Object.values(this.etoiles).reduce((n, e) => n + e, 0);
+    return Math.max(0, gagnees - etoilesDepensees(this.atelier));
+  }
+
+  /** Atelier : on y ouvre les capacités du stade 4 avec les étoiles. */
+  ouvrirAtelier(): void {
+    this.fermer();
+    this.atelierVu = CAPACITES_DE.ruche[0];
+    this.dessiner();
+  }
+
+  private ouvrirCapacite(c: Capacite): void {
+    const prix = etoilesPour(c, this.atelier);
+    if (prix === 0 || prix > this.soldeEtoiles()) return;
+    this.atelier = TOUTES_CAPACITES.filter((x) => x === c || this.atelier.includes(x));
+    ecrireAtelier(this.atelier);
+    this.sons.jouer('capacite');
+    this.dessiner();
+  }
+
+  private rembourser(): void {
+    this.atelier = [];
+    ecrireAtelier(this.atelier);
+    this.dessiner();
   }
 
   /** À rappeler quand la fenêtre change de taille (les îlots de la carte bougent à l'écran). */
@@ -465,6 +503,9 @@ export class ControleurInterface {
           </span>
           <span class="planche">{TEXTES.archipel}</span>
           <span class="espace" />
+          <button class="bouton carre" title={TEXTES.atelierAide} onClick={() => (this.atelierVu ? this.fermer() : this.ouvrirAtelier())}>
+            <Ico nom="enclume" />
+          </button>
           <button class="bouton carre" title={TEXTES.grimoire} onClick={() => (this.livre ? this.fermer() : this.ouvrirLivre())}>
             <Ico nom="livre" />
           </button>
@@ -498,6 +539,7 @@ export class ControleurInterface {
           );
         })}
         {this.livre && this.dessinerLivre(this.livre)}
+        {this.atelierVu && this.dessinerAtelier(this.atelierVu)}
       </div>
     );
   }
@@ -518,6 +560,9 @@ export class ControleurInterface {
           </span>
           <span class="planche">{ILES_TEXTES[this.ileChoisie]}</span>
           <span class="espace" />
+          <button class="bouton carre" title={TEXTES.atelierAide} onClick={() => (this.atelierVu ? this.fermer() : this.ouvrirAtelier())}>
+            <Ico nom="enclume" />
+          </button>
           <button class="bouton carre" title={TEXTES.grimoire} onClick={() => (this.livre ? this.fermer() : this.ouvrirLivre())}>
             <Ico nom="livre" />
           </button>
@@ -561,6 +606,7 @@ export class ControleurInterface {
           );
         })}
         {this.livre && this.dessinerLivre(this.livre)}
+        {this.atelierVu && this.dessinerAtelier(this.atelierVu)}
       </div>
     );
   }
@@ -603,6 +649,62 @@ export class ControleurInterface {
           </button>
         ))}
       </div>
+    );
+  }
+
+  private dessinerAtelier(vue: Capacite) {
+    const solde = this.soldeEtoiles();
+    const prixVue = etoilesPour(vue, this.atelier);
+    const manqueVue = prixVue > solde;
+    const choisir = (c: Capacite) => {
+      this.atelierVu = c;
+      this.dessiner();
+    };
+    return (
+      <section class="bulle haut livre atelier">
+        <Entete titre={TEXTES.atelier} sous={TEXTES.solde(solde)} fermer={() => this.fermer()} />
+        <div class="corps">
+          <div class="colonnes">
+            {TYPES.map((t) => (
+              <div class="colonne">
+                <span class="tete">{TOURS_TEXTES[t].nom}</span>
+                {CAPACITES_DE[t].map((c) => {
+                  const ouverte = this.atelier.includes(c);
+                  const prix = etoilesPour(c, this.atelier);
+                  return (
+                    <button class={`carte${ouverte ? ' ouverte' : prix > solde ? ' manque' : ''}${vue === c ? ' choisie' : ''}`} onClick={() => choisir(c)}>
+                      <img class={`vignette${ouverte ? '' : ' fermee'}`} src={this.options.vignette(t, 4, c)} alt="" />
+                      <span class="nom">{CAPACITES_TEXTES[c].nom}</span>
+                      <span class={`qte${!ouverte && prix > solde ? ' manque' : ''}`}>
+                        {ouverte ? '✓' : <>{prix}<Ico nom="etoile" /></>}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          <div class="detail">
+            <h3>{CAPACITES_TEXTES[vue].nom}</h3>
+            <p>{CAPACITES_TEXTES[vue].role}</p>
+            <p class="discret">{TEXTES.atelierExplication}</p>
+          </div>
+          <div class="rang">
+            {this.atelier.includes(vue) ? (
+              <button class="bouton valider" disabled>
+                {TEXTES.ouverte}
+              </button>
+            ) : (
+              <button class={`bouton valider${manqueVue ? ' manque' : ''}`} disabled={manqueVue} onClick={() => this.ouvrirCapacite(vue)}>
+                {TEXTES.ouvrir} · {prixVue} <Ico nom="etoile" />
+              </button>
+            )}
+            <button class="bouton danger" disabled={this.atelier.length === 0} onClick={() => this.rembourser()}>
+              {TEXTES.toutRembourser}
+            </button>
+          </div>
+        </div>
+      </section>
     );
   }
 
@@ -692,7 +794,7 @@ export class ControleurInterface {
           enHaut={b.enHaut}
           vignette={this.options.vignette(t.type, t.stade, t.capacite)}
           vignetteCapacite={(c) => this.options.vignette(t.type, 4, c)}
-          capaciteVue={this.capaciteVue ?? CAPACITES_DE[t.type][0]}
+          capaciteVue={this.capaciteVue ?? CAPACITES_DE[t.type].find((c) => i.regles.capacites.includes(c)) ?? CAPACITES_DE[t.type][0]}
           voirCapacite={(c) => {
             this.capaciteVue = c;
             this.dessiner();
@@ -1113,9 +1215,12 @@ function BulleTour(p: {
   if (t.prixCapacites) {
     // Stade 3 : deux cartes de capacité ; la carte vue montre ses chiffres, « Choisir » l'achète pour de bon.
     const deux = CAPACITES_DE[t.type];
+    // Capacités ouvertes dans l'Atelier ; une fermée reste visible, grisée, avec un cadenas.
+    const ouvertes = p.i.regles.capacites;
     const vue = p.capaciteVue;
     const prixVue = t.prixCapacites[deux.indexOf(vue)]!;
-    const manqueVue = p.i.spores < prixVue;
+    const fermeeVue = !ouvertes.includes(vue);
+    const manqueVue = fermeeVue || p.i.spores < prixVue;
     return (
       <section class={`bulle ${p.enHaut ? 'haut' : 'bas'}`}>
         <Entete titre={TOURS_TEXTES[t.type].nom} sous={sous} vignette={p.vignette} fermer={p.fermer} />
@@ -1124,16 +1229,24 @@ function BulleTour(p: {
           <ul class="catalogue">
             {deux.map((c, n) => {
               const prixC = t.prixCapacites![n]!;
+              const fermee = !ouvertes.includes(c);
               return (
                 <li>
                   <button
-                    class={`carte${p.i.spores < prixC ? ' manque' : ''}${vue === c ? ' choisie' : ''}`}
+                    class={`carte${fermee || p.i.spores < prixC ? ' manque' : ''}${fermee ? ' interdite' : ''}${vue === c ? ' choisie' : ''}`}
+                    title={fermee ? TEXTES.capaciteFermee : undefined}
                     onMouseEnter={() => p.voirCapacite(c)}
                     onClick={() => p.voirCapacite(c)}
                   >
                     <img class="vignette" src={p.vignetteCapacite(c)} alt="" />
                     <span class="nom">{CAPACITES_TEXTES[c].nom}</span>
-                    <Prix n={prixC} manque={p.i.spores < prixC} />
+                    {fermee ? (
+                      <span class="qte manque">
+                        <Ico nom="cadenas" />
+                      </span>
+                    ) : (
+                      <Prix n={prixC} manque={p.i.spores < prixC} />
+                    )}
                   </button>
                 </li>
               );
@@ -1145,9 +1258,15 @@ function BulleTour(p: {
             <p class="discret">{TEXTES.capaciteDefinitif}</p>
           </div>
           <div class="rang">
-            <button class={`bouton valider${manqueVue ? ' manque' : ''}`} disabled={manqueVue} onClick={() => p.choisirCapacite(vue)}>
-              {TEXTES.choisir} {CAPACITES_TEXTES[vue].nom} <Prix n={prixVue} manque={manqueVue} />
-            </button>
+            {fermeeVue ? (
+              <button class="bouton valider manque" disabled>
+                <Ico nom="cadenas" /> {TEXTES.capaciteFermee}
+              </button>
+            ) : (
+              <button class={`bouton valider${manqueVue ? ' manque' : ''}`} disabled={manqueVue} onClick={() => p.choisirCapacite(vue)}>
+                {TEXTES.choisir} {CAPACITES_TEXTES[vue].nom} <Prix n={prixVue} manque={manqueVue} />
+              </button>
+            )}
             {vente}
           </div>
         </div>

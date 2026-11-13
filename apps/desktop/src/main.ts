@@ -26,7 +26,8 @@ rendu.appliquerIle(ileDe(niveau));
 // ─── Partie : le moteur avance à pas fixes, l'affichage glisse entre deux pas ──────────
 /** Au-delà, on lâche du retard plutôt que de rattraper (fenêtre restée cachée, par exemple). */
 const PAS_MAX_PAR_IMAGE = 10;
-let partie = partieDe(niveau, Date.now() >>> 0);
+// Partie d'attente (on démarre sur l'accueil) ; chaque lancement en refait une avec les capacités de l'Atelier.
+let partie = partieDe(niveau, Date.now() >>> 0, []);
 let precedent: Instantane | null = null;
 let actuel = partie.instantane();
 let reserve = 0;
@@ -129,7 +130,7 @@ rendu.montrer('carte');
 ui.maj(actuel);
 
 function recommencer(): void {
-  partie = partieDe(niveau, Date.now() >>> 0);
+  partie = partieDe(niveau, Date.now() >>> 0, ui.capacitesOuvertes);
   ui.jeu = jeuDe(partie);
   precedent = null;
   actuel = partie.instantane();

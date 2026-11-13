@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ileForet } from './carte';
-import { SPORES_DEPART, TYPES_TOURS, type Vague } from './contenu';
+import { SPORES_DEPART, TOUTES_CAPACITES, TYPES_TOURS, type Vague } from './contenu';
 import { NIVEAUX_FORET, niveauOuvert, partieDe } from './niveaux';
 import { Partie } from './partie';
 
@@ -12,7 +12,7 @@ const herbe = { x: 2, y: 5 };
 describe('règles des niveaux', () => {
   it('sans contrainte : 120 spores, 4 tours, ronces permises', () => {
     const p = new Partie(ile, vagues, 1);
-    expect(p.instantane().regles).toEqual({ spores: SPORES_DEPART, tours: TYPES_TOURS, ronces: true });
+    expect(p.instantane().regles).toEqual({ spores: SPORES_DEPART, tours: TYPES_TOURS, ronces: true, capacites: TOUTES_CAPACITES });
   });
 
   it('les spores de départ suivent le niveau', () => {

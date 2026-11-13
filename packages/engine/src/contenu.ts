@@ -166,6 +166,28 @@ export const CAPACITES_DE: Record<TypeTour, readonly [Capacite, Capacite]> = {
   canon: ['mitraille', 'grosCalibre'],
 };
 
+/** Toutes les capacités, tour par tour, dans l'ordre de `CAPACITES_DE`. */
+export const TOUTES_CAPACITES: Capacite[] = Object.values(CAPACITES_DE).flat();
+
+/** Étoiles pour ouvrir une capacité dans l'Atelier : 1 pour la première de sa tour, 2 pour la seconde. */
+export const ETOILES_CAPACITE = [1, 2] as const;
+
+/** Prix en étoiles de `capacite`, sachant celles déjà ouvertes (0 si elle l'est déjà). */
+export function etoilesPour(capacite: Capacite, ouvertes: readonly Capacite[]): number {
+  if (ouvertes.includes(capacite)) return 0;
+  const tour = (Object.keys(CAPACITES_DE) as TypeTour[]).find((t) => CAPACITES_DE[t].includes(capacite))!;
+  const deja = CAPACITES_DE[tour].filter((c) => ouvertes.includes(c)).length;
+  return ETOILES_CAPACITE[Math.min(deja, ETOILES_CAPACITE.length - 1)]!;
+}
+
+/** Étoiles dépensées pour ouvrir `ouvertes` (ce que rend « Tout rembourser »). */
+export function etoilesDepensees(ouvertes: readonly Capacite[]): number {
+  return Object.values(CAPACITES_DE).reduce((somme, paire) => {
+    const n = paire.filter((c) => ouvertes.includes(c)).length;
+    return somme + ETOILES_CAPACITE.slice(0, n).reduce((a, b) => a + b, 0);
+  }, 0);
+}
+
 export const CAPACITES: Record<Capacite, FicheCapacite> = {
   essaim: { tour: 'ruche', prix: 130, degats: 6, portee: 3.4, cadence: 0.3, tirs: 2 },
   dard: { tour: 'ruche', prix: 130, degats: 9, portee: 3.4, cadence: 0.35, percant: true, poison: { degatsParSeconde: 4, duree: 3 } },

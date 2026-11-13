@@ -957,3 +957,55 @@ table.stades .icone {
   text-align: right;
   font-family: 'Chiffres', var(--police, sans-serif);
 }
+
+/* Atelier : 4 colonnes (une par tour), 2 capacités chacune, ouvertes avec les étoiles. */
+.atelier .colonnes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 2px;
+}
+.atelier .colonne {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.atelier .tete {
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--parchemin);
+  text-shadow: var(--texte-cerne);
+}
+.atelier .carte {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto auto;
+  justify-items: center;
+  text-align: center;
+  padding: 3px 2px 4px;
+}
+.atelier .carte .vignette {
+  grid-row: auto;
+}
+.atelier .carte .nom {
+  font-size: 10px;
+  line-height: 1.1;
+}
+.atelier .carte .qte {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+.atelier .carte.ouverte {
+  background: #d6e8b8;
+}
+.atelier .carte.ouverte .qte {
+  color: var(--vert);
+}
+.vignette.fermee {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+.atelier .detail h3 {
+  margin: 0;
+}

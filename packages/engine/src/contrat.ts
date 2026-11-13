@@ -125,6 +125,8 @@ export interface Regles {
   tours: TypeTour[];
   /** Peut-on faire pousser des ronces ? */
   ronces: boolean;
+  /** Capacités du stade 4 ouvertes dans l'Atelier (avec les étoiles) ; les autres sont refusées. */
+  capacites: Capacite[];
 }
 
 export interface Instantane {

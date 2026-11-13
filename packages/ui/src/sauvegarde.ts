@@ -1,6 +1,6 @@
 // Ce qui reste d'une partie à l'autre, dans le stockage local de la fenêtre : monstres déjà rencontrés et
 // meilleures étoiles de chaque niveau.
-import type { TypeMonstre } from '@spore-siege/engine';
+import { TOUTES_CAPACITES, type Capacite, type TypeMonstre } from '@spore-siege/engine';
 
 const CLE_DECOUVERTS = 'spore-siege:decouverts';
 const CLE_ETOILES = 'spore-siege:etoiles';
@@ -83,5 +83,25 @@ export function ecrireMusique(active: boolean): void {
     localStorage.setItem(CLE_MUSIQUE, active ? '1' : '0');
   } catch {
     // Stockage indisponible : le choix ne sera pas retenu.
+  }
+}
+
+const CLE_ATELIER = 'spore-siege:atelier';
+
+/** Capacités du stade 4 ouvertes dans l'Atelier (aucune au départ). */
+export function lireAtelier(): Capacite[] {
+  try {
+    const brut = JSON.parse(localStorage.getItem(CLE_ATELIER) ?? '[]') as unknown;
+    return Array.isArray(brut) ? TOUTES_CAPACITES.filter((c) => brut.includes(c)) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function ecrireAtelier(ouvertes: readonly Capacite[]): void {
+  try {
+    localStorage.setItem(CLE_ATELIER, JSON.stringify(ouvertes));
+  } catch {
+    // Stockage indisponible : les capacités ouvertes ne seront pas retenues.
   }
 }

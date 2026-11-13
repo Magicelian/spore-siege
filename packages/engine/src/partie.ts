@@ -17,6 +17,7 @@ import {
   SPORES_DEPART,
   TOURS,
   TYPES_TOURS,
+  TOUTES_CAPACITES,
   type StadeTour,
   type Vague,
 } from './contenu';
@@ -134,7 +135,7 @@ export class Partie {
     graine: number,
     regles: Partial<Regles> = {},
   ) {
-    this.regles = { spores: SPORES_DEPART, tours: [...TYPES_TOURS], ronces: true, ...regles };
+    this.regles = { spores: SPORES_DEPART, tours: [...TYPES_TOURS], ronces: true, capacites: [...TOUTES_CAPACITES], ...regles };
     this.spores = this.regles.spores;
     this.sentier = lireSentier(ile);
     this.emplacementsRonces = emplacementsRonces(ile, this.sentier.carrefours);
@@ -183,6 +184,7 @@ export class Partie {
       case 'choisirCapacite': {
         const tour = this.tours.find((t) => t.id === commande.id);
         if (!tour || tour.stade !== 3 || !CAPACITES_DE[tour.type].includes(commande.capacite)) return false;
+        if (!this.regles.capacites.includes(commande.capacite)) return false;
         const prix = CAPACITES[commande.capacite].prix;
         if (this.spores < prix) return false;
         this.spores -= prix;
@@ -327,7 +329,7 @@ export class Partie {
       etoiles: this.phase === 'victoire' ? etoiles(this.pvSouche) : 0,
       monstresVague: this.monstresVague(),
       arrivees: this.arrivees(),
-      regles: { ...this.regles, tours: [...this.regles.tours] },
+      regles: { ...this.regles, tours: [...this.regles.tours], capacites: [...this.regles.capacites] },
       degats: { ...this.degats },
     };
   }
