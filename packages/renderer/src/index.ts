@@ -4,6 +4,7 @@ import type { Biome, Case, EvenementVu, Ile, Instantane } from '@spore-siege/eng
 import { Archipel, COTE_ARCHIPEL, ETAPES_ARCHIPEL, reduire } from './archipel';
 import { CameraIso } from './camera';
 import { construireIle } from './ile';
+import { centreCase } from './repere';
 import { MonstresRendu } from './monstres';
 import { Pixelisation } from './pixelisation';
 import { SoucheRendu } from './souche';
@@ -122,6 +123,18 @@ export class Rendu {
     return this.parcours.ilots.map(({ cle, centre }) => {
       p.copy(centre).project(this.vueCarte.camera);
       return { cle, x: r.left + ((p.x + 1) / 2) * r.width, y: r.top + ((1 - p.y) / 2) * r.height };
+    });
+  }
+
+  /** Où tombent, dans la fenêtre (pixels CSS), les cases de l'île de la partie (un peu au-dessus du sol). */
+  ecranDe(cases: Case[]): { x: number; y: number }[] {
+    const ile = this.ile;
+    if (!ile) return [];
+    const r = this.canevas.getBoundingClientRect();
+    this.vue.camera.updateMatrixWorld();
+    return cases.map(({ x, y }) => {
+      const p = centreCase(x, y, ile).setY(0.5).project(this.vue.camera);
+      return { x: r.left + ((p.x + 1) / 2) * r.width, y: r.top + ((1 - p.y) / 2) * r.height };
     });
   }
 

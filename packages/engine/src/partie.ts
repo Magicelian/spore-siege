@@ -1,6 +1,6 @@
 // Une partie sur une île : vagues, monstres qui suivent le sentier, tours qui tirent, spores, vie de la souche.
 // Pur et déterministe : mêmes île, vagues, graine et commandes → même partie, pas pour pas.
-import type { Capacite, Case, Commande, Regles, EvenementVu, FlaqueVu, ImpactVu, Ile, Instantane, MonstreVu, Phase, Position, TourVue, TypeMonstre, TypeTour } from './contrat';
+import type { Arrivee, Capacite, Case, Commande, Regles, EvenementVu, FlaqueVu, ImpactVu, Ile, Instantane, MonstreVu, Phase, Position, TourVue, TypeMonstre, TypeTour } from './contrat';
 import {
   BONUS_PAR_SECONDE_GAGNEE,
   BONUS_VAGUE,
@@ -326,6 +326,7 @@ export class Partie {
       bonusLancer: this.bonusLancer(),
       etoiles: this.phase === 'victoire' ? etoiles(this.pvSouche) : 0,
       monstresVague: this.monstresVague(),
+      arrivees: this.arrivees(),
       regles: { ...this.regles, tours: [...this.regles.tours] },
       degats: { ...this.degats },
     };
@@ -350,12 +351,11 @@ export class Partie {
     return this.phase === 'pause' ? Math.ceil(PAUSE_SECONDES - this.pasPhase / PAS_PAR_SECONDE) : 0;
   }
 
-  private commencerVague(): void {
-    this.phase = 'vague';
-    this.pasPhase = 0;
+  /** Lâchers de la vague `n` (1 = première), triés par pas ; les groupes sans plage tournent sur toutes. */
+  private lachersDe(n: number): Lacher[] {
     const plages = this.sentier.plages.length;
     let tour = 0;
-    this.lachers = (this.vagues[this.vague - 1] ?? [])
+    return (this.vagues[n - 1] ?? [])
       .flatMap((g) =>
         Array.from({ length: g.nombre }, (_, i) => ({
           pas: Math.round(((g.debut ?? 0) + i * g.intervalle) * PAS_PAR_SECONDE),
@@ -365,6 +365,25 @@ export class Partie {
       )
       // Tri stable : à pas égal, l'ordre des groupes est gardé.
       .sort((a, b) => a.pas - b.pas);
+  }
+
+  /** Plages de la vague en cours ou à venir, dans l'ordre de la carte, avec leurs sortes de monstres. */
+  private arrivees(): Arrivee[] {
+    if (this.phase !== 'pause' && this.phase !== 'vague') return [];
+    const parPlage = new Map<number, Set<TypeMonstre>>();
+    for (const { plage, type } of this.lachersDe(this.vague)) {
+      if (!parPlage.has(plage)) parPlage.set(plage, new Set());
+      parPlage.get(plage)!.add(type);
+    }
+    return [...parPlage]
+      .sort(([a], [b]) => a - b)
+      .map(([plage, types]) => ({ plage, depart: { ...this.sentier.plages[plage]!.depart }, types: [...types] }));
+  }
+
+  private commencerVague(): void {
+    this.phase = 'vague';
+    this.pasPhase = 0;
+    this.lachers = this.lachersDe(this.vague);
   }
 
   private lacher({ type, plage }: Lacher): void {

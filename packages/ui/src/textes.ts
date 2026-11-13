@@ -125,6 +125,7 @@ export const TEXTES = {
   rejouer: 'Rejouer',
   fermer: 'Fermer',
   nouveauMonstre: 'Nouveau monstre !',
+  arriveeAide: (noms: string) => `La prochaine vague arrive par ici : ${noms}.`,
   nouveauAide: (nom: string) => `Nouveau monstre : ${nom}. Clique pour lire sa fiche.`,
   grimoire: 'Grimoire',
   grimoireAide: 'Monstres rencontrés et tours, avec leurs chiffres',

@@ -115,6 +115,10 @@ const ui = new ControleurInterface(document.getElementById('interface')!, jeuDe(
     const e = Math.floor(echelleAffichage());
     return rendu.positionsCarte().map((p) => ({ ...p, x: p.x / e, y: p.y / e }));
   },
+  ecranDe: (cases) => {
+    const e = Math.floor(echelleAffichage());
+    return rendu.ecranDe(cases).map((p) => ({ x: p.x / e, y: p.y / e }));
+  },
   lancer: (n) => {
     if (n !== niveau) rendu.appliquerIle(ileDe(n));
     niveau = n;

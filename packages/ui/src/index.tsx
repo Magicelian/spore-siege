@@ -45,6 +45,8 @@ export interface OptionsInterface {
   changerEcran(ecran: Ecran, ile?: Biome): void;
   /** Étapes de la carte montrée (îles ou niveaux), avec le dessus de leur îlot à l'écran (pixels de l'interface). */
   positionsCarte(): { cle: string; x: number; y: number }[];
+  /** Où tombent ces cases de l'île à l'écran (pixels de l'interface). */
+  ecranDe(cases: Case[]): { x: number; y: number }[];
   /** Prépare une partie neuve sur ce niveau. */
   lancer(niveau: Niveau): void;
 }
@@ -387,6 +389,7 @@ export class ControleurInterface {
           carte={() => this.ouvrirPause()}
         />
         {(i.phase === 'victoire' || i.phase === 'defaite') && <EcranFin i={i} rejouer={this.options.recommencer} carte={() => this.aller('niveaux')} vignette={(t) => this.options.vignette(t, 3)} />}
+        {this.dessinerArrivees(i)}
         {this.dessinerMedaillons(i)}
         {!this.livre && !this.fiche && !this.pauseMenu && <BarreBoss i={i} />}
         {this.bulle && this.dessinerBulle(i, this.bulle)}
@@ -563,6 +566,29 @@ export class ControleurInterface {
   }
 
   /** Médaillons des monstres jamais vus qui arrivent avec la vague en cours ou à venir. */
+  /** Pendant la préparation : un panneau au-dessus de chaque plage d'où viendra la vague, avec ses monstres. */
+  private dessinerArrivees(i: Instantane) {
+    if (i.phase !== 'pause' || i.arrivees.length === 0) return null;
+    if (this.fiche || this.livre || this.pauseMenu) return null;
+    const places = this.options.ecranDe(i.arrivees.map((a) => a.depart));
+    return i.arrivees.map((a, k) => {
+      const place = places[k];
+      if (!place) return null;
+      const noms = a.types.map((t) => MONSTRES_TEXTES[t].nom).join(', ');
+      return (
+        <div class="arrivee" style={{ left: `${place.x}px`, top: `${place.y}px` }} title={TEXTES.arriveeAide(noms)}>
+          <span class="panneau">
+            {a.types.slice(0, 3).map((t) => (
+              <img class="vignette" src={this.options.vignetteMonstre(t)} alt="" />
+            ))}
+            {a.types.length > 3 && <span class="plus">+{a.types.length - 3}</span>}
+          </span>
+          <span class="fleche" />
+        </div>
+      );
+    });
+  }
+
   private dessinerMedaillons(i: Instantane) {
     if (i.phase !== 'pause' && i.phase !== 'vague') return null;
     if (this.bulle || this.fiche || this.livre || this.pauseMenu) return null;

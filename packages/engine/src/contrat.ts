@@ -154,10 +154,19 @@ export interface Instantane {
   etoiles: number;
   /** Sortes de monstres de la vague en cours ou à venir (pour annoncer les nouveaux). */
   monstresVague: TypeMonstre[];
+  /** Plages d'où partira (ou part) la vague en cours ou à venir, avec les sortes qui en viennent. */
+  arrivees: Arrivee[];
   /** Contraintes du niveau joué. */
   regles: Regles;
   /** Dégâts infligés depuis le début de la partie, par sorte de tour (pour le bilan de fin). */
   degats: Record<TypeTour, number>;
+}
+
+/** Une plage de débarquement de la vague : sa case de sable et les sortes de monstres qui en partent. */
+export interface Arrivee {
+  plage: number;
+  depart: Case;
+  types: TypeMonstre[];
 }
 
 /** Ce que le frontend peut demander ; le moteur refuse ce qui n'a pas de sens. */
