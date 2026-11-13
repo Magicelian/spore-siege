@@ -3,13 +3,15 @@
 //  - naïf : ne pose que des ruches, au meilleur endroit, sans jamais les améliorer ;
 //  - simple : deux ruches, puis varie les quatre tours, puis alterne construction et amélioration ; pas de ronces ;
 //  - bon : ferme des branches avec des ronces pour allonger le chemin, choisit ses tours selon les monstres à venir,
-//    améliore ses meilleures tours avant d'en poser d'autres.
+//    améliore ses meilleures tours avant d'en poser d'autres ;
+//  - seul:<tour> : une seule sorte de tour, six au meilleur endroit puis améliore la plus faible (aucune tour ne doit
+//    suffire à elle seule).
 import type { Case, Ile, Phase, TypeMonstre, TypeTour } from './contrat';
 import { PAS_PAR_SECONDE, TOURS, type Vague } from './contenu';
 import { Partie } from './partie';
 import { cle, route } from './sentier';
 
-export type Niveau = 'naif' | 'simple' | 'bon';
+export type Niveau = 'naif' | 'simple' | 'bon' | `seul:${TypeTour}`;
 
 export interface Bilan {
   niveau: Niveau;
@@ -87,6 +89,11 @@ class Joueur {
     };
 
     if (this.niveau === 'naif') return poser('ruche');
+
+    if (this.niveau.startsWith('seul:')) {
+      const type = this.niveau.slice('seul:'.length) as TypeTour;
+      return tours.length >= 6 && plusFaible ? ameliorer : poser(type);
+    }
 
     if (this.niveau === 'simple') {
       const ameliorees = tours.reduce((n, t) => n + t.stade - 1, 0);

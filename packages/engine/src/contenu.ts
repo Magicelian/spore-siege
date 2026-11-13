@@ -75,9 +75,10 @@ export const TOURS: Record<TypeTour, FicheTour> = {
   },
   cristal: {
     stades: [
-      { prix: 70, degats: 6, portee: 2.5, cadence: 1.2, rebonds: 2 },
-      { prix: 55, degats: 9, portee: 2.7, cadence: 1.1, rebonds: 3 },
-      { prix: 90, degats: 13, portee: 3, cadence: 1, rebonds: 4 },
+      // Rééquilibré le 13/11/2026 : à 70 spores / 6 dégâts / 1,2 s, des cristaux seuls gagnaient à 3 étoiles.
+      { prix: 75, degats: 5, portee: 2.5, cadence: 1.6, rebonds: 2 },
+      { prix: 60, degats: 8, portee: 2.7, cadence: 1.5, rebonds: 3 },
+      { prix: 95, degats: 11, portee: 3, cadence: 1.4, rebonds: 4 },
     ],
     eclair: { distance: 1.8, attenuation: 0.75 },
   },

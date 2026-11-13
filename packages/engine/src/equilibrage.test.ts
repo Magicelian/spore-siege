@@ -11,12 +11,14 @@ const bilans = (['naif', 'simple', 'bon'] as Niveau[]).map((n) => jouer(n, ileFo
 declare const process: { stderr: { write(texte: string): void } };
 
 const [naif, simple, bon] = bilans as [Bilan, Bilan, Bilan];
+/** Une seule sorte de tour, jamais de ronce : aucune ne doit suffire à gagner. */
+const seuls = (['ruche', 'cristal', 'mortier', 'canon'] as const).map((t) => jouer(`seul:${t}`, ileForet(), VAGUES_FORET));
 
 describe('équilibrage de l’île-forêt', () => {
   it('rapport (affiché dans la sortie des tests)', () => {
-    for (const b of bilans)
+    for (const b of [...bilans, ...seuls])
       process.stderr.write(
-        `${b.niveau.padEnd(6)} ${b.phase.padEnd(8)} vague ${b.vague}  PV ${b.pv}  ★${b.etoiles}  ${b.minutes} min  pertes ${b.pertes.join(' ')}  ${b.tours.join(' ')}\n`,
+        `${b.niveau.padEnd(12)} ${b.phase.padEnd(8)} vague ${b.vague}  PV ${b.pv}  ★${b.etoiles}  ${b.minutes} min  pertes ${b.pertes.join(' ')}  ${b.tours.join(' ')}\n`,
       );
   });
 
@@ -40,5 +42,9 @@ describe('équilibrage de l’île-forêt', () => {
   it('une partie gagnée dure environ un quart d’heure', () => {
     expect(bon.minutes).toBeGreaterThanOrEqual(12);
     expect(bon.minutes).toBeLessThanOrEqual(17);
+  });
+
+  it('aucune tour ne gagne seule', () => {
+    for (const b of seuls) expect(b.phase, b.niveau).toBe('defaite');
   });
 });
