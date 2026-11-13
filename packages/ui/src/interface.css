@@ -853,3 +853,14 @@ table.stades .icone {
 .barre-boss .encoche.passee {
   background: var(--discret);
 }
+
+/* Repères de la carte d'une île : planche compacte (étoiles d'une île, seuil du boss), boss marqué en rouge. */
+.repere .planche.petite {
+  height: 16px;
+  gap: 2px;
+  font-size: 10px;
+}
+.repere.boss .planche:last-child {
+  color: #ffd2c4;
+  background: #5a1f17;
+}

@@ -2,8 +2,8 @@
 // visible, bulles au clic sur l'île (construire, tour, ronce).
 // Le contrôleur garde l'état de l'interface ; le frontend lui donne les instantanés et lit l'aperçu à dessiner.
 import { render } from 'preact';
-import type { Biome, Capacite, Case, Commande, Ile, Instantane, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
-import { CAPACITES, CAPACITES_DE, MONSTRES, PART_RONCE_RENDUE, PRIX_RONCE, TOURS } from '@spore-siege/engine';
+import type { Biome, Capacite, Case, Commande, Ile, Instantane, Niveau, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
+import { CAPACITES, CAPACITES_DE, MONSTRES, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, PRIX_RONCE, SEUIL_BOSS, TOURS } from '@spore-siege/engine';
 import { icone, type Icone } from './icones';
 import { ecrireDecouverts, ecrireEtoiles, ecrireMusique, ecrireSons, lireDecouverts, lireEtoiles, lireMusique, lireSons } from './sauvegarde';
 import { Sons } from './sons';
@@ -19,6 +19,8 @@ export interface Jeu {
   ronceLibre(c: Case): boolean;
   readonly emplacementsRonces: readonly Case[];
   readonly ile: Ile;
+  /** Id du niveau joué, pour ranger ses étoiles. */
+  readonly niveau: string;
 }
 
 /** Réglages de la fenêtre, seulement dans l'application (pas dans un navigateur). */
@@ -39,16 +41,16 @@ export interface OptionsInterface {
   vignetteMonstre(type: TypeMonstre): string;
   recommencer(): void;
   fenetre?: Fenetre;
-  /** Le canevas doit montrer la carte des îles ou l'île de la partie. */
-  changerEcran(ecran: Ecran): void;
-  /** Îles dans l'ordre du parcours, avec le dessus de leur îlot à l'écran (pixels de l'interface). */
-  positionsCarte(): { biome: Biome; x: number; y: number }[];
-  /** Îles qui ont déjà leurs vagues. */
-  ilesJouables: readonly Biome[];
+  /** Le canevas doit montrer l'archipel, la carte d'une île (`ile`) ou l'île de la partie. */
+  changerEcran(ecran: Ecran, ile?: Biome): void;
+  /** Étapes de la carte montrée (îles ou niveaux), avec le dessus de leur îlot à l'écran (pixels de l'interface). */
+  positionsCarte(): { cle: string; x: number; y: number }[];
+  /** Prépare une partie neuve sur ce niveau. */
+  lancer(niveau: Niveau): void;
 }
 
-/** Accueil (titre + Jouer), carte des îles, ou partie en cours. */
-export type Ecran = 'accueil' | 'carte' | 'partie';
+/** Accueil (titre + Jouer), archipel, carte d'une île (ses niveaux), ou partie en cours. */
+export type Ecran = 'accueil' | 'carte' | 'niveaux' | 'partie';
 
 /** Tour ou ronce fantôme à dessiner sur l'île, avec sa portée. */
 export interface Apercu {
@@ -78,6 +80,8 @@ const memeCase = (a: Case, b: Case) => a.x === b.x && a.y === b.y;
 export class ControleurInterface {
   vitesse: Vitesse = 1;
   ecran: Ecran = 'accueil';
+  /** Île dont on montre (ou joue) les niveaux. */
+  private ileChoisie: Biome = 'foret';
   /** Bruitages ; coupés tant que le joueur ne les a pas allumés par le menu de l’icône (choix retenu). */
   readonly sons = new Sons();
   /** Meilleures étoiles de chaque île, gardées d'une partie à l'autre. */
@@ -126,8 +130,8 @@ export class ControleurInterface {
   maj(instantane: Instantane): void {
     this.instantane = instantane;
     if (instantane.phase === 'victoire' || instantane.phase === 'defaite') this.bulle = null;
-    if (instantane.phase === 'victoire' && instantane.etoiles > (this.etoiles[this.jeu.ile.biome] ?? 0)) {
-      this.etoiles[this.jeu.ile.biome] = instantane.etoiles;
+    if (instantane.phase === 'victoire' && instantane.etoiles > (this.etoiles[this.jeu.niveau] ?? 0)) {
+      this.etoiles[this.jeu.niveau] = instantane.etoiles;
       ecrireEtoiles(this.etoiles);
     }
     const v = this.vagueJouee;
@@ -218,16 +222,26 @@ export class ControleurInterface {
   aller(ecran: Ecran): void {
     this.fermer();
     this.ecran = ecran;
-    this.options.changerEcran(ecran);
+    this.options.changerEcran(ecran, ecran === 'niveaux' ? this.ileChoisie : undefined);
     this.dessiner();
   }
 
-  /** Lance une partie neuve sur cette île. */
-  jouer(_biome: Biome): void {
-    // Une seule île jouable en V1 : `recommencer` la relance ; le choix de l'île viendra avec les autres.
-    this.options.recommencer();
+  /** Ouvre la carte d'une île : ses niveaux. */
+  choisirIle(biome: Biome): void {
+    this.ileChoisie = biome;
+    this.aller('niveaux');
+  }
+
+  /** Lance une partie neuve sur ce niveau. */
+  jouer(niveau: Niveau): void {
+    this.options.lancer(niveau);
     this.vitesse = 1;
     this.aller('partie');
+  }
+
+  /** Étoiles gagnées sur les niveaux d'une île. */
+  private etoilesIle(biome: Biome): number {
+    return (NIVEAUX[biome] ?? []).reduce((n, x) => n + (this.etoiles[x.id] ?? 0), 0);
   }
 
   /** À rappeler quand la fenêtre change de taille (les îlots de la carte bougent à l'écran). */
@@ -272,7 +286,7 @@ export class ControleurInterface {
           >
             {TEXTES.recommencer}
           </button>
-          <button class="bouton large" onClick={() => this.aller('carte')}>
+          <button class="bouton large" onClick={() => this.aller('niveaux')}>
             {TEXTES.retourCarte}
           </button>
         </div>
@@ -358,6 +372,7 @@ export class ControleurInterface {
   private dessiner(): void {
     if (this.ecran === 'accueil') return render(this.dessinerAccueil(), this.element);
     if (this.ecran === 'carte') return render(this.dessinerCarte(), this.element);
+    if (this.ecran === 'niveaux') return render(this.dessinerNiveaux(), this.element);
     const i = this.instantane;
     if (!i) return;
     render(
@@ -371,7 +386,7 @@ export class ControleurInterface {
           livre={() => this.ouvrirLivre()}
           carte={() => this.ouvrirPause()}
         />
-        {(i.phase === 'victoire' || i.phase === 'defaite') && <EcranFin i={i} rejouer={this.options.recommencer} carte={() => this.aller('carte')} />}
+        {(i.phase === 'victoire' || i.phase === 'defaite') && <EcranFin i={i} rejouer={this.options.recommencer} carte={() => this.aller('niveaux')} />}
         {this.dessinerMedaillons(i)}
         {!this.livre && !this.fiche && !this.pauseMenu && <BarreBoss i={i} />}
         {this.bulle && this.dessinerBulle(i, this.bulle)}
@@ -435,13 +450,15 @@ export class ControleurInterface {
 
   private dessinerCarte() {
     const iles = this.options.positionsCarte();
-    const total = iles.reduce((n, { biome }) => n + (this.etoiles[biome] ?? 0), 0);
+    const biomes = iles.map(({ cle }) => cle as Biome);
+    const total = biomes.reduce((n, b) => n + this.etoilesIle(b), 0);
+    const maximum = biomes.reduce((n, b) => n + 3 * (NIVEAUX[b]?.length ?? 5), 0);
     return (
       <div class="interface">
         <div class="bandeau">
           <span class="planche" title={TEXTES.etoilesTotal}>
             <Ico nom="etoile" />
-            {`${total}/${iles.length * 3}`}
+            {`${total}/${maximum}`}
           </span>
           <span class="planche">{TEXTES.archipel}</span>
           <span class="espace" />
@@ -449,30 +466,93 @@ export class ControleurInterface {
             <Ico nom="livre" />
           </button>
         </div>
-        {iles.map(({ biome, x, y }, n) => {
-          const precedente = iles[n - 1];
-          const ouverte = !precedente || (this.etoiles[precedente.biome] ?? 0) >= 1;
-          const jouable = ouverte && this.options.ilesJouables.includes(biome);
-          const etoiles = this.etoiles[biome] ?? 0;
+        {iles.map(({ cle, x, y }, n) => {
+          const biome = cle as Biome;
+          const precedente = NIVEAUX[biomes[n - 1]!];
+          // Une île s'ouvre quand le boss (dernier niveau) de la précédente est battu.
+          const ouverte = n === 0 || (!!precedente && (this.etoiles[precedente[precedente.length - 1]!.id] ?? 0) >= 1);
+          const jouable = ouverte && !!NIVEAUX[biome];
           return (
             <button
               class={`repere${jouable ? '' : ' ferme'}`}
               style={{ left: `${x}px`, top: `${y}px` }}
               title={jouable ? TEXTES.jouerIle(ILES_TEXTES[biome]) : ouverte ? TEXTES.pasEncore : TEXTES.verrouillee}
               disabled={!jouable}
-              onClick={() => this.jouer(biome)}
+              onClick={() => this.choisirIle(biome)}
             >
               <span class="etiquette">
                 {jouable ? (
-                  <span class="petites-etoiles">
-                    {[1, 2, 3].map((k) => (
-                      <img src={icone(k <= etoiles ? 'etoile' : 'etoileVide')} alt="" />
-                    ))}
+                  <span class="planche petite">
+                    <Ico nom="etoile" />
+                    {`${this.etoilesIle(biome)}/${3 * NIVEAUX[biome]!.length}`}
                   </span>
                 ) : (
                   <Ico nom="cadenas" />
                 )}
                 <span class="planche">{jouable ? ILES_TEXTES[biome] : `${ILES_TEXTES[biome]} · ${TEXTES.bientot}`}</span>
+              </span>
+            </button>
+          );
+        })}
+        {this.livre && this.dessinerLivre(this.livre)}
+      </div>
+    );
+  }
+
+  /** Carte d'une île : ses niveaux, leurs étoiles, les verrous (dont le seuil du boss). */
+  private dessinerNiveaux() {
+    const niveaux = NIVEAUX[this.ileChoisie] ?? [];
+    const places = new Map(this.options.positionsCarte().map((p) => [p.cle, p]));
+    return (
+      <div class="interface">
+        <div class="bandeau">
+          <button class="bouton carre" title={TEXTES.retourArchipel} onClick={() => this.aller('carte')}>
+            ←
+          </button>
+          <span class="planche" title={TEXTES.ileEtoiles}>
+            <Ico nom="etoile" />
+            {`${this.etoilesIle(this.ileChoisie)}/${3 * niveaux.length}`}
+          </span>
+          <span class="planche">{ILES_TEXTES[this.ileChoisie]}</span>
+          <span class="espace" />
+          <button class="bouton carre" title={TEXTES.grimoire} onClick={() => (this.livre ? this.fermer() : this.ouvrirLivre())}>
+            <Ico nom="livre" />
+          </button>
+        </div>
+        {niveaux.map((niveau, rang) => {
+          const place = places.get(niveau.id);
+          if (!place) return null;
+          const ouvert = niveauOuvert(niveaux, rang, this.etoiles);
+          const precedentGagne = rang === 0 || (this.etoiles[niveaux[rang - 1]!.id] ?? 0) >= 1;
+          const etoiles = this.etoiles[niveau.id] ?? 0;
+          return (
+            <button
+              class={`repere${ouvert ? '' : ' ferme'}${niveau.boss ? ' boss' : ''}`}
+              style={{ left: `${place.x}px`, top: `${place.y}px` }}
+              title={ouvert ? TEXTES.jouerNiveau(niveau.nom) : niveau.boss && precedentGagne ? TEXTES.bossFerme(SEUIL_BOSS) : TEXTES.niveauFerme}
+              disabled={!ouvert}
+              onClick={() => this.jouer(niveau)}
+            >
+              <span class="etiquette">
+                {ouvert ? (
+                  <span class="petites-etoiles">
+                    {[1, 2, 3].map((k) => (
+                      <img src={icone(k <= etoiles ? 'etoile' : 'etoileVide')} alt="" />
+                    ))}
+                  </span>
+                ) : niveau.boss && precedentGagne ? (
+                  <span class="planche petite">
+                    <Ico nom="cadenas" />
+                    {`${this.etoilesIle(this.ileChoisie) - (this.etoiles[niveau.id] ?? 0)}/${SEUIL_BOSS}`}
+                    <Ico nom="etoile" />
+                  </span>
+                ) : (
+                  <Ico nom="cadenas" />
+                )}
+                <span class="planche">
+                  {niveau.boss ? `${TEXTES.boss} · ` : `${rang + 1}. `}
+                  {niveau.nom}
+                </span>
               </span>
             </button>
           );

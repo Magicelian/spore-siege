@@ -2,7 +2,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { ileDe, NIVEAUX_FORET, partieDe, PAS_MS, type Partie, type Commande, type EvenementVu, type Instantane, type Phase } from '@spore-siege/engine';
+import { ileDe, NIVEAUX, NIVEAUX_FORET, partieDe, PAS_MS, type Niveau, type Partie, type Commande, type EvenementVu, type Instantane, type Phase } from '@spore-siege/engine';
 import { echelleAffichage, ORDRE_ILES, Rendu } from '@spore-siege/renderer';
 import { ControleurInterface, type Effet, type Fenetre, type Jeu } from '@spore-siege/ui';
 import '@spore-siege/ui/interface.css';
@@ -19,10 +19,9 @@ const TAILLES = [
 
 const conteneur = document.getElementById('jeu')!;
 const rendu = new Rendu(conteneur);
-/** Niveau joué ; un seul pour l'instant (la carte de l'île arrive en 8e). */
-const niveau = NIVEAUX_FORET[0]!;
-const ile = ileDe(niveau);
-rendu.appliquerIle(ile);
+/** Niveau joué : choisi sur la carte de l'île (le premier de la forêt en attendant). */
+let niveau: Niveau = NIVEAUX_FORET[0]!;
+rendu.appliquerIle(ileDe(niveau));
 
 // ─── Partie : le moteur avance à pas fixes, l'affichage glisse entre deux pas ──────────
 /** Au-delà, on lâche du retard plutôt que de rattraper (fenêtre restée cachée, par exemple). */
@@ -91,6 +90,7 @@ function jeuDe(p: Partie): Jeu {
     ronceLibre: (c) => p.ronceLibre(c),
     emplacementsRonces: p.emplacementsRonces,
     ile: p.ile,
+    niveau: niveau.id,
   };
 }
 
@@ -99,8 +99,10 @@ const ui = new ControleurInterface(document.getElementById('interface')!, jeuDe(
   vignetteMonstre: (type) => rendu.vignettes.monstre(type),
   recommencer,
   fenetre,
-  changerEcran: (ecran) => {
+  changerEcran: (ecran, ile) => {
     rendu.montrer(ecran === 'partie' ? 'ile' : 'carte');
+    if (ecran === 'carte') rendu.choisirParcours();
+    if (ecran === 'niveaux' && ile) rendu.choisirParcours({ biome: ile, niveaux: NIVEAUX[ile] ?? [] });
     dernierInstant = null;
   },
   // L'interface est grossie (zoom CSS) : ses pixels valent `--echelle` pixels de la fenêtre.
@@ -108,7 +110,11 @@ const ui = new ControleurInterface(document.getElementById('interface')!, jeuDe(
     const e = Math.floor(echelleAffichage());
     return rendu.positionsCarte().map((p) => ({ ...p, x: p.x / e, y: p.y / e }));
   },
-  ilesJouables: ['foret'],
+  lancer: (n) => {
+    if (n !== niveau) rendu.appliquerIle(ileDe(n));
+    niveau = n;
+    recommencer();
+  },
 });
 rendu.montrer('carte');
 ui.maj(actuel);

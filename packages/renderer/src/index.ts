@@ -1,7 +1,7 @@
 // Rendu de l'île : scène Three.js pixelisée, dans le style de Tiny Shrooms.
 import * as THREE from 'three';
 import type { Biome, Case, EvenementVu, Ile, Instantane } from '@spore-siege/engine';
-import { Archipel, COTE_ARCHIPEL } from './archipel';
+import { Archipel, COTE_ARCHIPEL, ETAPES_ARCHIPEL, reduire } from './archipel';
 import { CameraIso } from './camera';
 import { construireIle } from './ile';
 import { MonstresRendu } from './monstres';
@@ -47,7 +47,11 @@ export class Rendu {
   private readonly tours = new ToursRendu();
   private readonly sceneCarte = new THREE.Scene();
   private readonly vueCarte = new CameraIso();
-  private readonly archipel = new Archipel();
+  private readonly archipel = new Archipel(ETAPES_ARCHIPEL);
+  /** Carte montrée quand la scène est « carte » : l'archipel, ou celle d'une île (ses niveaux). */
+  private parcours: Archipel = this.archipel;
+  /** Cartes des îles déjà construites, par biome. */
+  private readonly cartesIles = new Map<Biome, Archipel>();
   private montree: Scene = 'ile';
   private ile: Ile | null = null;
   /** Appelé avant chaque image, avec l'instant en millisecondes : c'est là que le frontend fait tourner le moteur. */
@@ -92,17 +96,32 @@ export class Rendu {
   }
 
   /**
+   * Choisit la carte de parcours : l'archipel (sans argument) ou celle d'une île, dont les îlots sont ses niveaux
+   * en miniature (`niveaux` : id et carte en lettres de chacun, dans l'ordre).
+   */
+  choisirParcours(ile?: { biome: Biome; niveaux: readonly { id: string; carte: readonly string[] }[] }): void {
+    let parcours = this.archipel;
+    if (ile) {
+      parcours = this.cartesIles.get(ile.biome) ?? new Archipel(ile.niveaux.map((n) => ({ cle: n.id, biome: ile.biome, lettres: reduire(n.carte) })));
+      this.cartesIles.set(ile.biome, parcours);
+    }
+    this.sceneCarte.remove(this.parcours.groupe);
+    this.sceneCarte.add(parcours.groupe);
+    this.parcours = parcours;
+  }
+
+  /**
    * Où tombe, dans la fenêtre (pixels CSS), le dessus de chaque îlot de la carte : l'interface y pose les étoiles
    * et les cadenas.
    */
-  positionsCarte(): { biome: Biome; x: number; y: number }[] {
+  positionsCarte(): { cle: string; x: number; y: number }[] {
     const r = this.canevas.getBoundingClientRect();
     const p = new THREE.Vector3();
     // Sans image dessinée depuis (fenêtre cachée), la matrice de la caméra peut ne pas être à jour.
     this.vueCarte.camera.updateMatrixWorld();
-    return this.archipel.ilots.map(({ biome, centre }) => {
+    return this.parcours.ilots.map(({ cle, centre }) => {
       p.copy(centre).project(this.vueCarte.camera);
-      return { biome, x: r.left + ((p.x + 1) / 2) * r.width, y: r.top + ((1 - p.y) / 2) * r.height };
+      return { cle, x: r.left + ((p.x + 1) / 2) * r.width, y: r.top + ((1 - p.y) / 2) * r.height };
     });
   }
 
@@ -196,7 +215,7 @@ export class Rendu {
     this.derniereImage = instant;
     this.surImage?.(instant);
     if (this.montree === 'carte') {
-      this.archipel.animer(instant / 1000);
+      this.parcours.animer(instant / 1000);
       this.vueCarte.animer(dt);
       this.pixelisation.rendre(this.sceneCarte, this.vueCarte.camera, []);
     } else {

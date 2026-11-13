@@ -217,6 +217,22 @@ export const NIVEAUX_FORET: Niveau[] = [
   },
   { id: 'foret-5', nom: 'Cœur de la forêt', biome: 'foret', carte: CARTE_COEUR, vagues: VAGUES_COEUR, regles: {}, boss: true },
 ];
+/** Niveaux de chaque île, dans l'ordre du parcours ; une île sans niveaux n'est pas encore jouable. */
+export const NIVEAUX: Partial<Record<Biome, Niveau[]>> = { foret: NIVEAUX_FORET };
+
+/** Étoiles à réunir sur les 4 niveaux d'une île pour ouvrir son boss. */
+export const SEUIL_BOSS = 8;
+
+/** Un niveau est-il ouvert ? Le premier toujours ; les suivants avec ≥ 1 étoile au précédent ; le boss avec le seuil. */
+export function niveauOuvert(niveaux: readonly Niveau[], rang: number, etoiles: Readonly<Record<string, number>>): boolean {
+  const niveau = niveaux[rang];
+  if (!niveau) return false;
+  if (rang > 0 && (etoiles[niveaux[rang - 1]!.id] ?? 0) < 1) return false;
+  if (!niveau.boss) return true;
+  const avant = niveaux.slice(0, rang).reduce((n, x) => n + (etoiles[x.id] ?? 0), 0);
+  return avant >= SEUIL_BOSS;
+}
+
 export function ileDe(niveau: Niveau): Ile {
   return lireCarte(niveau.carte, niveau.biome);
 }

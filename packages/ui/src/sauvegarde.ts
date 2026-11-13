@@ -1,16 +1,23 @@
 // Ce qui reste d'une partie à l'autre, dans le stockage local de la fenêtre : monstres déjà rencontrés et
-// meilleures étoiles de chaque île.
-import type { Biome, TypeMonstre } from '@spore-siege/engine';
+// meilleures étoiles de chaque niveau.
+import type { TypeMonstre } from '@spore-siege/engine';
 
 const CLE_DECOUVERTS = 'spore-siege:decouverts';
 const CLE_ETOILES = 'spore-siege:etoiles';
 
-export type Etoiles = Partial<Record<Biome, number>>;
+/** Meilleures étoiles, par id de niveau (`foret-1`…). */
+export type Etoiles = Record<string, number>;
 
 export function lireEtoiles(): Etoiles {
   try {
     const brut = JSON.parse(localStorage.getItem(CLE_ETOILES) ?? '{}') as unknown;
-    return brut && typeof brut === 'object' ? (brut as Etoiles) : {};
+    const etoiles = brut && typeof brut === 'object' ? { ...(brut as Etoiles) } : {};
+    // Avant la 0.2.0, une seule forêt, rangée sous son biome : elle devient la Clairière (niveau 1).
+    if ('foret' in etoiles) {
+      etoiles['foret-1'] = Math.max(etoiles['foret-1'] ?? 0, etoiles.foret ?? 0);
+      delete etoiles.foret;
+    }
+    return etoiles;
   } catch {
     return {};
   }
