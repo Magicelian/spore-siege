@@ -1,8 +1,9 @@
 // Sons synthétisés avec Web Audio, aucun fichier (principe repris de Tiny Shrooms) : bruitages brefs façon 8-bit
 // pour les tirs, les explosions, les morts, la souche mordue et l'interface ; ambiance de fond comme Tiny Shrooms
-// (vent qui respire, oiseaux de temps en temps).
+// (vent qui respire, oiseaux de temps en temps) ; musique de combat pendant les vagues (`musique.ts`).
 // Coupé par défaut ; le contexte audio n'est créé qu'une fois le son allumé.
 import type { TypeTour } from '@spore-siege/engine';
+import { MusiqueCombat } from './musique';
 
 export type Effet =
   | 'ouvrir'
@@ -24,6 +25,8 @@ const VOLUME = 0.22;
 /** Ambiance de fond, basse exprès (même niveau que Tiny Shrooms) ; le vent par-dessus en léger souffle. */
 const VOLUME_AMBIANCE = 0.1;
 const VENT = 0.18;
+/** Musique de combat : sous les effets, pour que les tirs restent lisibles. */
+const VOLUME_MUSIQUE = 0.13;
 /** Deux effets identiques plus rapprochés que ceci n'en font qu'un (les ruches tirent beaucoup). */
 const ECART_MIN_S: Partial<Record<Effet, number>> = { 'tir-ruche': 0.14, 'tir-cristal': 0.1, mort: 0.05, explosion: 0.08 };
 const ECART_DEFAUT_S = 0.06;
@@ -116,6 +119,11 @@ export class Sons {
   private ambiance: GainNode | null = null;
   private minuterie: ReturnType<typeof setTimeout> | null = null;
   private allume = false;
+  private musique: MusiqueCombat | null = null;
+  /** Réglage Musique (menu de l'icône) ; ne joue que si le son est allumé aussi. */
+  private musiqueActive = true;
+  /** Une vague est en cours à l'écran. */
+  private combat = false;
   private readonly derniers = new Map<Effet, number>();
 
   get actif(): boolean {
@@ -131,6 +139,36 @@ export class Sons {
     this.maitre.gain.cancelScheduledValues(t);
     this.maitre.gain.setTargetAtTime(allume ? 1 : 0, t, 0.05);
     if (allume) void this.contexte.resume();
+    this.reglerMusique();
+  }
+
+  get musiqueAllumee(): boolean {
+    return this.musiqueActive;
+  }
+
+  /** Allume ou coupe la musique de combat (le son doit être allumé aussi). */
+  activerMusique(active: boolean): void {
+    this.musiqueActive = active;
+    this.reglerMusique();
+  }
+
+  /** Vague en cours à l'écran ou non : la musique démarre ou s'éteint en fondu. */
+  combattre(combat: boolean): void {
+    if (combat === this.combat) return;
+    this.combat = combat;
+    this.reglerMusique();
+  }
+
+  private reglerMusique(): void {
+    const jouer = this.allume && this.musiqueActive && this.combat;
+    if (jouer && !this.musique && this.contexte && this.maitre && this.bruit) {
+      const sortie = this.contexte.createGain();
+      sortie.gain.value = VOLUME_MUSIQUE;
+      sortie.connect(this.maitre);
+      this.musique = new MusiqueCombat(this.contexte, sortie, this.bruit);
+    }
+    if (jouer) this.musique?.demarrer();
+    else this.musique?.arreter();
   }
 
   jouer(effet: Effet): void {

@@ -86,6 +86,7 @@ fn main() {
                 )?,
                 tailles,
                 son: case("son", "Son")?,
+                musique: case("musique", "Musique pendant les vagues")?,
                 mettre_a_jour: entree("mettre-a-jour", "")?,
                 quitter: entree("quitter", "Quitter Spore Siege")?,
             };
@@ -97,6 +98,7 @@ fn main() {
                     &entrees.taille,
                     &PredefinedMenuItem::separator(app)?,
                     &entrees.son,
+                    &entrees.musique,
                     &PredefinedMenuItem::separator(app)?,
                     &entrees.mettre_a_jour,
                     &entrees.quitter,
@@ -118,6 +120,10 @@ fn main() {
                     let coche = app.state::<reglages::EtatReglages>().menu.son.is_checked().unwrap_or(false);
                     reglages::appliquer_son(app, coche);
                 }
+                "musique" => {
+                    let coche = app.state::<reglages::EtatReglages>().menu.musique.is_checked().unwrap_or(false);
+                    reglages::appliquer_musique(app, coche);
+                }
                 taille if taille.starts_with("taille-") => {
                     if let Ok(cote) = taille["taille-".len()..].parse() {
                         reglages::appliquer_taille(app, cote);
@@ -138,6 +144,7 @@ fn main() {
             reglages::regler_taille,
             reglages::taille_actuelle,
             reglages::regler_son,
+            reglages::regler_musique,
             reglages::quitter,
             journal
         ])

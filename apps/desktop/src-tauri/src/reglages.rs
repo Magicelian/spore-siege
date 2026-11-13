@@ -20,6 +20,8 @@ pub struct Reglages {
     pub taille: Option<u32>,
     /// Le jeu le règle au lancement (il garde le choix du joueur) ; coupé par défaut.
     pub son: bool,
+    /// Musique de combat ; le jeu la règle aussi au lancement.
+    pub musique: bool,
 }
 
 /// Noms des tailles dans le menu, dans l'ordre de `TAILLES`.
@@ -32,6 +34,7 @@ pub struct MenuReglages {
     /// Une case par entrée de `TAILLES`, dans le même ordre.
     pub tailles: Vec<CheckMenuItem<Wry>>,
     pub son: CheckMenuItem<Wry>,
+    pub musique: CheckMenuItem<Wry>,
     /// État des mises à jour ; cliquable seulement quand une version est prête (texte : `mises_a_jour`).
     pub mettre_a_jour: MenuItem<Wry>,
     pub quitter: MenuItem<Wry>,
@@ -48,6 +51,7 @@ pub fn preparer_menu(menu: &MenuReglages, reglages: &Reglages) {
         let _ = case.set_checked(cote == reglages.taille_effective());
     }
     let _ = menu.son.set_checked(reglages.son);
+    let _ = menu.musique.set_checked(reglages.musique);
 }
 
 impl Reglages {
@@ -186,6 +190,27 @@ fn noter_son(app: &AppHandle, son: bool) {
 #[tauri::command]
 pub fn regler_son(app: AppHandle, son: bool) {
     noter_son(&app, son);
+}
+
+/// Musique allumée ou coupée dans le menu de l'icône : le jeu suit par l'événement `musique`.
+pub fn appliquer_musique(app: &AppHandle, musique: bool) {
+    noter_musique(app, musique);
+    let _ = app.emit("musique", musique);
+}
+
+fn noter_musique(app: &AppHandle, musique: bool) {
+    let etat = app.state::<EtatReglages>();
+    let _ = etat.menu.musique.set_checked(musique);
+    etat.reglages.lock().unwrap().musique = musique;
+    let mut reglages = lire(app);
+    reglages.musique = musique;
+    ecrire(app, &reglages);
+}
+
+/// Musique réglée au lancement, depuis le choix gardé par le jeu : le menu de l'icône suit.
+#[tauri::command]
+pub fn regler_musique(app: AppHandle, musique: bool) {
+    noter_musique(&app, musique);
 }
 
 /// Taille retenue, pour cocher la bonne case du menu au lancement.

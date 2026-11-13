@@ -5,7 +5,7 @@ import { render } from 'preact';
 import type { Biome, Case, Commande, Ile, Instantane, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
 import { MONSTRES, PART_RONCE_RENDUE, PRIX_RONCE, TOURS } from '@spore-siege/engine';
 import { icone, type Icone } from './icones';
-import { ecrireDecouverts, ecrireEtoiles, ecrireSons, lireDecouverts, lireEtoiles, lireSons } from './sauvegarde';
+import { ecrireDecouverts, ecrireEtoiles, ecrireMusique, ecrireSons, lireDecouverts, lireEtoiles, lireMusique, lireSons } from './sauvegarde';
 import { Sons } from './sons';
 
 export type { Effet } from './sons';
@@ -29,6 +29,8 @@ export interface Fenetre {
   quitter(): void;
   /** Son allumé ou coupé : le menu de l'icône de la barre des menus suit. */
   son(allume: boolean): void;
+  /** Musique de combat allumée ou coupée : le menu de l'icône suit. */
+  musique(active: boolean): void;
 }
 
 export interface OptionsInterface {
@@ -103,12 +105,14 @@ export class ControleurInterface {
     public jeu: Jeu,
     private readonly options: OptionsInterface,
   ) {
+    this.sons.activerMusique(lireMusique());
     if (lireSons()) {
       this.sons.activer(true);
       // Le navigateur ne laisse jouer qu'après un geste du joueur.
       addEventListener('pointerdown', () => this.sons.activer(this.sons.actif), { once: true });
     }
     options.fenetre?.son(this.sons.actif);
+    options.fenetre?.musique(this.sons.musiqueAllumee);
     void options.fenetre?.actuelle().then((t) => {
       this.tailleFenetre = t;
       this.dessiner();
@@ -180,6 +184,12 @@ export class ControleurInterface {
     this.sons.activer(allume);
     ecrireSons(allume);
     this.dessiner();
+  }
+
+  /** Musique allumée ou coupée depuis le menu de l'icône. */
+  signalerMusique(active: boolean): void {
+    this.sons.activerMusique(active);
+    ecrireMusique(active);
   }
 
   /** Taille de la fenêtre changée depuis le menu de l'icône. */

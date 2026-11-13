@@ -39,6 +39,7 @@ const fenetre: Fenetre | undefined = dansTauri
       actuelle: () => invoke<number>('taille_actuelle'),
       quitter: () => void invoke('quitter'),
       son: (son) => void invoke('regler_son', { son }),
+      musique: (musique) => void invoke('regler_musique', { musique }),
     }
   : undefined;
 
@@ -119,6 +120,8 @@ function recommencer(): void {
 }
 
 rendu.surImage = (instant) => {
+  // Musique de combat seulement pendant une vague, île à l'écran.
+  ui.sons.combattre(ui.ecran === 'partie' && actuel.phase === 'vague');
   if (ui.ecran !== 'partie') return;
   reserve += dernierInstant === null ? 0 : (instant - dernierInstant) * ui.vitesse;
   dernierInstant = instant;
@@ -146,6 +149,7 @@ rendu.demarrer();
 // Menu de l'icône de la barre des menus : le jeu suit le son et la taille choisis.
 if (dansTauri) {
   void listen<boolean>('son', (e) => ui.signalerSon(e.payload));
+  void listen<boolean>('musique', (e) => ui.signalerMusique(e.payload));
   void listen<number>('taille', (e) => ui.signalerTaille(e.payload));
 }
 // Pour mesurer depuis la console en développement : `debogage()`.

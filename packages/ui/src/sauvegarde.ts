@@ -59,3 +59,22 @@ export function ecrireSons(allume: boolean): void {
     // Stockage indisponible : le choix ne sera pas retenu.
   }
 }
+
+const CLE_MUSIQUE = 'spore-siege:musique';
+
+/** Musique de combat : allumée par défaut (elle ne joue que si le son l'est aussi). */
+export function lireMusique(): boolean {
+  try {
+    return localStorage.getItem(CLE_MUSIQUE) !== '0';
+  } catch {
+    return true;
+  }
+}
+
+export function ecrireMusique(active: boolean): void {
+  try {
+    localStorage.setItem(CLE_MUSIQUE, active ? '1' : '0');
+  } catch {
+    // Stockage indisponible : le choix ne sera pas retenu.
+  }
+}
