@@ -1,5 +1,5 @@
 // Interface du tower defense, en Preact, dans le style de Tiny Shrooms version guerre : bandeau compact toujours
-// visible, bulles au clic sur l'île (construire, tour, ronce), menu des réglages.
+// visible, bulles au clic sur l'île (construire, tour, ronce).
 // Le contrôleur garde l'état de l'interface ; le frontend lui donne les instantanés et lit l'aperçu à dessiner.
 import { render } from 'preact';
 import type { Biome, Case, Commande, Ile, Instantane, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
@@ -27,7 +27,7 @@ export interface Fenetre {
   regler(cote: number): Promise<number>;
   actuelle(): Promise<number>;
   quitter(): void;
-  /** Son allumé ou coupé dans ⚙ : le menu de l'icône de la barre des menus suit. */
+  /** Son allumé ou coupé : le menu de l'icône de la barre des menus suit. */
   son(allume: boolean): void;
 }
 
@@ -75,14 +75,13 @@ const memeCase = (a: Case, b: Case) => a.x === b.x && a.y === b.y;
 export class ControleurInterface {
   vitesse: Vitesse = 1;
   ecran: Ecran = 'accueil';
-  /** Bruitages ; coupés tant que le joueur ne les a pas allumés dans ⚙ (choix retenu). */
+  /** Bruitages ; coupés tant que le joueur ne les a pas allumés par le menu de l’icône (choix retenu). */
   readonly sons = new Sons();
   /** Meilleures étoiles de chaque île, gardées d'une partie à l'autre. */
   private readonly etoiles = lireEtoiles();
   /** Vitesse choisie avant la pause, pour reprendre au même rythme. */
   private vitesseAvantPause: 1 | 2 = 1;
   private bulle: Bulle | null = null;
-  private menu = false;
   private survol: TypeTour | null = null;
   private instantane: Instantane | null = null;
   private tailleFenetre = 0;
@@ -92,6 +91,7 @@ export class ControleurInterface {
   private readonly decouverts = lireDecouverts();
   /** Fiche d'un nouveau monstre, ouverte depuis son médaillon. */
   private fiche: TypeMonstre | null = null;
+  private pauseMenu = false;
   private livre: Livre | null = null;
   /** Vitesse à rétablir en refermant la fiche ou le grimoire (qui mettent le jeu en pause). */
   private reprendreA: 1 | 2 | null = null;
@@ -137,8 +137,7 @@ export class ControleurInterface {
    * bulle en haut de la fenêtre (clic dans la moitié basse). Ferme tout si la case n'offre rien.
    */
   cliquer(c: Case | null, enHaut: boolean): void {
-    if (this.fiche || this.livre) return this.fermer();
-    this.menu = false;
+    if (this.fiche || this.livre || this.pauseMenu) return this.fermer();
     this.survol = null;
     const avant = this.bulle;
     this.bulle = c && this.natureCase(c) ? { case: c, enHaut } : null;
@@ -158,7 +157,7 @@ export class ControleurInterface {
    */
   get marque(): Marque | null {
     const i = this.instantane;
-    if (!i || this.menu || this.fiche || this.livre) return null;
+    if (!i || this.fiche || this.livre || this.pauseMenu) return null;
     const c = this.bulle ? this.bulle.case : this.caseSurvolee;
     if (!c) return null;
     const nature = this.natureCase(c);
@@ -172,14 +171,14 @@ export class ControleurInterface {
     return null;
   }
 
-  /** Son allumé ou coupé (dans ⚙ ou dans le menu de l'icône) : choix retenu. */
+  /** Son allumé ou coupé (dans le menu de l’icône) : choix retenu. */
   signalerSon(allume: boolean): void {
     this.sons.activer(allume);
     ecrireSons(allume);
     this.dessiner();
   }
 
-  /** Taille de la fenêtre changée depuis le menu de l'icône : ⚙ coche la bonne. */
+  /** Taille de la fenêtre changée depuis le menu de l'icône. */
   signalerTaille(cote: number): void {
     this.tailleFenetre = cote;
     this.dessiner();
@@ -187,10 +186,10 @@ export class ControleurInterface {
 
   fermer(): void {
     this.bulle = null;
-    this.menu = false;
     this.survol = null;
     this.fiche = null;
     this.livre = null;
+    this.pauseMenu = false;
     if (this.reprendreA !== null) this.vitesse = this.reprendreA;
     this.reprendreA = null;
     this.dessiner();
@@ -223,6 +222,43 @@ export class ControleurInterface {
     this.livre = { onglet: 'monstres', choix: TYPES_MONSTRES[0]! };
     this.suspendre();
     this.dessiner();
+  }
+
+  /** Menu de la partie (bouton ✕ du bandeau) : recommencer ou retourner à la carte ; pause le temps de choisir. */
+  private ouvrirPause(): void {
+    const ouvert = this.pauseMenu;
+    this.fermer();
+    if (ouvert) return this.dessiner();
+    this.pauseMenu = true;
+    this.suspendre();
+    this.dessiner();
+  }
+
+  private dessinerPause() {
+    return (
+      <section class="bulle haut menu">
+        <header>
+          <h2>{TEXTES.partie}</h2>
+          <button class="bouton fermer" title={TEXTES.fermer} onClick={() => this.fermer()}>
+            ✕
+          </button>
+        </header>
+        <div class="corps">
+          <button
+            class="bouton large"
+            onClick={() => {
+              this.fermer();
+              this.options.recommencer();
+            }}
+          >
+            {TEXTES.recommencer}
+          </button>
+          <button class="bouton large" onClick={() => this.aller('carte')}>
+            {TEXTES.retourCarte}
+          </button>
+        </div>
+      </section>
+    );
   }
 
   private ouvrirFiche(type: TypeMonstre): void {
@@ -310,16 +346,12 @@ export class ControleurInterface {
           lancer={() => this.executer({ type: 'lancerVague' })}
           pause={() => this.basculerPause()}
           rapide={() => this.changerVitesse(this.vitesse === 2 ? 1 : 2)}
-          menu={() => {
-            this.menu = !this.menu;
-            this.bulle = null;
-            this.dessiner();
-          }}
+          livre={() => this.ouvrirLivre()}
+          carte={() => this.ouvrirPause()}
         />
         {(i.phase === 'victoire' || i.phase === 'defaite') && <EcranFin i={i} rejouer={this.options.recommencer} carte={() => this.aller('carte')} />}
         {this.dessinerMedaillons(i)}
         {this.bulle && this.dessinerBulle(i, this.bulle)}
-        {this.menu && this.dessinerMenu()}
         {this.fiche && (
           <section class="bulle haut fiche">
             <Entete
@@ -334,6 +366,7 @@ export class ControleurInterface {
           </section>
         )}
         {this.livre && this.dessinerLivre(this.livre)}
+        {this.pauseMenu && this.dessinerPause()}
       </div>,
       this.element,
     );
@@ -344,20 +377,35 @@ export class ControleurInterface {
     return (
       <div class="interface">
         <div class="accueil">
-          <section class="bulle titre">
+          <div class="titre-jeu">
             <span class="surtitre">{TEXTES.surtitre}</span>
-            <h1>{TEXTES.titre}</h1>
-            <p>{TEXTES.accroche}</p>
-            <button class="bouton valider large" onClick={() => this.aller('carte')}>
-              {TEXTES.jouer}
+            <div class="ligne-titre">
+              <img class="vignette" src={this.options.vignette('canon', 3)} alt="" />
+              <h1>
+                <span>Spore</span>
+                <span class="rouge">Siege</span>
+              </h1>
+              <img class="vignette" src={this.options.vignetteMonstre('limace')} alt="" />
+            </div>
+            <p class="accroche">{TEXTES.accroche}</p>
+          </div>
+          <div class="panneau-accueil">
+            <button class="bouton valider principal" onClick={() => this.aller('carte')}>
+              ▶ {TEXTES.jouer}
             </button>
-            {f && (
-              <button class="bouton large danger" onClick={() => f.quitter()}>
-                {TEXTES.quitter}
+            <div class="rangee-boutons">
+              <button class="bouton" onClick={() => this.ouvrirLivre()}>
+                <Ico nom="livre" /> {TEXTES.grimoire}
               </button>
-            )}
-          </section>
+              {f && (
+                <button class="bouton danger" onClick={() => f.quitter()}>
+                  {TEXTES.quitter}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
+        {this.livre && this.dessinerLivre(this.livre)}
       </div>
     );
   }
@@ -376,18 +424,6 @@ export class ControleurInterface {
           <span class="espace" />
           <button class="bouton carre" title={TEXTES.grimoire} onClick={() => (this.livre ? this.fermer() : this.ouvrirLivre())}>
             <Ico nom="livre" />
-          </button>
-          <button
-            class="bouton carre"
-            title={TEXTES.reglages}
-            onClick={() => {
-              const ouvert = this.menu;
-              this.fermer();
-              this.menu = !ouvert;
-              this.dessiner();
-            }}
-          >
-            <Ico nom="reglages" />
           </button>
         </div>
         {iles.map(({ biome, x, y }, n) => {
@@ -418,7 +454,6 @@ export class ControleurInterface {
             </button>
           );
         })}
-        {this.menu && this.dessinerMenu()}
         {this.livre && this.dessinerLivre(this.livre)}
       </div>
     );
@@ -427,7 +462,7 @@ export class ControleurInterface {
   /** Médaillons des monstres jamais vus qui arrivent avec la vague en cours ou à venir. */
   private dessinerMedaillons(i: Instantane) {
     if (i.phase !== 'pause' && i.phase !== 'vague') return null;
-    if (this.bulle || this.menu || this.fiche || this.livre) return null;
+    if (this.bulle || this.fiche || this.livre || this.pauseMenu) return null;
     const nouveaux = i.monstresVague.filter((t) => !this.decouverts.has(t));
     if (nouveaux.length === 0) return null;
     return (
@@ -567,81 +602,6 @@ export class ControleurInterface {
     return null;
   }
 
-  private dessinerMenu() {
-    const f = this.options.fenetre;
-    return (
-      <section class="bulle haut menu">
-        <header>
-          <Ico nom="reglages" />
-          <h2>{TEXTES.reglages}</h2>
-          <button class="bouton fermer" title={TEXTES.fermer} onClick={() => this.fermer()}>
-            ✕
-          </button>
-        </header>
-        <div class="corps">
-          {f && (
-            <>
-              <h3>{TEXTES.fenetre}</h3>
-              <div class="rang">
-                {f.tailles.map(({ cote, nom }) => (
-                  <button
-                    class={`bouton${this.tailleFenetre === cote ? ' actif' : ''}`}
-                    onClick={async () => {
-                      this.tailleFenetre = await f.regler(cote);
-                      this.dessiner();
-                    }}
-                  >
-                    {nom}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-          <h3>{TEXTES.son}</h3>
-          <div class="rang">
-            {[false, true].map((allume) => (
-              <button
-                class={`bouton${this.sons.actif === allume ? ' actif' : ''}`}
-                onClick={() => {
-                  this.signalerSon(allume);
-                  this.options.fenetre?.son(allume);
-                  this.sons.jouer('ouvrir');
-                }}
-              >
-                {allume ? TEXTES.sonAllume : TEXTES.sonCoupe}
-              </button>
-            ))}
-          </div>
-          <h3>{TEXTES.grimoire}</h3>
-          <button class="bouton large" title={TEXTES.grimoireAide} onClick={() => this.ouvrirLivre()}>
-            <Ico nom="livre" /> {TEXTES.ouvrirGrimoire}
-          </button>
-          {this.ecran === 'partie' && (
-            <>
-              <h3>{TEXTES.partie}</h3>
-              <button
-                class="bouton large"
-                onClick={() => {
-                  this.fermer();
-                  this.options.recommencer();
-                }}
-              >
-                {TEXTES.recommencer}
-              </button>
-              <button class="bouton large" onClick={() => this.aller('carte')}>
-                {TEXTES.retourCarte}
-              </button>
-            </>
-          )}
-          {f && (
-            <button class="bouton large danger" onClick={() => f.quitter()}>
-              {TEXTES.quitter}
-            </button>
-          )}
-        </div>
-      </section>
-    );
-  }
 }
 
 // ─── Composants ────────────────────────────────────────────────────────────────────────────────
@@ -665,7 +625,8 @@ function Bandeau(p: {
   lancer: () => void;
   pause: () => void;
   rapide: () => void;
-  menu: () => void;
+  livre: () => void;
+  carte: () => void;
 }) {
   const { i } = p;
   const fin = i.phase === 'victoire' || i.phase === 'defaite';
@@ -704,8 +665,11 @@ function Bandeau(p: {
           </button>
         </>
       )}
-      <button class="bouton carre" title={TEXTES.reglages} onClick={p.menu}>
-        <Ico nom="reglages" />
+      <button class="bouton carre" title={TEXTES.grimoire} onClick={p.livre}>
+        <Ico nom="livre" />
+      </button>
+      <button class="bouton carre" title={TEXTES.partie} onClick={p.carte}>
+        ✕
       </button>
     </div>
   );

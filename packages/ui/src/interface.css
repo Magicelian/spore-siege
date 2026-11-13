@@ -661,44 +661,98 @@ table.stades .icone {
   justify-content: center;
 }
 
-/* ─── Accueil : titre sur un cadre de bois, au-dessus de l'archipel ──────────────────────── */
+/* ─── Accueil : titre cerné qui flotte en haut, boutons posés sur l'île en bas (comme Tiny Shrooms) ── */
 .accueil {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
-  /* Pas de voile : la fenêtre est transparente, il ferait un carré sombre sur le bureau. */
-  pointer-events: auto;
-}
-.bulle.titre {
-  position: relative;
-  left: auto;
-  transform: none;
-  width: min(232px, calc(100% - 16px));
-  padding: 10px 12px 4px;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  text-align: center;
+  justify-content: space-between;
+  padding: 22px 0 16px;
+  box-sizing: border-box;
+  /* Pas de voile : la fenêtre est transparente, il ferait un carré sombre sur le bureau. */
+  pointer-events: none;
+}
+.titre-jeu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
   color: var(--parchemin-clair);
   text-shadow: var(--texte-cerne);
-  animation: monte 0.3s steps(3) both;
+  animation: flotter 3.2s ease-in-out infinite;
 }
-.bulle.titre .surtitre {
+.titre-jeu .surtitre {
   font-size: 11px;
-  color: #d8c8b0;
-  letter-spacing: 1px;
-}
-.bulle.titre h1 {
-  margin: 0 0 2px;
-  font-size: 30px;
-  line-height: 1;
+  letter-spacing: 3px;
+  text-transform: uppercase;
   color: var(--accent);
-  text-shadow:
-    var(--texte-cerne),
-    0 3px 0 var(--encre);
 }
-.bulle.titre p {
-  margin: 6px 0 2px;
+.titre-jeu .ligne-titre {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.titre-jeu .vignette {
+  width: 56px;
+  height: 56px;
+  filter: drop-shadow(0 3px 0 rgb(0 0 0 / 0.4));
+}
+.titre-jeu .vignette:last-child {
+  transform: scaleX(-1);
+}
+.titre-jeu h1 {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  font: 700 38px/0.88 'Pixelify Sans', monospace;
+  text-align: center;
+  color: var(--parchemin-clair);
+  text-shadow:
+    2px 0 var(--encre),
+    -2px 0 var(--encre),
+    0 2px var(--encre),
+    0 -2px var(--encre),
+    2px 2px var(--encre),
+    -2px 2px var(--encre),
+    2px -2px var(--encre),
+    -2px -2px var(--encre),
+    0 6px var(--encre);
+}
+.titre-jeu .rouge {
+  color: var(--rouge);
+}
+.titre-jeu .accroche {
+  margin: 4px 0 0;
   font-size: 12px;
+}
+@keyframes flotter {
+  50% {
+    transform: translateY(-4px);
+  }
+}
+.panneau-accueil {
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: auto;
+}
+.panneau-accueil .bouton {
+  margin: 0;
+  justify-content: center;
+}
+.panneau-accueil .principal {
+  padding: 7px;
+  font-size: 18px;
+}
+.rangee-boutons {
+  display: flex;
+  gap: 6px;
+}
+.rangee-boutons > .bouton {
+  flex: 1;
 }
 
 /* ─── Carte des îles : étiquette au-dessus de chaque îlot ────────────────────────────────── */
