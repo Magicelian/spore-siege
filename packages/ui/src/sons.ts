@@ -1,5 +1,6 @@
 // Sons synthétisés avec Web Audio, aucun fichier (principe repris de Tiny Shrooms) : bruitages brefs façon 8-bit
-// pour les tirs, les explosions, les morts, la souche mordue et l'interface. Pas de musique.
+// pour les tirs, les explosions, les morts, la souche mordue et l'interface ; ambiance de fond comme Tiny Shrooms
+// (vent qui respire, oiseaux de temps en temps).
 // Coupé par défaut ; le contexte audio n'est créé qu'une fois le son allumé.
 import type { TypeTour } from '@spore-siege/engine';
 
@@ -20,6 +21,9 @@ export type Effet =
   | 'morsure';
 
 const VOLUME = 0.22;
+/** Ambiance de fond, basse exprès (même niveau que Tiny Shrooms) ; le vent par-dessus en léger souffle. */
+const VOLUME_AMBIANCE = 0.1;
+const VENT = 0.18;
 /** Deux effets identiques plus rapprochés que ceci n'en font qu'un (les ruches tirent beaucoup). */
 const ECART_MIN_S: Partial<Record<Effet, number>> = { 'tir-ruche': 0.14, 'tir-cristal': 0.1, mort: 0.05, explosion: 0.08 };
 const ECART_DEFAUT_S = 0.06;
@@ -109,6 +113,8 @@ export class Sons {
   private maitre: GainNode | null = null;
   private effets: GainNode | null = null;
   private bruit: AudioBuffer | null = null;
+  private ambiance: GainNode | null = null;
+  private minuterie: ReturnType<typeof setTimeout> | null = null;
   private allume = false;
   private readonly derniers = new Map<Effet, number>();
 
@@ -155,9 +161,69 @@ export class Sons {
     this.bruit = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const donnees = this.bruit.getChannelData(0);
     for (let i = 0; i < donnees.length; i++) donnees[i] = Math.random() * 2 - 1;
+    this.preparerAmbiance();
   }
 
-  private note(n: Note, debut: number): void {
+  /** Ambiance copiée de Tiny Shrooms : nappe de vent qui respire lentement, et des oiseaux de temps en temps. */
+  private preparerAmbiance(): void {
+    const ctx = this.contexte!;
+    this.ambiance = ctx.createGain();
+    this.ambiance.gain.value = VOLUME_AMBIANCE;
+    this.ambiance.connect(this.maitre!);
+
+    // Six secondes de bruit rose approché, bouclées.
+    const longueur = ctx.sampleRate * 6;
+    const rose = ctx.createBuffer(1, longueur, ctx.sampleRate);
+    const donnees = rose.getChannelData(0);
+    let b0 = 0;
+    let b1 = 0;
+    let b2 = 0;
+    for (let i = 0; i < longueur; i++) {
+      const blanc = Math.random() * 2 - 1;
+      b0 = 0.997 * b0 + blanc * 0.029;
+      b1 = 0.985 * b1 + blanc * 0.032;
+      b2 = 0.95 * b2 + blanc * 0.048;
+      donnees[i] = (b0 + b1 + b2 + blanc * 0.02) * 0.9;
+    }
+    const source = ctx.createBufferSource();
+    source.buffer = rose;
+    source.loop = true;
+    const filtre = ctx.createBiquadFilter();
+    filtre.type = 'bandpass';
+    filtre.frequency.value = 400;
+    filtre.Q.value = 0.8;
+    const vent = ctx.createGain();
+    vent.gain.value = VENT;
+    source.connect(filtre).connect(vent).connect(this.ambiance);
+    source.start(0, Math.random() * rose.duration);
+    // Le vent respire : un oscillateur lent module sa fréquence.
+    const respiration = ctx.createOscillator();
+    const ampleur = ctx.createGain();
+    respiration.frequency.value = 0.09;
+    ampleur.gain.value = 220;
+    respiration.connect(ampleur).connect(filtre.frequency);
+    respiration.start();
+
+    // WebKit crée parfois le contexte suspendu : le premier appui le réveille.
+    addEventListener('pointerdown', () => void ctx.resume(), { once: true });
+    const suivant = () => {
+      if (this.allume && ctx.state === 'running') this.oiseau(ctx.currentTime);
+      this.minuterie = setTimeout(suivant, 4000 + Math.random() * 6000);
+    };
+    if (this.minuterie) clearTimeout(this.minuterie);
+    this.minuterie = setTimeout(suivant, 2000);
+  }
+
+  private oiseau(debut: number): void {
+    const base = 2200 + Math.random() * 1400;
+    const cris = 2 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < cris; i++) {
+      const t = i * (0.11 + Math.random() * 0.05);
+      this.note({ f: base, t, d: 0.07, vers: base * (1.2 + Math.random() * 0.3), onde: 'sine', v: 0.35 }, debut, this.ambiance!);
+    }
+  }
+
+  private note(n: Note, debut: number, sortie: AudioNode = this.effets!): void {
     const ctx = this.contexte!;
     const t0 = debut + n.t;
     const t1 = t0 + n.d;
@@ -169,7 +235,7 @@ export class Sons {
     gain.gain.setValueAtTime(0, t0);
     gain.gain.linearRampToValueAtTime(n.v ?? 0.5, t0 + 0.005);
     gain.gain.exponentialRampToValueAtTime(0.001, t1);
-    osc.connect(gain).connect(this.effets!);
+    osc.connect(gain).connect(sortie);
     osc.start(t0);
     osc.stop(t1 + 0.02);
   }

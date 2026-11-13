@@ -1,6 +1,6 @@
 // Île en coupe : herbe, terre et roche empilées par colonne, décor posé sur les cases.
 import * as THREE from 'three';
-import type { Ile } from '@spore-siege/engine';
+import type { Ile, Terrain } from '@spore-siege/engine';
 import { COULEURS, SURFACES_PAR_BIOME, materiau } from './palette';
 import { modelesDecor, type Decor } from './modeles';
 import { bruit, centreCase } from './repere';
@@ -39,7 +39,7 @@ export function construireIle(ile: Ile): THREE.Group {
   const surfaces = SURFACES_PAR_BIOME[ile.biome];
   for (let y = 0; y < ile.profondeur; y++) {
     for (let x = 0; x < ile.largeur; x++) {
-      const terrain = ile.terrain[y * ile.largeur + x] ?? 'vide';
+      const terrain = terrainVu(ile, x, y);
       if (terrain === 'vide') continue;
       centreCase(x, y, ile, centre);
       const b = bruit(x, y);
@@ -66,6 +66,24 @@ export function construireIle(ile: Ile): THREE.Group {
     }
   }
   return regrouper(pieces);
+}
+
+/**
+ * Terrain dessiné d'une case. Sous la souche, une case touchée par le sentier est dessinée en sentier : la terre
+ * battue va jusqu'au tronc au lieu de s'arrêter sur une bande d'herbe.
+ */
+function terrainVu(ile: Ile, x: number, y: number): Terrain {
+  const terrain = ile.terrain[y * ile.largeur + x] ?? 'vide';
+  const { souche, tailleSouche: t } = ile;
+  const dansSouche = (cx: number, cy: number) => cx >= souche.x && cx < souche.x + t && cy >= souche.y && cy < souche.y + t;
+  if (!dansSouche(x, y)) return terrain;
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    const nx = x + dx;
+    const ny = y + dy;
+    if (nx < 0 || ny < 0 || nx >= ile.largeur || ny >= ile.profondeur || dansSouche(nx, ny)) continue;
+    if (ile.terrain[ny * ile.largeur + nx] === 'sentier') return 'sentier';
+  }
+  return terrain;
 }
 
 /** Regroupe les pièces par forme et couleur en maillages instanciés. */
