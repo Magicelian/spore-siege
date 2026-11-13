@@ -139,6 +139,10 @@ export class ControleurInterface {
   cliquer(c: Case | null, enHaut: boolean): void {
     if (this.fiche || this.livre || this.pauseMenu) return this.fermer();
     this.survol = null;
+    if (this.vitesse === 0) {
+      this.bulle = null;
+      return this.dessiner();
+    }
     const avant = this.bulle;
     this.bulle = c && this.natureCase(c) ? { case: c, enHaut } : null;
     if (this.bulle && !(avant && memeCase(avant.case, this.bulle.case))) this.sons.jouer('ouvrir');
@@ -157,7 +161,7 @@ export class ControleurInterface {
    */
   get marque(): Marque | null {
     const i = this.instantane;
-    if (!i || this.fiche || this.livre || this.pauseMenu) return null;
+    if (!i || this.fiche || this.livre || this.pauseMenu || this.vitesse === 0) return null;
     const c = this.bulle ? this.bulle.case : this.caseSurvolee;
     if (!c) return null;
     const nature = this.natureCase(c);
@@ -316,6 +320,8 @@ export class ControleurInterface {
   }
 
   private executer(commande: Commande): boolean {
+    // En pause, on ne construit rien (ni ne lance la vague).
+    if (this.vitesse === 0) return false;
     const fait = this.jeu.executer(commande);
     if (fait) this.maj(this.jeu.instantane());
     return fait;
@@ -329,6 +335,7 @@ export class ControleurInterface {
   private changerVitesse(v: Vitesse): void {
     this.reprendreA = null;
     if (v !== 0) this.vitesseAvantPause = v;
+    else this.bulle = null;
     this.vitesse = v;
     this.dessiner();
   }
