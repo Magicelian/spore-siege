@@ -130,3 +130,16 @@ describe('Limace-mère (boss)', () => {
     expect(i.vague).toBe(1);
   });
 });
+
+describe('bilan des dégâts', () => {
+  it('compte les dégâts de chaque sorte de tour, sans l’excédent', () => {
+    const partie = new Partie(ile, [[{ type: 'limace', nombre: 3, intervalle: 2, plage: 1 }]], 1);
+    partie.executer({ type: 'poserTour', tour: 'ruche', case: { x: 3, y: 9 } });
+    partie.executer({ type: 'lancerVague' });
+    jouerJusqua(partie, () => partie.instantane().phase !== 'vague');
+    const i = partie.instantane();
+    expect(i.degats.ruche).toBeGreaterThan(0);
+    expect(i.degats.ruche).toBeLessThanOrEqual(3 * MONSTRES.limace.pv);
+    expect(i.degats.cristal + i.degats.mortier + i.degats.canon).toBe(0);
+  });
+});

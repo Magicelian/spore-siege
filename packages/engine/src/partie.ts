@@ -117,6 +117,8 @@ export class Partie {
   private prochainId = 1;
   private lachers: Lacher[] = [];
   private spores: number;
+  /** Dégâts infligés depuis le début, par sorte de tour (tours vendues comprises). */
+  private degats: Record<TypeTour, number> = { ruche: 0, cristal: 0, mortier: 0, canon: 0 };
   readonly regles: Regles;
   private tours: Tour[] = [];
   private projectiles: Projectile[] = [];
@@ -325,6 +327,7 @@ export class Partie {
       etoiles: this.phase === 'victoire' ? etoiles(this.pvSouche) : 0,
       monstresVague: this.monstresVague(),
       regles: { ...this.regles, tours: [...this.regles.tours] },
+      degats: { ...this.degats },
     };
   }
 
@@ -454,7 +457,7 @@ export class Partie {
   }
 
   private empoisonner(): void {
-    for (const m of this.monstres) if (this.pas < m.poisonJusqua) this.blesser(m, m.poisonParPas, true);
+    for (const m of this.monstres) if (this.pas < m.poisonJusqua) this.blesser(m, m.poisonParPas, true, 'ruche');
   }
 
   private deplacer(): void {
@@ -547,7 +550,7 @@ export class Partie {
   private eclair(t: Tour, cible: Monstre, degats: number, rebonds: number, { distance: saut, attenuation }: { distance: number; attenuation: number }): void {
     const touches = new Set<Monstre>([cible]);
     t.chaine = [{ ...t.centre }, { ...cible.position }];
-    this.blesser(cible, degats, true);
+    this.blesser(cible, degats, true, t.type);
     let dernier = cible;
     for (let i = 0; i < rebonds; i++) {
       const suivant = this.viser(dernier.position, saut, true, touches);
@@ -555,7 +558,7 @@ export class Partie {
       degats *= attenuation;
       touches.add(suivant);
       t.chaine.push({ ...suivant.position });
-      this.blesser(suivant, degats, true);
+      this.blesser(suivant, degats, true, t.type);
       dernier = suivant;
     }
   }
@@ -615,7 +618,7 @@ export class Partie {
 
   /** Un projectile atteint un monstre : dégâts, puis ralenti ou poison selon la tour. */
   private toucher(m: Monstre, p: Projectile): void {
-    this.blesser(m, p.degats, p.percant);
+    this.blesser(m, p.degats, p.percant, p.type);
     if (p.ralenti) {
       m.ralentiJusqua = this.pas + Math.round(p.ralenti.duree * PAS_PAR_SECONDE);
       m.facteurRalenti = p.ralenti.facteur;
@@ -626,9 +629,12 @@ export class Partie {
     }
   }
 
-  private blesser(m: Monstre, degats: number, percant = false): void {
+  /** Retire de la vie au monstre ; `source` = la sorte de tour, pour le bilan des dégâts (sans compter l'excédent). */
+  private blesser(m: Monstre, degats: number, percant: boolean, source: TypeTour): void {
     if (m.pv <= 0) return;
-    m.pv -= percant ? degats : Math.max(1, degats - MONSTRES[m.type].armure);
+    const coup = percant ? degats : Math.max(1, degats - MONSTRES[m.type].armure);
+    this.degats[source] += Math.min(coup, m.pv);
+    m.pv -= coup;
   }
 
   /** Le boss blessé sous un palier pond son escorte juste derrière lui (plusieurs paliers d'un coup : tout). */

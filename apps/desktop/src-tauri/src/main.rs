@@ -10,7 +10,7 @@ mod reglages;
 
 use tauri::{
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
-    AppHandle, Manager, RunEvent,
+    AppHandle, Emitter, Manager, RunEvent,
 };
 
 /// Messages du frontend recopiés dans le terminal de `pnpm dev`, pour mesurer dans la vraie fenêtre.
@@ -26,6 +26,8 @@ fn basculer_fenetre(app: &AppHandle) {
     };
     if fenetre.is_visible().unwrap_or(false) {
         let _ = fenetre.hide();
+        // Fenêtre cachée : le jeu coupe son et musique (sans toucher au réglage Son).
+        let _ = app.emit("visible", false);
     } else {
         afficher_fenetre(app);
     }
@@ -37,6 +39,7 @@ fn afficher_fenetre(app: &AppHandle) {
     };
     let _ = fenetre.show();
     let _ = fenetre.set_focus();
+    let _ = app.emit("visible", true);
 }
 
 /// Dernière étape : position retenue, puis mise à jour installée si elle a été demandée (la partie n'a rien à

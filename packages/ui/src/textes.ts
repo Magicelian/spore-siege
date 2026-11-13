@@ -156,6 +156,7 @@ export const TEXTES = {
   verrouillee: 'Bats le boss de l’île précédente pour l’ouvrir.',
   pasEncore: 'Cette île n’est pas encore prête.',
   carte: 'Carte',
+  bilanAide: 'Dégâts infligés par chaque sorte de tour pendant la partie',
   ileEtoiles: 'Étoiles gagnées sur les niveaux de cette île',
   jouerNiveau: (nom: string) => `Jouer : ${nom}`,
   niveauFerme: 'Gagne le niveau précédent pour l’ouvrir.',

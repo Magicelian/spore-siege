@@ -150,6 +150,8 @@ export class Sons {
   private ambiance: GainNode | null = null;
   private minuterie: ReturnType<typeof setTimeout> | null = null;
   private allume = false;
+  /** Fenêtre cachée : silence, sans changer le réglage Son. */
+  private cache = false;
   private musique: MusiqueCombat | null = null;
   /** Réglage Musique (menu de l'icône) ; ne joue que si le son est allumé aussi. */
   private musiqueActive = true;
@@ -168,8 +170,20 @@ export class Sons {
     if (!this.contexte || !this.maitre) return;
     const t = this.contexte.currentTime;
     this.maitre.gain.cancelScheduledValues(t);
-    this.maitre.gain.setTargetAtTime(allume ? 1 : 0, t, 0.05);
-    if (allume) void this.contexte.resume();
+    this.maitre.gain.setTargetAtTime(allume && !this.cache ? 1 : 0, t, 0.05);
+    if (allume && !this.cache) void this.contexte.resume();
+    this.reglerMusique();
+  }
+
+  /** Fenêtre cachée ou montrée : coupe tout (effets, ambiance, musique) puis le rend, réglage Son inchangé. */
+  masquer(cache: boolean): void {
+    this.cache = cache;
+    if (!this.contexte || !this.maitre) return;
+    const t = this.contexte.currentTime;
+    this.maitre.gain.cancelScheduledValues(t);
+    this.maitre.gain.setTargetAtTime(this.allume && !cache ? 1 : 0, t, 0.05);
+    if (cache) void this.contexte.suspend();
+    else if (this.allume) void this.contexte.resume();
     this.reglerMusique();
   }
 
@@ -191,7 +205,7 @@ export class Sons {
   }
 
   private reglerMusique(): void {
-    const jouer = this.allume && this.musiqueActive && this.combat;
+    const jouer = this.allume && !this.cache && this.musiqueActive && this.combat;
     if (jouer && !this.musique && this.contexte && this.maitre && this.bruit) {
       const sortie = this.contexte.createGain();
       sortie.gain.value = VOLUME_MUSIQUE;
@@ -204,7 +218,7 @@ export class Sons {
 
   jouer(effet: Effet): void {
     const ctx = this.contexte;
-    if (!this.allume || !ctx || !this.effets) return;
+    if (!this.allume || this.cache || !ctx || !this.effets) return;
     if (ctx.state === 'suspended') void ctx.resume();
     const maintenant = ctx.currentTime;
     if (maintenant - (this.derniers.get(effet) ?? -1) < (ECART_MIN_S[effet] ?? ECART_DEFAUT_S)) return;

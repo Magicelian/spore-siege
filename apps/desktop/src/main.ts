@@ -76,6 +76,11 @@ function ecouter(vue: Instantane, evenements: EvenementVu[]): void {
 }
 
 /** La partie vue par l'interface : après une commande, l'instantané change sans attendre le pas suivant. */
+/** Le ×2 ne vaut que pendant les vagues : la préparation reste à vitesse normale (la pause reste une pause). */
+function vitesseEffective(): number {
+  return actuel.phase === 'vague' ? ui.vitesse : Math.min(ui.vitesse, 1);
+}
+
 function jeuDe(p: Partie): Jeu {
   return {
     executer: (commande) => {
@@ -133,7 +138,7 @@ rendu.surImage = (instant) => {
   // Musique de combat seulement pendant une vague, île à l'écran.
   ui.sons.combattre(ui.ecran === 'partie' && actuel.phase === 'vague');
   if (ui.ecran !== 'partie') return;
-  reserve += dernierInstant === null ? 0 : (instant - dernierInstant) * ui.vitesse;
+  reserve += dernierInstant === null ? 0 : (instant - dernierInstant) * vitesseEffective();
   dernierInstant = instant;
   let pas = 0;
   while (reserve >= PAS_MS && pas < PAS_MAX_PAR_IMAGE) {
@@ -161,6 +166,8 @@ if (dansTauri) {
   void listen<boolean>('son', (e) => ui.signalerSon(e.payload));
   void listen<boolean>('musique', (e) => ui.signalerMusique(e.payload));
   void listen<number>('taille', (e) => ui.signalerTaille(e.payload));
+  // Fenêtre cachée par l'icône de la barre des menus : silence jusqu'à ce qu'elle revienne.
+  void listen<boolean>('visible', (e) => ui.sons.masquer(!e.payload));
 }
 // Pour mesurer depuis la console en développement : `debogage()`.
 if (import.meta.env.DEV) Object.assign(window, { debogage: () => ({ actuel, reserve, images: rendu.images, rendu, ui, partie }) });

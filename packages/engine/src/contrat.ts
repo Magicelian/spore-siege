@@ -156,6 +156,8 @@ export interface Instantane {
   monstresVague: TypeMonstre[];
   /** Contraintes du niveau joué. */
   regles: Regles;
+  /** Dégâts infligés depuis le début de la partie, par sorte de tour (pour le bilan de fin). */
+  degats: Record<TypeTour, number>;
 }
 
 /** Ce que le frontend peut demander ; le moteur refuse ce qui n'a pas de sens. */

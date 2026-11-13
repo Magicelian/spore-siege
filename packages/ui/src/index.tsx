@@ -386,7 +386,7 @@ export class ControleurInterface {
           livre={() => this.ouvrirLivre()}
           carte={() => this.ouvrirPause()}
         />
-        {(i.phase === 'victoire' || i.phase === 'defaite') && <EcranFin i={i} rejouer={this.options.recommencer} carte={() => this.aller('niveaux')} />}
+        {(i.phase === 'victoire' || i.phase === 'defaite') && <EcranFin i={i} rejouer={this.options.recommencer} carte={() => this.aller('niveaux')} vignette={(t) => this.options.vignette(t, 3)} />}
         {this.dessinerMedaillons(i)}
         {!this.livre && !this.fiche && !this.pauseMenu && <BarreBoss i={i} />}
         {this.bulle && this.dessinerBulle(i, this.bulle)}
@@ -858,8 +858,13 @@ function Stats({ type, stade, capacite = null, vers }: { type: TypeTour; stade: 
 }
 
 /** Fin de partie : titre, étoiles qui tombent une à une, vie restante, Rejouer (la carte viendra en 4c). */
-function EcranFin({ i, rejouer, carte }: { i: Instantane; rejouer: () => void; carte: () => void }) {
+function EcranFin({ i, rejouer, carte, vignette }: { i: Instantane; rejouer: () => void; carte: () => void; vignette: (t: TypeTour) => string }) {
   const victoire = i.phase === 'victoire';
+  // Bilan : dégâts de chaque sorte de tour, de la plus utile à la moins utile (celles qui n'ont rien fait, absentes).
+  const bilan = TYPES.map((t) => ({ t, n: Math.round(i.degats[t]) }))
+    .filter((b) => b.n > 0)
+    .sort((a, b) => b.n - a.n);
+  const plus = bilan[0]?.n ?? 1;
   return (
     <div class="voile">
       <section class={`bulle fin ${victoire ? 'gagne' : 'perdu'}`}>
@@ -878,6 +883,20 @@ function EcranFin({ i, rejouer, carte }: { i: Instantane; rejouer: () => void; c
             {TEXTES.vieRestante(i.souche.pv, i.souche.pvMax)}
           </p>
           {victoire && <p class="discret">{TEXTES.etoileSuivante(i.etoiles)}</p>}
+          {bilan.length > 0 && (
+            <ul class="bilan" title={TEXTES.bilanAide}>
+              {bilan.map(({ t, n }) => (
+                <li>
+                  <img class="vignette" src={vignette(t)} alt="" />
+                  <span class="nom">{TOURS_TEXTES[t].nom}</span>
+                  <span class="barre">
+                    <span style={{ width: `${(100 * n) / plus}%` }} />
+                  </span>
+                  <span class="qte">{n}</span>
+                </li>
+              ))}
+            </ul>
+          )}
           <div class="rang choix">
             <button class="bouton" onClick={carte}>
               {TEXTES.carte}
