@@ -119,7 +119,9 @@ class Joueur {
 
     // Bon joueur.
     const ronce = this.plan.find((c) => !i.ronces.some((r) => r.x === c.x && r.y === c.y));
-    if (ronce && tours.length >= 2) return () => this.partie.executer({ type: 'poserRonce', case: ronce });
+    // Ouverture : deux ruches (elles touchent tout, phalènes comprises), puis les ronces, puis selon les monstres.
+    if (tours.length < 2) return poser('ruche');
+    if (ronce) return () => this.partie.executer({ type: 'poserRonce', case: ronce });
     if (tours.length < 3) return poser(this.typeVoulu());
     if (tours.some((t) => t.stade < 2)) return ameliorer;
     if (tours.length < 7) return poser(this.typeVoulu());
@@ -131,7 +133,7 @@ class Joueur {
   /** Bon joueur : la capacité contre les gros monstres si les deux prochaines vagues en ont, sinon contre les groupes. */
   private capaciteVoulue(type: TypeTour): Capacite {
     const i = this.partie.instantane();
-    const gros = this.partie.vagues.slice(i.vague - 1, i.vague + 1).some((v) => v.some((g) => g.type === 'scarabee' || g.type === 'amas'));
+    const gros = this.partie.vagues.slice(i.vague - 1, i.vague + 1).some((v) => v.some((g) => g.type === 'scarabee' || g.type === 'amas' || g.type === 'limaceMere'));
     return CAPACITES_DE[type][gros ? 1 : 0]!;
   }
 
@@ -146,15 +148,27 @@ class Joueur {
     if (proches.has('moucheron')) besoins.push('ruche', 'mortier');
     if (proches.has('volant')) besoins.push('ruche', 'cristal');
     if (proches.has('soigneur')) besoins.push('cristal');
+    if (proches.has('limaceMere')) besoins.push('cristal', 'canon');
     const compte = (t: TypeTour) => i.tours.filter((x) => x.type === t).length;
     return [...besoins].sort((a, b) => compte(a) - compte(b))[0]!;
   }
 
-  /** Case libre d'où la tour couvre le plus de cases des routes (une case empruntée par deux routes compte double). */
+  /**
+   * Case libre d'où la tour couvre le plus de cases des routes (une case empruntée par deux routes compte double).
+   * Une route déjà bien couverte par les tours posées compte moins : chaque plage finit par être défendue.
+   */
   private meilleureCase(type: TypeTour): Case | null {
     const portee = TOURS[type].stades[0].portee;
     const routes = this.routes();
     const { ile } = this.partie;
+    const tours = this.partie.instantane().tours;
+    const dedans = (p: Case, x: number, y: number, r: number) => (p.x - x) ** 2 + (p.y - y) ** 2 <= r * r;
+    // Couverture actuelle de chaque route : cases à portée d'une tour, comptées par tour, rapportées à sa longueur.
+    const poids = routes.map((r) => {
+      let couvert = 0;
+      for (const t of tours) for (const p of r) if (dedans(p, t.case.x, t.case.y, t.portee)) couvert++;
+      return 1 / (1 + (2 * couvert) / Math.max(1, r.length));
+    });
     let meilleure: Case | null = null;
     let score = 0;
     for (let y = 0; y < ile.profondeur; y++) {
@@ -162,7 +176,9 @@ class Joueur {
         const c = { x, y };
         if (!this.partie.libre(c)) continue;
         let s = 0;
-        for (const r of routes) for (const p of r) if ((p.x - x) ** 2 + (p.y - y) ** 2 <= portee * portee) s++;
+        routes.forEach((r, i) => {
+          for (const p of r) if (dedans(p, x, y, portee)) s += poids[i]!;
+        });
         if (s > score) {
           score = s;
           meilleure = c;

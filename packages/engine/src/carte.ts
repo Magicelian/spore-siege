@@ -42,6 +42,102 @@ export const CARTE_FORET = [
   '......ffffffff......',
 ] as const;
 
+/** Forêt, niveau 2 (Sous-bois) : plages nord-ouest et nord-est réunies au nord, tronc en lacets, un raccourci que la ronce ferme. */
+export const CARTE_SOUS_BOIS = [
+  '.....fsffff....fsf..',
+  '...ffh=hhhhf..fh=f..',
+  '..fhhh===========hf.',
+  '.fhhhhhhhhh=hhhhhhhf',
+  '.fhhhhhhhhh=hhhhhhhf',
+  'fhh=========hhfffhhf',
+  'fhh=hhhhhhhhhhfffhhf',
+  'fbh=hfffhhhhhhfffhhf',
+  'fhh=hhhhhhhhhhhhhhhf',
+  '.fh======SS===hhbhf.',
+  'fhh=hhhhhSShh=hhhhf.',
+  'fhh=hphhbhhhh=hffhhf',
+  '.fh=hhhhhhhhh=hffhf.',
+  '.fh===========hffhf.',
+  '.fhhhhhhhhhhhhhhhhf.',
+  '..rhhffffhhhhhheehf.',
+  '..fhhffffhhhphhehhf.',
+  '...fhhhhhhhhhphhhf..',
+  '....ffhhhhhhhhfff...',
+  '......ffffffff......',
+] as const;
+
+/** Forêt, niveau 3 (Trois sentiers) : l'ouest et le sud se rejoignent, puis le nord-est ; un court tronc jusqu'à la souche. */
+export const CARTE_TROIS_SENTIERS = [
+  '.....ffffff....fss..',
+  '...ffhhhffff..fh=f..',
+  '..fhhhhhfffhffhh=hf.',
+  '.fhhhhhhhhhh=====hhf',
+  '.fhhhhhhhhhh=hhhhhhf',
+  'fhhhhhhhhhhh=hhhhhhf',
+  'fhhhhh=======hhphhhf',
+  'fhbhhh=hhhhh=hhhhhhf',
+  'fhhhhh=hhhhh=hhfffhf',
+  '.fhhhh=hrSS==hhffff.',
+  'fhhhhh=hhSShhhhffff.',
+  'fshhhh=hhhhhhhhhhhhf',
+  '.s=====hhhhhhhbheef.',
+  '.shhhh=hhhhhhhhhehf.',
+  '.fhhhh=hhfffhhhhbhf.',
+  '..fpph=hhfffhhhhhhf.',
+  '..fhhh=hhhhhhhhrhhf.',
+  '...fhh=hhhhhhhhhhf..',
+  '....ffshhhhhhhfff...',
+  '......ffffffff......',
+] as const;
+
+/** Forêt, niveau 4 (Fourré) : plages sud et sud-est réunies, un court sentier dans un fourré épais, quelques clairières. */
+export const CARTE_FOURRE = [
+  '.....ffffff....fff..',
+  '...ffhhhhhhf..fhhf..',
+  '..fhhhhhhhhhffhhhhf.',
+  '.fhhhhhhhhhhhhhhhhhf',
+  '.fhhhhhhhhhhhhhheehf',
+  'fhhhhhhhhhhhhphhhhhf',
+  'fhhhhhhhhhhbhhhhhhhf',
+  'fhhhhhhphhhhhhhhhhhf',
+  'fhhhhbhhhhhhhhhhhhhf',
+  '.fhffffffSShhffffrf.',
+  'fhhfffff=SShhffffff.',
+  'fhhfffff=hhfffffffhf',
+  '.fhfffhh=hhffffffff.',
+  '.fhfffhh=ffffffffff.',
+  '.fhfffff=hhffffffff.',
+  '..ffffhh=hhfhhhhfff.',
+  '..ffffhh=fffhhfffff.',
+  '...fffff=========s..',
+  '....ffffff=ffffff...',
+  '......ffffsfff......',
+] as const;
+
+/** Forêt, niveau 5 (Cœur de la forêt) : plages ouest et est réunies au nord, tronc autour de la souche, un raccourci que la ronce ferme. */
+export const CARTE_COEUR = [
+  '.....ffffff....fff..',
+  '...ffhhhhhhe..fhhf..',
+  '..fhhhhhhhhhefhhhrf.',
+  '.fhhhhhhhhhhhhhhhhhf',
+  '.s================sf',
+  'fhhhhhhhhh=hhhhhhhhf',
+  'fhhhhhffhh======hhhf',
+  'fhbhhhffhhhhhhh=hhhf',
+  'fhhhhhhhhhhhphh=hfff',
+  '.fhhh====SShhhh=hff.',
+  'fhffh=hhhSS=====hff.',
+  'fhffh=hphhhhhhh=hhhf',
+  '.fffh=hhhhhhffh=hhf.',
+  '.fhhh=hhhhhhhhh=hbf.',
+  '.fhhh===========hhf.',
+  '..rhhhhhhhhhhhhhhhf.',
+  '..fhhhhhhpbhhhhhhhf.',
+  '...fhhhhhhhhhhhhhf..',
+  '....ffhhhhhhhhfff...',
+  '......ffffffff......',
+] as const;
+
 /** Lit une carte en lettres ; la souche est le carré de `S`. */
 export function lireCarte(lignes: readonly string[], biome: Biome): Ile {
   const profondeur = lignes.length;

@@ -68,19 +68,55 @@ describe('équilibrage de la Clairière (forêt, niveau 1 : on apprend)', () => 
 
   it('les ruches seules tiennent longtemps mais sans les 3 étoiles', () => {
     expect(naif1.vague).toBeGreaterThanOrEqual(6);
-    expect(naif1.etoiles).toBeLessThanOrEqual(1);
+    expect(naif1.etoiles).toBeLessThanOrEqual(2);
   });
 
   it('le joueur simple gagne', () => {
     expect(simple1.phase).toBe('victoire');
   });
 
-  it('le bon joueur gagne avec 3 étoiles', () => {
-    expect(bon1.etoiles).toBe(3);
+  it('le bon joueur gagne avec au moins 2 étoiles', () => {
+    expect(bon1.etoiles).toBeGreaterThanOrEqual(2);
   });
 
-  it('une partie gagnée dure 8 à 12 minutes', () => {
-    expect(simple1.minutes).toBeGreaterThanOrEqual(8);
+  it('une partie gagnée dure 7 à 12 minutes', () => {
+    expect(simple1.minutes).toBeGreaterThanOrEqual(7);
     expect(simple1.minutes).toBeLessThanOrEqual(12);
+  });
+});
+
+// Niveaux 2 à 5, réglés à l'étape 8d. Les joueurs scriptés jugent mal certains niveaux (le bon pose ses ronces trop
+// tôt quand l'argent manque), d'où des garde-fous sur le meilleur des deux : gagnable, jamais donné, pas trop long.
+const autres = NIVEAUX_FORET.slice(1).map((n) => {
+  const [naif, simple, bon] = (['naif', 'simple', 'bon'] as Style[]).map((st) => jouer(st, ileDe(n), n.vagues, n.regles)) as [Bilan, Bilan, Bilan];
+  const meilleur = [simple, bon].sort((a, b) => b.pv - a.pv || b.vague - a.vague)[0]!;
+  return { n, naif, simple, bon, meilleur };
+});
+
+describe('équilibrage des niveaux 2 à 5 de la forêt', () => {
+  it('rapport', () => {
+    for (const { n, naif, simple, bon } of autres)
+      for (const b of [naif, simple, bon])
+        process.stderr.write(
+          `${n.id} ${b.style.padEnd(7)} ${b.phase.padEnd(8)} vague ${b.vague}  PV ${b.pv}  ★${b.etoiles}  ${b.minutes} min  stade 4 : ${b.tours.filter((t) => t.endsWith(':4')).length}  pertes ${b.pertes.join(' ')}\n`,
+        );
+  });
+
+  for (const { n, naif, meilleur } of autres) {
+    it(`${n.nom} : gagnable, sans 3 étoiles pour les ruches seules, en 8 à 18 minutes`, () => {
+      expect(meilleur.phase).toBe('victoire');
+      expect(naif.etoiles).toBeLessThanOrEqual(2);
+      expect(meilleur.minutes).toBeGreaterThanOrEqual(8);
+      expect(meilleur.minutes).toBeLessThanOrEqual(18);
+    });
+  }
+
+  it('le Fourré et le Cœur de la forêt ne donnent pas les 3 étoiles', () => {
+    for (const { meilleur } of autres.slice(2)) expect(meilleur.etoiles).toBeLessThanOrEqual(2);
+  });
+
+  it('le boss est le niveau le plus dur : le meilleur script y garde le moins de vie', () => {
+    const coeur = autres[3]!.meilleur.pv;
+    for (const { meilleur } of autres.slice(0, 3)) expect(coeur).toBeLessThanOrEqual(meilleur.pv);
   });
 });

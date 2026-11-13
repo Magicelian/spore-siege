@@ -40,13 +40,13 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
   volant: { pv: 14, vitesse: 0.9, morsure: 1, butin: 3, armure: 0, volant: true },
   // Forêt, niveau 4 : rend de la vie aux monstres autour de lui (pas à lui-même).
   soigneur: { pv: 40, vitesse: 0.6, morsure: 2, butin: 6, armure: 1, soin: { rayon: 1.8, pv: 6, cadence: 2 } },
-  // Boss de la forêt (niveau 5, dernière vague). Chiffres provisoires, équilibrés en 8d.
+  // Boss de la forêt (niveau 5, dernière vague). Réglé en 8d : à 2 500 PV le joueur simple perd, à 1 800 il gagne.
   limaceMere: {
-    pv: 700,
+    pv: 1500,
     vitesse: 0.3,
     morsure: 20,
     butin: 60,
-    armure: 4,
+    armure: 5,
     boss: {
       paliers: [
         { part: 0.75, escorte: [{ type: 'limace', nombre: 6 }] },
