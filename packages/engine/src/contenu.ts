@@ -10,6 +10,10 @@ export const PV_SOUCHE = 20;
 export const PAUSE_SECONDES = 25;
 
 export interface FicheMonstre {
+  /** Vole en ligne droite vers la souche : ignore sentier et ronces, seules les tours `aerien` l'atteignent. */
+  volant?: boolean;
+  /** Toutes les `cadence` secondes, rend `pv` aux autres monstres à moins de `rayon` cases. */
+  soin?: { rayon: number; pv: number; cadence: number };
   pv: number;
   /** Cases par seconde. */
   vitesse: number;
@@ -27,6 +31,10 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
   scarabee: { pv: 65, vitesse: 0.55, morsure: 2, butin: 6, armure: 3 },
   amas: { pv: 45, vitesse: 0.7, morsure: 2, butin: 4, armure: 0 },
   petitAmas: { pv: 12, vitesse: 1, morsure: 1, butin: 1, armure: 0 },
+  // Forêt, niveau 2 : vole tout droit de la plage à la souche ; seules la ruche et le cristal l'atteignent.
+  volant: { pv: 14, vitesse: 0.9, morsure: 1, butin: 3, armure: 0, volant: true },
+  // Forêt, niveau 4 : rend de la vie aux monstres autour de lui (pas à lui-même).
+  soigneur: { pv: 40, vitesse: 0.6, morsure: 2, butin: 6, armure: 1, soin: { rayon: 1.8, pv: 6, cadence: 2 } },
 };
 
 /** Spores au départ : de quoi poser les deux premières tours. */
@@ -63,6 +71,8 @@ export interface FicheTour {
   eclair?: { distance: number; attenuation: number };
   /** Mortier : ralentit les monstres touchés. */
   ralenti?: { facteur: number; duree: number };
+  /** Atteint les monstres volants (ruche et cristal) ; les obus du mortier et du canon passent dessous. */
+  aerien?: boolean;
 }
 
 export const TOURS: Record<TypeTour, FicheTour> = {
@@ -73,8 +83,10 @@ export const TOURS: Record<TypeTour, FicheTour> = {
       { prix: 70, degats: 5, portee: 3.1, cadence: 0.35 },
     ],
     projectile: { vitesse: 8, guide: true, rayon: 0 },
+    aerien: true,
   },
   cristal: {
+    aerien: true,
     stades: [
       // Rééquilibré le 13/11/2026 : à 70 spores / 6 dégâts / 1,2 s, des cristaux seuls gagnaient à 3 étoiles.
       { prix: 75, degats: 5, portee: 2.5, cadence: 1.6, rebonds: 2 },

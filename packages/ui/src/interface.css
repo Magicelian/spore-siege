@@ -613,8 +613,8 @@
   margin: 0;
   padding: 2px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px 6px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px 4px;
 }
 .collection .carte {
   height: 100%;
@@ -628,7 +628,8 @@
   grid-row: auto;
 }
 .collection .carte .nom {
-  font-size: 11px;
+  font-size: 10px;
+  line-height: 1.1;
 }
 .vignette.silhouette {
   filter: brightness(0) opacity(0.55);

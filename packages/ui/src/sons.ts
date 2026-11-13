@@ -22,7 +22,8 @@ export type Effet =
   | `tir-${TypeTour}`
   | 'explosion'
   | 'mort'
-  | 'morsure';
+  | 'morsure'
+  | 'soin';
 
 const VOLUME = 0.22;
 /** Ambiance de fond, basse exprès (même niveau que Tiny Shrooms) ; le vent par-dessus en léger souffle. */
@@ -31,7 +32,7 @@ const VENT = 0.18;
 /** Musique de combat : sous les effets, pour que les tirs restent lisibles. */
 const VOLUME_MUSIQUE = 0.13;
 /** Deux effets identiques plus rapprochés que ceci n'en font qu'un (les ruches tirent beaucoup). */
-const ECART_MIN_S: Partial<Record<Effet, number>> = { 'tir-ruche': 0.14, 'tir-cristal': 0.1, mort: 0.05, explosion: 0.08 };
+const ECART_MIN_S: Partial<Record<Effet, number>> = { soin: 0.3, 'tir-ruche': 0.14, 'tir-cristal': 0.1, mort: 0.05, explosion: 0.08 };
 const ECART_DEFAUT_S = 0.06;
 
 /** Une note : fréquence (Hz), départ et durée (s) relatifs à l'effet, glissement final éventuel. */
@@ -126,6 +127,8 @@ const EFFETS: Record<Effet, { notes: Note[]; souffles?: Souffle[] }> = {
   explosion: { notes: [{ f: 90, t: 0, d: 0.2, vers: 40, onde: 'triangle', v: 0.6 }], souffles: [{ t: 0, d: 0.25, f: 700, v: 0.55 }] },
   // Floc : une note qui tombe, puis un petit plop.
   mort: { notes: [{ f: 620, t: 0, d: 0.08, vers: 160, onde: 'sine', v: 0.45 }, { f: 900, t: 0.05, d: 0.04, onde: 'square', v: 0.15 }] },
+  // Soin du prêtre champignon : deux notes douces qui montent.
+  soin: { notes: [{ f: 520, t: 0, d: 0.09, vers: 700, onde: 'sine', v: 0.16 }, { f: 780, t: 0.07, d: 0.1, vers: 1040, onde: 'sine', v: 0.12 }] },
   // Craquement grave, puis une alerte brève.
   morsure: {
     notes: [{ f: 110, t: 0, d: 0.16, vers: 70, onde: 'sawtooth', v: 0.4 }, { f: 440, t: 0.14, d: 0.1, onde: 'square', v: 0.22 }],

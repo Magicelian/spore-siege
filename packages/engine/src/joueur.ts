@@ -144,6 +144,8 @@ class Joueur {
     if (proches.has('scarabee')) besoins.push('cristal', 'cristal');
     if (proches.has('amas')) besoins.push('canon', 'mortier');
     if (proches.has('moucheron')) besoins.push('ruche', 'mortier');
+    if (proches.has('volant')) besoins.push('ruche', 'cristal');
+    if (proches.has('soigneur')) besoins.push('cristal');
     const compte = (t: TypeTour) => i.tours.filter((x) => x.type === t).length;
     return [...besoins].sort((a, b) => compte(a) - compte(b))[0]!;
   }

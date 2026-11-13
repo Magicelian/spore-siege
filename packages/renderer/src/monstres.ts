@@ -18,8 +18,12 @@ const M = {
   carapace: 0x553a32,
   aile: 0xd8e2ea,
   oeil: 0xffa23a,
+  pied: 0xc9c1b0,
+  chapeau: 0x8a3b22,
+  soin: 0x9be05a,
+  phalene: 0xd9cfb8,
 };
-lumineuse(M.oeil);
+lumineuse(M.oeil, M.soin);
 const C = -0.5;
 
 /** Taches de rouille éparses, tirées d'un hachage de la position. */
@@ -90,6 +94,44 @@ function amas(rayon: number): Voxels {
   return v;
 }
 
+/** Phalène moisie : grandes ailes triangulaires bordées de sombre, ocelles de rouille, corps velu dessus (avant = +x). */
+function volant(): Voxels {
+  const v = new Voxels();
+  // Envergure de chaque côté selon x : large à l'avant, effilée à l'arrière.
+  const envergure: Record<number, number> = { 3: 4, 2: 6, 1: 6, 0: 5, [-1]: 4, [-2]: 4, [-3]: 3, [-4]: 2 };
+  for (const [cle, n] of Object.entries(envergure)) {
+    const x = Number(cle);
+    for (let k = 1; k <= n; k++) {
+      const bord = k === n || x === -4;
+      const couleur = bord ? M.sombre : M.phalene;
+      v.poser(x, 9, k, couleur).poser(x, 9, -1 - k, couleur);
+    }
+  }
+  taches(v, M.phalene, 0.18, M.gris);
+  // Ocelles de rouille sur les ailes avant.
+  for (const z of [3, 4]) v.poser(1, 9, z, M.rouille).poser(1, 9, -1 - z, M.rouille);
+  v.poser(2, 9, 3, M.rouilleSombre).poser(2, 9, -4, M.rouilleSombre);
+  // Corps velu posé sur les ailes, tête et yeux qui luisent.
+  v.boule(C - 0.5, 10, C, 2.6, 1, 1, M.sombre);
+  duvet(v, M.sombre, 0.5);
+  v.poser(3, 10, -1, M.oeil).poser(3, 10, 0, M.oeil);
+  v.poser(4, 11, -2, M.sombre).poser(4, 11, 1, M.sombre).poser(5, 12, -3, M.sombre).poser(5, 12, 2, M.sombre);
+  return v;
+}
+
+/** Prêtre champignon : pied pâle voûté, chapeau de rouille piqué de moisissure, bâton à spore luisante. */
+function soigneur(): Voxels {
+  const v = new Voxels().cylindre(C, C, 0, 4, 1.8, M.pied, 1.4);
+  v.dome(C, C, 5, 3.6, 2.6, M.chapeau);
+  v.peindre((_x, y, _z, c) => c === M.chapeau && y === 5, M.rouilleSombre);
+  taches(v, M.chapeau, 0.2, M.grisClair);
+  duvet(v, M.chapeau, 0.2);
+  v.poser(1, 3, -1, M.oeil).poser(1, 3, 0, M.oeil);
+  // Bâton sur le côté, surmonté d'une spore qui luit.
+  v.boite(0, 0, 3, 0, 7, 3, M.carapace).poser(0, 8, 3, M.soin).poser(1, 8, 3, M.soin).poser(0, 9, 3, M.soin);
+  return v;
+}
+
 /** Couleurs des éclats quand le monstre meurt. */
 export const ECLATS: Record<TypeMonstre, number[]> = {
   limace: [M.gris, M.rouille, M.grisClair],
@@ -97,6 +139,8 @@ export const ECLATS: Record<TypeMonstre, number[]> = {
   scarabee: [M.carapace, M.rouilleSombre, M.gris],
   amas: [M.gris, M.rouille, M.grisClair],
   petitAmas: [M.gris, M.rouille, M.grisClair],
+  volant: [M.phalene, M.sombre, M.rouille],
+  soigneur: [M.chapeau, M.pied, M.soin],
 };
 
 let modeles: Record<TypeMonstre, Modele> | null = null;
@@ -107,6 +151,8 @@ export function modelesMonstres(): Record<TypeMonstre, Modele> {
     scarabee: scarabee().modele(false),
     amas: amas(3).modele(false),
     petitAmas: amas(1.8).modele(false),
+    volant: volant().modele(false),
+    soigneur: soigneur().modele(false),
   };
   return modeles;
 }
@@ -218,7 +264,10 @@ export class MonstresRendu {
       const ecart = ((m.id * 0.618) % 1) * 0.36 - 0.18;
       versMonde({ x: x + ecart, y: y - ecart }, ile, this.position);
       if (m.type === 'moucheron') this.position.y += Math.sin(instant / 120 + m.id) * 0.06;
+      if (m.type === 'volant') this.position.y += Math.sin(instant / 300 + m.id) * 0.08;
       corps.maillage.position.copy(this.position);
+      // La phalène bat des ailes (elles s'étendent le long de z).
+      if (m.type === 'volant') corps.maillage.scale.set(1, 1, 1 + Math.sin(instant / 70 + m.id) * 0.3);
       // Limace et amas ondulent en avançant (et s'arrêtent avec eux).
       if (m.type === 'limace' || m.type === 'amas' || m.type === 'petitAmas') {
         const s = Math.sin((x + y) * 7 + m.id) * 0.07;
@@ -288,6 +337,16 @@ export class MonstresRendu {
       if (m.mort) this.eclater(m, t);
       return false;
     });
+  }
+
+  /** Un soigneur a soigné : petite gerbe verte sur lui et sur chaque monstre soigné. */
+  soigner(ids: number[], instant: number): void {
+    for (const id of ids) {
+      const corps = this.corps.get(id);
+      if (!corps) continue;
+      const depart = corps.maillage.position.clone().setY(corps.maillage.position.y + corps.hauteur * 0.6);
+      this.eclats.lancer(depart, instant / 1000, { couleurs: [M.soin], nombre: 5, taille: 0.07, force: 0.5, duree: 0.4 });
+    }
   }
 
   private eclater(m: Mourant, t: number): void {

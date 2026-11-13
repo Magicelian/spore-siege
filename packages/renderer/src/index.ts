@@ -137,6 +137,7 @@ export class Rendu {
     const camera = this.vue.camera;
     const parPixel = (camera.top - camera.bottom) / camera.zoom / this.canevas.height;
     this.monstres.afficher(this.ile, precedent, actuel, alpha, instant, parPixel);
+    for (const e of nouveaux) if (e.type === 'soin') this.monstres.soigner([e.id, ...e.soignes], instant);
     this.tours.afficher(this.ile, precedent, actuel, alpha, selection, pose, marque, instant, parPixel);
     return nouveaux;
   }

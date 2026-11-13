@@ -39,6 +39,8 @@ interface Monstre {
   /** Empoisonné par le Dard jusqu'à ce pas, en perdant `poisonParPas` à chaque pas. */
   poisonJusqua: number;
   poisonParPas: number;
+  /** Soigneur : pas à attendre avant le prochain soin. */
+  soinRecharge: number;
 }
 
 interface Tour {
@@ -218,6 +220,7 @@ export class Partie {
     const bloquees = new Set(this.ronces).add(k);
     if (this.sentier.plages.some((p) => !route(this.ile, p.depart, bloquees))) return false;
     for (const m of this.monstres) {
+      if (MONSTRES[m.type].volant) continue;
       const voisines = casesAutour(m);
       if (voisines.some((v) => cle(v) === k)) return false;
       if (voisines.length > 0 && !this.nouvelleTrace(m, bloquees)) return false;
@@ -239,6 +242,7 @@ export class Partie {
       while (this.lachers[0] && this.lachers[0].pas <= this.pasPhase) this.lacher(this.lachers.shift()!);
       this.deplacer();
       this.empoisonner();
+      this.soigner();
     }
     this.tirer();
     this.voler();
@@ -300,7 +304,9 @@ export class Partie {
       tours,
       projectiles: this.projectiles.map((p) => ({ id: p.id, type: p.type, capacite: p.capacite, position: { ...p.position }, depart: { ...p.depart }, but: { ...p.but } })),
       impacts: this.impacts.map((i) => ({ ...i, position: { ...i.position } })),
-      evenements: this.evenements.map((e) => (e.type === 'mort' ? { ...e, position: { ...e.position } } : { ...e })),
+      evenements: this.evenements.map((e) =>
+        e.type === 'mort' ? { ...e, position: { ...e.position } } : e.type === 'soin' ? { ...e, position: { ...e.position }, soignes: [...e.soignes] } : { ...e },
+      ),
       flaques: this.flaques.map(
         (f): FlaqueVu => ({ id: f.id, position: { ...f.position }, rayon: f.rayon, reste: Math.max(0, (f.fin - this.pas) / (f.fin - f.debut)) }),
       ),
@@ -353,6 +359,10 @@ export class Partie {
 
   private lacher({ type, plage }: Lacher): void {
     const { depart } = this.sentier.plages[plage]!;
+    if (MONSTRES[type].volant) {
+      this.monstres.push(this.nouveauMonstre(type, enVol(this.ile, depart), 0));
+      return;
+    }
     const chemin = route(this.ile, depart, this.ronces);
     if (!chemin) return;
     this.monstres.push(this.nouveauMonstre(type, tracer(this.ile, chemin), 0));
@@ -371,12 +381,14 @@ export class Partie {
       facteurRalenti: 1,
       poisonJusqua: 0,
       poisonParPas: 0,
+      soinRecharge: Math.round((MONSTRES[type].soin?.cadence ?? 0) * PAS_PAR_SECONDE),
     };
   }
 
   /** Après une ronce posée ou enlevée : chaque monstre repart par le plus court chemin encore ouvert. */
   private rerouter(): void {
     for (const m of this.monstres) {
+      if (MONSTRES[m.type].volant) continue;
       const trace = this.nouvelleTrace(m, this.ronces);
       if (!trace) continue;
       m.trace = trace;
@@ -411,8 +423,26 @@ export class Partie {
   /** Le plus fort des ralentis en cours : coup de mortier, flaque de glu. */
   private facteurVitesse(m: Monstre): number {
     let facteur = this.pas < m.ralentiJusqua ? m.facteurRalenti : 1;
+    if (MONSTRES[m.type].volant) return facteur;
     for (const f of this.flaques) if (distance(m.position, f.position) <= f.rayon) facteur = Math.min(facteur, f.facteur);
     return facteur;
+  }
+
+  /** Chaque soigneur, à son rythme, rend de la vie aux autres monstres blessés autour de lui. */
+  private soigner(): void {
+    for (const s of this.monstres) {
+      const soin = MONSTRES[s.type].soin;
+      if (!soin || s.pv <= 0 || --s.soinRecharge > 0) continue;
+      s.soinRecharge = Math.round(soin.cadence * PAS_PAR_SECONDE);
+      const soignes: number[] = [];
+      for (const m of this.monstres) {
+        const max = MONSTRES[m.type].pv;
+        if (m === s || m.pv <= 0 || m.pv >= max || distance(m.position, s.position) > soin.rayon) continue;
+        m.pv = Math.min(max, m.pv + soin.pv);
+        soignes.push(m.id);
+      }
+      if (soignes.length > 0) this.evenements.push({ type: 'soin', id: s.id, monstre: s.type, position: { ...s.position }, soignes, pas: this.pas });
+    }
   }
 
   private empoisonner(): void {
@@ -436,10 +466,11 @@ export class Partie {
   }
 
   /** Le monstre vivant le plus proche de la souche, à portée de `centre`. */
-  private viser(centre: Position, portee: number, exclus?: Set<Monstre>): Monstre | null {
+  private viser(centre: Position, portee: number, aerien: boolean, exclus?: Set<Monstre>): Monstre | null {
     let meilleur: Monstre | null = null;
     for (const m of this.monstres) {
       if (m.pv <= 0 || exclus?.has(m) || distance(centre, m.position) > portee) continue;
+      if (!aerien && MONSTRES[m.type].volant) continue;
       if (!meilleur || m.longueur - m.avancement < meilleur.longueur - meilleur.avancement) meilleur = m;
     }
     return meilleur;
@@ -449,7 +480,7 @@ export class Partie {
     for (const t of this.tours) {
       if (t.recharge > 0) t.recharge--;
       const stade = stadeDe(t);
-      const cible = this.viser(t.centre, stade.portee);
+      const cible = this.viser(t.centre, stade.portee, TOURS[t.type].aerien ?? false);
       t.cible = cible?.id ?? null;
       if (!cible || t.recharge > 0) continue;
       t.recharge = Math.round(stade.cadence * PAS_PAR_SECONDE);
@@ -491,7 +522,7 @@ export class Partie {
       const touches = new Set<Monstre>([cible]);
       const cibles = [cible];
       while (cibles.length < tirs) {
-        const autre = this.viser(t.centre, stade.portee, touches);
+        const autre = this.viser(t.centre, stade.portee, TOURS[t.type].aerien ?? false, touches);
         if (!autre) break;
         touches.add(autre);
         cibles.push(autre);
@@ -510,7 +541,7 @@ export class Partie {
     this.blesser(cible, degats, true);
     let dernier = cible;
     for (let i = 0; i < rebonds; i++) {
-      const suivant = this.viser(dernier.position, saut, touches);
+      const suivant = this.viser(dernier.position, saut, true, touches);
       if (!suivant) break;
       degats *= attenuation;
       touches.add(suivant);
@@ -561,6 +592,7 @@ export class Partie {
       }
       for (const m of this.monstres) {
         if (m.pv <= 0 || distance(m.position, p.but) > p.rayon) continue;
+        if (MONSTRES[m.type].volant && !TOURS[p.type].aerien) continue;
         this.toucher(m, p);
       }
       if (p.flaque) {
@@ -677,6 +709,14 @@ function tracer(ile: Ile, chemin: Case[]): Position[] {
   const versX = derniere.x < ile.souche.x || derniere.x >= ile.souche.x + ile.tailleSouche;
   trace.push({ x: derniere.x + 0.5 + (versX ? dx * 0.5 : 0), y: derniere.y + 0.5 + (versX ? 0 : dy * 0.5) });
   return trace;
+}
+
+/** Vol en ligne droite, du centre de la case de sable jusqu'au point le plus proche du bord de la souche. */
+function enVol(ile: Ile, depart: Case): Position[] {
+  const a = { x: depart.x + 0.5, y: depart.y + 0.5 };
+  const { souche, tailleSouche: t } = ile;
+  const b = { x: Math.min(Math.max(a.x, souche.x), souche.x + t), y: Math.min(Math.max(a.y, souche.y), souche.y + t) };
+  return [a, b];
 }
 
 function longueur(trace: Position[]): number {

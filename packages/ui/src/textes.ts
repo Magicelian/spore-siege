@@ -46,6 +46,16 @@ export const MONSTRES_TEXTES: Record<TypeMonstre, { nom: string; description: st
     description: 'Un éclat d’amas qui a gardé assez de rage pour continuer jusqu’à la souche.',
     conseil: 'Fragile, mais plus rapide que l’amas dont il sort.',
   },
+  volant: {
+    nom: 'Phalène moisie',
+    description: 'Un papillon de nuit couvert de moisissure. Il survole la forêt tout droit vers la souche : ni sentier, ni ronce ne l’arrêtent.',
+    conseil: 'Seules les abeilles de la ruche et l’éclair de l’obélisque l’atteignent : les obus passent dessous.',
+  },
+  soigneur: {
+    nom: 'Prêtre champignon',
+    description: 'Un vieux champignon voûté qui répand des spores de rouille. Elles referment les blessures des monstres autour de lui.',
+    conseil: 'Abats-le en premier : l’éclair de l’obélisque l’atteint au milieu de son troupeau.',
+  },
 };
 
 export const ILES_TEXTES: Record<Biome, string> = {
