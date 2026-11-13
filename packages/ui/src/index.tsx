@@ -329,7 +329,7 @@ export class ControleurInterface {
 
   private natureCase(c: Case): 'tour' | 'ronce' | 'construire' | null {
     if (this.tourDe(c)) return 'tour';
-    if (this.jeu.emplacementsRonces.some((e) => memeCase(e, c))) return 'ronce';
+    if (this.instantane?.regles.ronces !== false && this.jeu.emplacementsRonces.some((e) => memeCase(e, c))) return 'ronce';
     if (this.jeu.libre(c)) return 'construire';
     return null;
   }
@@ -901,7 +901,8 @@ function BulleConstruire(p: {
   survoler: (t: TypeTour | null) => void;
   poser: (t: TypeTour) => void;
 }) {
-  const detail = p.survol ?? TYPES[0]!;
+  const permises = p.i.regles.tours;
+  const detail = p.survol ?? permises[0] ?? TYPES[0]!;
   return (
     <section class={`bulle ${p.enHaut ? 'haut' : 'bas'}`}>
       <Entete titre={TEXTES.construire} fermer={p.fermer} />
@@ -909,18 +910,26 @@ function BulleConstruire(p: {
         <ul class="catalogue" onMouseLeave={() => p.survoler(null)}>
           {TYPES.map((t) => {
             const prix = TOURS[t].stades[0].prix;
-            const manque = p.i.spores < prix;
+            const interdite = !permises.includes(t);
+            const manque = interdite || p.i.spores < prix;
             return (
               <li>
                 <button
-                  class={`carte${manque ? ' manque' : ''}${p.survol === t ? ' choisie' : ''}`}
+                  class={`carte${manque ? ' manque' : ''}${interdite ? ' interdite' : ''}${p.survol === t ? ' choisie' : ''}`}
                   disabled={manque}
-                  onMouseEnter={() => p.survoler(t)}
+                  title={interdite ? TEXTES.tourInterdite : undefined}
+                  onMouseEnter={() => p.survoler(interdite ? null : t)}
                   onClick={() => p.poser(t)}
                 >
                   <img class="vignette" src={p.vignette(t)} alt="" />
                   <span class="nom">{TOURS_TEXTES[t].nom}</span>
-                  <Prix n={prix} manque={manque} />
+                  {interdite ? (
+                    <span class="qte manque">
+                      <Ico nom="cadenas" />
+                    </span>
+                  ) : (
+                    <Prix n={prix} manque={manque} />
+                  )}
                 </button>
               </li>
             );

@@ -102,6 +102,9 @@ export const TOURS: Record<TypeTour, FicheTour> = {
   },
 };
 
+/** Les quatre tours, dans l'ordre de la bulle « Construire ». */
+export const TYPES_TOURS = Object.keys(TOURS) as TypeTour[];
+
 /**
  * Stade 4 : une capacité choisie parmi deux, chiffres complets du stade (prix = celui du stade 4). Les champs
  * optionnels remplacent ceux de la fiche de la tour ou ajoutent un effet.

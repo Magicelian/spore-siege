@@ -7,15 +7,15 @@
 //  - seul:<tour ou capacité> : une seule sorte de tour, six au meilleur endroit, puis améliore la plus faible, puis
 //    (si une capacité est donnée) passe chacune au stade 4 avec cette capacité. Aucune tour ne doit suffire seule.
 // Les joueurs simple et bon prennent aussi le stade 4 quand ils ont une tour au stade 3.
-import type { Capacite, Case, Ile, Phase, TourVue, TypeMonstre, TypeTour } from './contrat';
+import type { Capacite, Case, Ile, Phase, Regles, TourVue, TypeMonstre, TypeTour } from './contrat';
 import { CAPACITES, CAPACITES_DE, PAS_PAR_SECONDE, TOURS, type Vague } from './contenu';
 import { Partie } from './partie';
 import { cle, route } from './sentier';
 
-export type Niveau = 'naif' | 'simple' | 'bon' | `seul:${TypeTour | Capacite}`;
+export type Style = 'naif' | 'simple' | 'bon' | `seul:${TypeTour | Capacite}`;
 
 export interface Bilan {
-  niveau: Niveau;
+  style: Style;
   phase: Phase;
   /** Dernière vague jouée (celle de la défaite, ou la dernière en cas de victoire). */
   vague: number;
@@ -33,9 +33,9 @@ export interface Bilan {
 const PAS_ENTRE_DECISIONS = PAS_PAR_SECONDE;
 const CYCLE_SIMPLE: TypeTour[] = ['ruche', 'ruche', 'cristal', 'canon', 'mortier'];
 
-export function jouer(niveau: Niveau, ile: Ile, vagues: readonly Vague[]): Bilan {
-  const partie = new Partie(ile, vagues, 1);
-  const joueur = new Joueur(niveau, partie);
+export function jouer(style: Style, ile: Ile, vagues: readonly Vague[], regles: Partial<Regles> = {}): Bilan {
+  const partie = new Partie(ile, vagues, 1, regles);
+  const joueur = new Joueur(style, partie);
   const pertes: number[] = vagues.map(() => 0);
   let pas = 0;
   let i = partie.instantane();
@@ -49,7 +49,7 @@ export function jouer(niveau: Niveau, ile: Ile, vagues: readonly Vague[]): Bilan
     i = suivant;
   }
   return {
-    niveau,
+    style,
     phase: i.phase,
     vague: i.vague,
     pv: i.souche.pv,
@@ -65,10 +65,10 @@ class Joueur {
   private readonly plan: Case[];
 
   constructor(
-    private readonly niveau: Niveau,
+    private readonly style: Style,
     private readonly partie: Partie,
   ) {
-    this.plan = niveau === 'bon' ? this.meilleuresRonces() : [];
+    this.plan = style === 'bon' && partie.regles.ronces ? this.meilleuresRonces() : [];
   }
 
   /** Dépense ce qu'il peut, action après action, tant que la suivante est payable. */
@@ -84,7 +84,9 @@ class Joueur {
     const tours = i.tours;
     const plusFaible = [...tours].filter((t) => t.prixAmelioration !== null).sort((a, b) => a.stade - b.stade || b.id - a.id)[0];
     const ameliorer = () => (plusFaible ? this.partie.executer({ type: 'ameliorerTour', id: plusFaible.id }) : false);
-    const poser = (type: TypeTour) => () => {
+    const permises = this.partie.regles.tours;
+    const poser = (voulu: TypeTour) => () => {
+      const type = permises.includes(voulu) ? voulu : permises[tours.length % permises.length]!;
       const c = this.meilleureCase(type);
       return c ? this.partie.executer({ type: 'poserTour', tour: type, case: c }) : false;
     };
@@ -94,10 +96,10 @@ class Joueur {
     const specialiser = (choix: (t: TourVue) => Capacite) => () =>
       auStade3 ? this.partie.executer({ type: 'choisirCapacite', id: auStade3.id, capacite: choix(auStade3) }) : false;
 
-    if (this.niveau === 'naif') return poser('ruche');
+    if (this.style === 'naif') return poser('ruche');
 
-    if (this.niveau.startsWith('seul:')) {
-      const nom = this.niveau.slice('seul:'.length) as TypeTour | Capacite;
+    if (this.style.startsWith('seul:')) {
+      const nom = this.style.slice('seul:'.length) as TypeTour | Capacite;
       const capacite = nom in CAPACITES ? (nom as Capacite) : null;
       const type = capacite ? CAPACITES[capacite].tour : (nom as TypeTour);
       if (tours.length < 6) return poser(type);
@@ -105,7 +107,7 @@ class Joueur {
       return capacite && auStade3 ? specialiser(() => capacite) : poser(type);
     }
 
-    if (this.niveau === 'simple') {
+    if (this.style === 'simple') {
       const ameliorees = tours.reduce((n, t) => n + t.stade - 1, 0);
       if (tours.length >= 4 && ameliorees < tours.length - 3) {
         if (plusFaible) return ameliorer;

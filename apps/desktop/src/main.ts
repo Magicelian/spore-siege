@@ -2,7 +2,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { ileForet, Partie, PAS_MS, VAGUES_FORET, type Commande, type EvenementVu, type Instantane, type Phase } from '@spore-siege/engine';
+import { ileDe, NIVEAUX_FORET, partieDe, PAS_MS, type Partie, type Commande, type EvenementVu, type Instantane, type Phase } from '@spore-siege/engine';
 import { echelleAffichage, ORDRE_ILES, Rendu } from '@spore-siege/renderer';
 import { ControleurInterface, type Effet, type Fenetre, type Jeu } from '@spore-siege/ui';
 import '@spore-siege/ui/interface.css';
@@ -19,13 +19,15 @@ const TAILLES = [
 
 const conteneur = document.getElementById('jeu')!;
 const rendu = new Rendu(conteneur);
-const ile = ileForet();
+/** Niveau joué ; un seul pour l'instant (la carte de l'île arrive en 8e). */
+const niveau = NIVEAUX_FORET[0]!;
+const ile = ileDe(niveau);
 rendu.appliquerIle(ile);
 
 // ─── Partie : le moteur avance à pas fixes, l'affichage glisse entre deux pas ──────────
 /** Au-delà, on lâche du retard plutôt que de rattraper (fenêtre restée cachée, par exemple). */
 const PAS_MAX_PAR_IMAGE = 10;
-let partie = new Partie(ile, VAGUES_FORET, Date.now() >>> 0);
+let partie = partieDe(niveau, Date.now() >>> 0);
 let precedent: Instantane | null = null;
 let actuel = partie.instantane();
 let reserve = 0;
@@ -112,7 +114,7 @@ rendu.montrer('carte');
 ui.maj(actuel);
 
 function recommencer(): void {
-  partie = new Partie(ile, VAGUES_FORET, Date.now() >>> 0);
+  partie = partieDe(niveau, Date.now() >>> 0);
   ui.jeu = jeuDe(partie);
   precedent = null;
   actuel = partie.instantane();

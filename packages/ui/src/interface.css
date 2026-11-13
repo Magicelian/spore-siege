@@ -428,6 +428,10 @@
 .carte.manque .vignette {
   opacity: 0.6;
 }
+.carte.interdite .vignette {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
 .detail {
   margin: 8px -8px -8px;
   padding: 4px 8px 6px;

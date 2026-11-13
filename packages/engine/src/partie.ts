@@ -1,6 +1,6 @@
 // Une partie sur une île : vagues, monstres qui suivent le sentier, tours qui tirent, spores, vie de la souche.
 // Pur et déterministe : mêmes île, vagues, graine et commandes → même partie, pas pour pas.
-import type { Capacite, Case, Commande, EvenementVu, FlaqueVu, ImpactVu, Ile, Instantane, MonstreVu, Phase, Position, TourVue, TypeMonstre, TypeTour } from './contrat';
+import type { Capacite, Case, Commande, Regles, EvenementVu, FlaqueVu, ImpactVu, Ile, Instantane, MonstreVu, Phase, Position, TourVue, TypeMonstre, TypeTour } from './contrat';
 import {
   BONUS_PAR_SECONDE_GAGNEE,
   BONUS_VAGUE,
@@ -16,6 +16,7 @@ import {
   PV_SOUCHE,
   SPORES_DEPART,
   TOURS,
+  TYPES_TOURS,
   type StadeTour,
   type Vague,
 } from './contenu';
@@ -111,7 +112,8 @@ export class Partie {
   private monstres: Monstre[] = [];
   private prochainId = 1;
   private lachers: Lacher[] = [];
-  private spores = SPORES_DEPART;
+  private spores: number;
+  readonly regles: Regles;
   private tours: Tour[] = [];
   private projectiles: Projectile[] = [];
   private impacts: ImpactVu[] = [];
@@ -124,7 +126,10 @@ export class Partie {
     readonly ile: Ile,
     readonly vagues: readonly Vague[],
     graine: number,
+    regles: Partial<Regles> = {},
   ) {
+    this.regles = { spores: SPORES_DEPART, tours: [...TYPES_TOURS], ronces: true, ...regles };
+    this.spores = this.regles.spores;
     this.sentier = lireSentier(ile);
     this.emplacementsRonces = emplacementsRonces(ile, this.sentier.carrefours);
     this.hasard = creerHasard(graine);
@@ -143,7 +148,7 @@ export class Partie {
       case 'poserTour': {
         const prix = TOURS[commande.tour].stades[0].prix;
         const c = commande.case;
-        if (!this.libre(c) || this.spores < prix) return false;
+        if (!this.regles.tours.includes(commande.tour) || !this.libre(c) || this.spores < prix) return false;
         this.spores -= prix;
         this.tours.push({
           id: this.prochainId++,
@@ -209,7 +214,7 @@ export class Partie {
    */
   ronceLibre(c: Case): boolean {
     const k = cle(c);
-    if (this.ronces.has(k) || !this.emplacementsRonces.some((e) => cle(e) === k)) return false;
+    if (!this.regles.ronces || this.ronces.has(k) || !this.emplacementsRonces.some((e) => cle(e) === k)) return false;
     const bloquees = new Set(this.ronces).add(k);
     if (this.sentier.plages.some((p) => !route(this.ile, p.depart, bloquees))) return false;
     for (const m of this.monstres) {
@@ -306,6 +311,7 @@ export class Partie {
       bonusLancer: this.bonusLancer(),
       etoiles: this.phase === 'victoire' ? etoiles(this.pvSouche) : 0,
       monstresVague: this.monstresVague(),
+      regles: { ...this.regles, tours: [...this.regles.tours] },
     };
   }
 

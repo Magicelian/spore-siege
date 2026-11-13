@@ -113,6 +113,16 @@ export interface FlaqueVu {
 /** `pause` : on construit avant la vague `numero` ; `vague` : la vague `numero` est en cours. */
 export type Phase = 'pause' | 'vague' | 'victoire' | 'defaite';
 
+/** Contraintes d'un niveau. */
+export interface Regles {
+  /** Spores au départ. */
+  spores: number;
+  /** Tours qu'on peut poser, dans l'ordre de la bulle. */
+  tours: TypeTour[];
+  /** Peut-on faire pousser des ronces ? */
+  ronces: boolean;
+}
+
 export interface Instantane {
   /** Pas de simulation écoulés depuis le début. */
   pas: number;
@@ -140,6 +150,8 @@ export interface Instantane {
   etoiles: number;
   /** Sortes de monstres de la vague en cours ou à venir (pour annoncer les nouveaux). */
   monstresVague: TypeMonstre[];
+  /** Contraintes du niveau joué. */
+  regles: Regles;
 }
 
 /** Ce que le frontend peut demander ; le moteur refuse ce qui n'a pas de sens. */

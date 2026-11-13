@@ -76,6 +76,7 @@ export const TEXTES = {
   zone: 'zone',
   secondes: (s: number) => `${nombre(s)} s`,
   ronce: 'Ronce',
+  tourInterdite: 'Interdite sur ce niveau',
   ronceRole: 'Ferme cette branche du sentier : les monstres prennent l’autre.',
   ronceArracher: 'Arracher',
   ronceRoleArracher: 'Arrachée, la branche se rouvre et les monstres reprennent le plus court chemin.',
