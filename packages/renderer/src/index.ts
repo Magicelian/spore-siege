@@ -1,5 +1,6 @@
 // Rendu de l'île : scène Three.js pixelisée, dans le style de Tiny Shrooms.
 import * as THREE from 'three';
+import { Eclairage } from './eclairage';
 import type { Biome, Case, EvenementVu, Ile, Instantane } from '@spore-siege/engine';
 import { Archipel, COTE_ARCHIPEL, ETAPES_ARCHIPEL, reduire } from './archipel';
 import { CameraIso } from './camera';
@@ -58,6 +59,7 @@ export class Rendu {
   /** Appelé avant chaque image, avec l'instant en millisecondes : c'est là que le frontend fait tourner le moteur. */
   surImage: ((instant: number) => void) | null = null;
   private decor: THREE.Group | null = null;
+  private readonly eclairage: Eclairage;
   private actif = false;
   private derniereImage = 0;
 
@@ -80,6 +82,7 @@ export class Rendu {
     soleil.shadow.bias = -0.002;
     Object.assign(soleil.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 50 });
     this.scene.add(ciel, soleil, this.souche.groupe, this.monstres.groupe, this.tours.groupe);
+    this.eclairage = new Eclairage(this.scene, ciel, soleil);
     this.dessus.add(this.monstres.dessus, this.tours.dessus);
 
     // Carte des îles : mêmes lumières, ombres sur toute l'étendue de l'archipel.
@@ -177,6 +180,7 @@ export class Rendu {
       if (e.type === 'recolte') this.monstres.lacherButin(e.gain, centreCase(e.case.x, e.case.y, this.ile, new THREE.Vector3()), HAUTEUR_FLEUR, instant / 1000);
     }
     this.tours.afficher(this.ile, precedent, actuel, alpha, selection, pose, marque, instant, parPixel);
+    this.eclairage.afficher(this.ile, actuel.regles.noir, actuel.lumieres, instant / 1000);
     return nouveaux;
   }
 

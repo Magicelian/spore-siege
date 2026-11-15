@@ -10,9 +10,9 @@ const vagues: Vague[] = [[{ type: 'limace', nombre: 1, intervalle: 1 }]];
 const herbe = { x: 2, y: 5 };
 
 describe('règles des niveaux', () => {
-  it('sans contrainte : 120 spores, 4 tours, ronces permises, pas de fleurs', () => {
+  it('sans contrainte : 120 spores, toutes les tours, ronces permises, ni fleurs ni noir', () => {
     const p = new Partie(ile, vagues, 1);
-    expect(p.instantane().regles).toEqual({ spores: SPORES_DEPART, tours: TYPES_TOURS, ronces: true, fleurs: false, capacites: TOUTES_CAPACITES });
+    expect(p.instantane().regles).toEqual({ spores: SPORES_DEPART, tours: TYPES_TOURS, ronces: true, fleurs: false, noir: false, capacites: TOUTES_CAPACITES });
   });
 
   it('les spores de départ suivent le niveau', () => {

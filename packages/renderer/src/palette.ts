@@ -50,7 +50,7 @@ const HERBE_FUTAIE = 0x5f9e4a;
 function surfaces(sol: number, eau: number): Record<Exclude<Terrain, 'vide'>, number> {
   // Le gué : eau peu profonde, troublée par la vase du sentier ; le nénuphar flotte sur l'eau.
   const gue = new THREE.Color(eau).lerp(new THREE.Color(COULEURS.sentier), 0.35).getHex();
-  return { herbe: sol, foret: sol, fleurs: sol, buisson: sol, rocher: sol, eau, sable: COULEURS.sable, sentier: COULEURS.sentier, gue, nenuphar: eau };
+  return { herbe: sol, foret: sol, fleurs: sol, buisson: sol, rocher: sol, eau, sable: COULEURS.sable, sentier: COULEURS.sentier, gue, nenuphar: eau, luisant: sol };
 }
 export const SURFACES_PAR_BIOME: Record<Biome, Record<Exclude<Terrain, 'vide'>, number>> = {
   foret: COULEURS_SURFACE,

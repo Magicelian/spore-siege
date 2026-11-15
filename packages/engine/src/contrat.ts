@@ -13,7 +13,7 @@ export interface Position {
 }
 
 /** `sentier` : là où marchent les monstres ; `sable` : plage de débarquement. */
-export type Terrain = 'vide' | 'herbe' | 'foret' | 'fleurs' | 'buisson' | 'rocher' | 'eau' | 'sable' | 'sentier' | 'gue' | 'nenuphar';
+export type Terrain = 'vide' | 'herbe' | 'foret' | 'fleurs' | 'buisson' | 'rocher' | 'eau' | 'sable' | 'sentier' | 'gue' | 'nenuphar' | 'luisant';
 /** Cases où marchent les monstres : le sentier et ses gués (sentier dans l'eau). */
 export const estSentier = (t: Terrain | undefined) => t === 'sentier' || t === 'gue';
 
@@ -70,6 +70,8 @@ export interface MonstreVu {
   mange: boolean;
   /** Grand Corbeau : hauteur de vol, de 1 (il tourne au-dessus de l'île) à 0 (posé) ; `null` pour les autres. */
   altitude: number | null;
+  /** Grotte : hors de toute lumière, aucune tour ne le vise (on ne voit que ses yeux). */
+  dansLeNoir: boolean;
 }
 
 export type TypeTour = 'ruche' | 'cristal' | 'mortier' | 'canon' | 'heron';
@@ -145,6 +147,24 @@ export interface FleurVue {
   revente: number;
 }
 
+/** Champignon-lanterne posé par le joueur (grotte) : il éclaire autour de lui. */
+export interface LanterneVue {
+  id: number;
+  case: Case;
+  /** Spores rendues si on l'enlève. */
+  revente: number;
+  /** Éteinte un moment (chauve-souris, Ver des profondeurs), elle n'éclaire plus. */
+  allumee: boolean;
+}
+
+/** Zone éclairée de la grotte : un luisant de la carte (`lanterne` = null) ou un champignon-lanterne. */
+export interface Lumiere {
+  position: Position;
+  rayon: number;
+  lanterne: number | null;
+  allumee: boolean;
+}
+
 /** Flaque collante laissée par le mortier Glu : les monstres dedans sont ralentis. */
 export interface FlaqueVu {
   id: number;
@@ -167,6 +187,8 @@ export interface Regles {
   ronces: boolean;
   /** Peut-on planter des fleurs à spores ? (prairie) */
   fleurs: boolean;
+  /** Grotte : les tours ne visent que les monstres éclairés, et on peut poser des champignons-lanternes. */
+  noir: boolean;
   /** Capacités du stade 4 ouvertes dans l'Atelier (avec les étoiles) ; les autres sont refusées. */
   capacites: Capacite[];
 }
@@ -194,6 +216,10 @@ export interface Instantane {
   ronces: Case[];
   /** Fleurs à spores plantées. */
   fleurs: FleurVue[];
+  /** Champignons-lanternes posés (grotte). */
+  lanternes: LanterneVue[];
+  /** Zones éclairées (grotte ; vide ailleurs). */
+  lumieres: Lumiere[];
   /** Spores gagnées en lançant la vague maintenant (0 hors pause). */
   bonusLancer: number;
   /** Étoiles gagnées, une fois la partie gagnée (1 à 3) ; 0 sinon. */
@@ -225,4 +251,6 @@ export type Commande =
   | { type: 'poserRonce'; case: Case }
   | { type: 'enleverRonce'; case: Case }
   | { type: 'planterFleur'; case: Case }
-  | { type: 'arracherFleur'; id: number };
+  | { type: 'arracherFleur'; id: number }
+  | { type: 'poserLanterne'; case: Case }
+  | { type: 'enleverLanterne'; id: number };

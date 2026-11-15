@@ -60,6 +60,9 @@ export function construireIle(ile: Ile): THREE.Group {
         poser('fleur', 0, 'porte', decalage, echelle.setScalar(0.85 + b * 0.3), quart(b));
       } else if (terrain === 'buisson') {
         poser('buisson', 0, 'porte', decalage, echelle.setScalar(0.85 + b * 0.25), quart(b));
+      } else if (terrain === 'luisant') {
+        // Grosse touffe de luisants (grotte) : elle éclaire autour d'elle.
+        poser('luisant', 0, 'porte', decalage, echelle.setScalar(1.25 + b * 0.2), quart(b));
       } else if (terrain === 'rocher') {
         poser('caillou', 0, 'porte', decalage, echelle.set(0.85, 0.75 + b * 0.3, 0.85), quart(b));
       } else if (terrain === 'nenuphar') {

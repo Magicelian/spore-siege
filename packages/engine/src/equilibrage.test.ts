@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { ileForet } from './carte';
 import { VAGUES_FORET } from './contenu';
 import { jouer, type Bilan, type Style } from './joueur';
-import { ileDe, NIVEAUX_FORET, NIVEAUX_MARAIS, NIVEAUX_PRAIRIE } from './niveaux';
+import { ileDe, NIVEAUX_FORET, NIVEAUX_MARAIS, NIVEAUX_PRAIRIE, NIVEAUX_GROTTE } from './niveaux';
 
 const bilans = (['naif', 'simple', 'bon'] as Style[]).map((n) => jouer(n, ileForet(), VAGUES_FORET));
 
@@ -184,4 +184,35 @@ describe('équilibrage de la prairie', () => {
     const coeur = prairie[4]!.meilleur.pv;
     for (const { meilleur } of prairie.slice(0, 4)) expect(coeur).toBeLessThanOrEqual(meilleur.pv);
   });
+});
+
+// Grotte (étape 11) : le niveau 1 vaut à peu près le niveau 3 de la prairie ; tous les scripts sauf le naïf posent
+// des champignons-lanternes là où leurs tours ne voient que du noir.
+const grotte = NIVEAUX_GROTTE.map((n) => {
+  const [naif, simple, bon, ruches, cristaux] = (['naif', 'simple', 'bon', 'seul:ruche', 'seul:cristal'] as Style[]).map((st) =>
+    jouer(st, ileDe(n), n.vagues, n.regles),
+  ) as [Bilan, Bilan, Bilan, Bilan, Bilan];
+  const meilleur = [simple, bon].sort((a, b) => b.pv - a.pv || b.vague - a.vague)[0]!;
+  return { n, naif, simple, bon, ruches, cristaux, meilleur };
+});
+
+describe('équilibrage de la grotte', () => {
+  it('rapport', () => {
+    for (const { n, naif, simple, bon, ruches, cristaux } of grotte)
+      for (const b of [naif, simple, bon, ruches, cristaux])
+        process.stderr.write(
+          `${n.id} ${b.style.padEnd(12)} ${b.phase.padEnd(8)} vague ${b.vague}  PV ${b.pv}  ★${b.etoiles}  ${b.minutes} min  pertes ${b.pertes.join(' ')}\n`,
+        );
+  });
+
+  // Provisoire (11a) : réglé pour de bon en 11d avec les niveaux 2 à 5.
+  for (const { n, naif, ruches, cristaux, meilleur } of grotte) {
+    it(`${n.nom} : gagnable sans 3 étoiles, ni pour le meilleur script ni pour une seule sorte de tour, en 8 à 19 minutes`, () => {
+      expect(meilleur.phase).toBe('victoire');
+      expect(meilleur.etoiles).toBeLessThanOrEqual(2);
+      for (const b of [naif, ruches, cristaux]) expect(b.etoiles).toBeLessThanOrEqual(2);
+      expect(meilleur.minutes).toBeGreaterThanOrEqual(8);
+      expect(meilleur.minutes).toBeLessThanOrEqual(19);
+    });
+  }
 });

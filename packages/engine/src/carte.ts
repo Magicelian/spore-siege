@@ -15,6 +15,8 @@ const LETTRES: Record<string, Terrain> = {
   g: 'gue',
   // Feuille flottante : les tours de terre s'y posent aussi.
   n: 'nenuphar',
+  // Touffe de champignons luisants (grotte) : elle éclaire autour d'elle, on ne construit pas dessus.
+  l: 'luisant',
   // La souche est posée sur de l'herbe.
   S: 'herbe',
 };
@@ -424,3 +426,31 @@ export function lireCarte(lignes: readonly string[], biome: Biome): Ile {
 export function ileForet(): Ile {
   return lireCarte(CARTE_FORET, 'foret');
 }
+
+/**
+ * Grotte, niveau 1 (Galerie des luisants) : le tracé des Prés fleuris (plages ouest et nord-est réunies ligne 7,
+ * ronce (7, 7)), semé de rochers et de 7 luisants (`l`) qui éclairent une bonne moitié du chemin : le reste est
+ * noir et attend les champignons-lanternes.
+ */
+export const CARTE_GALERIE = [
+  '.....hrhhrh....sss..',
+  '...rhrhhhhrh..ss=s..',
+  '..rrhhhhhhhhhrhh=hr.',
+  '.rrhhrhhhhhhhhhh=lrr',
+  'ss=====hrhhhhhhh=hrh',
+  'shhhlh=hhhhhhhrh=hhh',
+  'rhhhhh=hhhhhhhhh=hrh',
+  'hhhhhh===========hhr',
+  'hhrhhh=hhh=lhhhhhhrr',
+  '.hhhhh=hhSShhhhhhrh.',
+  'hhhhhl=hhSS===hhhhr.',
+  'hhhhhh=hhhhhh=hhhhrr',
+  '.rhhhh=hhhhrh=lhhhr.',
+  '.hhhhh=hhhhhh=heehh.',
+  '.hrhhh========heeer.',
+  '..hrhhhhhlhhhhrhrhr.',
+  '..rhrhhhhhrhhhhhhhh.',
+  '...rhhhrhhhhhhhrhr..',
+  '....rrhhhhhhrhhrh...',
+  '......rhrhhhhh......',
+] as const;

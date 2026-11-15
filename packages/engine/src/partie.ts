@@ -1,6 +1,6 @@
 // Une partie sur une île : vagues, monstres qui suivent le sentier, tours qui tirent, spores, vie de la souche.
 // Pur et déterministe : mêmes île, vagues, graine et commandes → même partie, pas pour pas.
-import type { Arrivee, Capacite, Case, Commande, Regles, EvenementVu, FlaqueVu, FleurVue, ImpactVu, Ile, Instantane, MonstreVu, Phase, Position, TourVue, TypeMonstre, TypeTour } from './contrat';
+import type { Arrivee, Capacite, Case, Commande, Regles, EvenementVu, FlaqueVu, FleurVue, ImpactVu, Ile, Instantane, LanterneVue, Lumiere, MonstreVu, Phase, Position, TourVue, TypeMonstre, TypeTour } from './contrat';
 import { estSentier } from './contrat';
 import {
   BONUS_PAR_SECONDE_GAGNEE,
@@ -9,6 +9,7 @@ import {
   CAPACITES_DE,
   FACTEUR_GUE,
   FLEUR,
+  LANTERNE,
   MONSTRES,
   PART_RONCE_RENDUE,
   PART_REVENTE,
@@ -144,6 +145,10 @@ export class Partie {
   readonly emplacementsRonces: Case[];
   private ronces = new Set<string>();
   private fleurs: { id: number; case: Case }[] = [];
+  /** Champignons-lanternes (grotte) ; `eteinteJusqua` = pas jusqu'auquel elle n'éclaire plus. */
+  private lanternes: { id: number; case: Case; eteinteJusqua: number }[] = [];
+  /** Centres des luisants de la carte. */
+  private readonly luisants: Position[];
   private pas = 0;
   private phase: Phase = 'pause';
   private vague = 1;
@@ -170,11 +175,15 @@ export class Partie {
     graine: number,
     regles: Partial<Regles> = {},
   ) {
-    this.regles = { spores: SPORES_DEPART, tours: [...TYPES_TOURS], ronces: true, fleurs: false, capacites: [...TOUTES_CAPACITES], ...regles };
+    this.regles = { spores: SPORES_DEPART, tours: [...TYPES_TOURS], ronces: true, fleurs: false, noir: false, capacites: [...TOUTES_CAPACITES], ...regles };
     this.spores = this.regles.spores;
     this.sentier = lireSentier(ile);
     this.emplacementsRonces = emplacementsRonces(ile, this.sentier.carrefours);
     this.hasard = creerHasard(graine);
+    this.luisants = [];
+    ile.terrain.forEach((t, i) => {
+      if (t === 'luisant') this.luisants.push({ x: (i % ile.largeur) + 0.5, y: Math.floor(i / ile.largeur) + 0.5 });
+    });
     if (this.sentier.plages.length === 0) throw new Error("l'île n'a aucune plage reliée au sentier");
   }
 
@@ -262,6 +271,20 @@ export class Partie {
         this.fleurs = this.fleurs.filter((f) => f !== fleur);
         return true;
       }
+      case 'poserLanterne': {
+        const c = commande.case;
+        if (this.spores < LANTERNE.prix || !this.lanterneLibre(c)) return false;
+        this.spores -= LANTERNE.prix;
+        this.lanternes.push({ id: this.prochainId++, case: { x: c.x, y: c.y }, eteinteJusqua: 0 });
+        return true;
+      }
+      case 'enleverLanterne': {
+        const lanterne = this.lanternes.find((l) => l.id === commande.id);
+        if (!lanterne) return false;
+        this.spores += Math.floor(LANTERNE.prix * LANTERNE.partRendue);
+        this.lanternes = this.lanternes.filter((l) => l !== lanterne);
+        return true;
+      }
     }
   }
 
@@ -293,10 +316,39 @@ export class Partie {
     return this.regles.fleurs && constructible(this.ile, c, 'ruche') && !this.occupee(c);
   }
 
-  /** Une tour ou une fleur est-elle déjà sur cette case ? */
+  /** Un champignon-lanterne peut-il être posé ici ? Là où pousse une tour de terre, dans la grotte. */
+  lanterneLibre(c: Case): boolean {
+    return this.regles.noir && constructible(this.ile, c, 'ruche') && !this.occupee(c);
+  }
+
+  /** Une tour, une fleur ou une lanterne est-elle déjà sur cette case ? */
   private occupee(c: Case): boolean {
     const ici = (o: { case: Case }) => o.case.x === c.x && o.case.y === c.y;
-    return this.tours.some(ici) || this.fleurs.some(ici);
+    return this.tours.some(ici) || this.fleurs.some(ici) || this.lanternes.some(ici);
+  }
+
+  /** Zones éclairées : luisants de la carte, puis lanternes (vide hors de la grotte). */
+  private lumieres(): Lumiere[] {
+    if (!this.regles.noir) return [];
+    return [
+      ...this.luisants.map((p): Lumiere => ({ position: { ...p }, rayon: LANTERNE.luisant, lanterne: null, allumee: true })),
+      ...this.lanternes.map((l): Lumiere => ({
+        position: { x: l.case.x + 0.5, y: l.case.y + 0.5 },
+        rayon: LANTERNE.rayon,
+        lanterne: l.id,
+        allumee: this.pas >= l.eteinteJusqua,
+      })),
+    ];
+  }
+
+  /** Ce point est-il éclairé ? Toujours hors de la grotte. */
+  private eclaire(p: Position): boolean {
+    if (!this.regles.noir) return true;
+    for (const l of this.luisants) if (distance(l, p) <= LANTERNE.luisant) return true;
+    for (const l of this.lanternes) {
+      if (this.pas >= l.eteinteJusqua && distance({ x: l.case.x + 0.5, y: l.case.y + 0.5 }, p) <= LANTERNE.rayon) return true;
+    }
+    return false;
   }
 
   /** Un pas de simulation. */
@@ -349,6 +401,7 @@ export class Partie {
       saut: this.enSaut(m) ? (this.pas - m.sautDebut) / dureeSaut(m.type) : null,
       mange: m.horsSentier === 'repas',
       altitude: this.altitude(m),
+      dansLeNoir: !this.eclaire(m.position),
     }));
     const tours: TourVue[] = this.tours.map((t) => ({
       id: t.id,
@@ -395,6 +448,10 @@ export class Partie {
         return { x, y };
       }),
       fleurs: this.fleurs.map((f): FleurVue => ({ id: f.id, case: { ...f.case }, revente: Math.floor(FLEUR.prix * FLEUR.partRendue) })),
+      lanternes: this.lanternes.map(
+        (l): LanterneVue => ({ id: l.id, case: { ...l.case }, revente: Math.floor(LANTERNE.prix * LANTERNE.partRendue), allumee: this.pas >= l.eteinteJusqua }),
+      ),
+      lumieres: this.lumieres(),
       bonusLancer: this.bonusLancer(),
       etoiles: this.phase === 'victoire' ? etoiles(this.pvSouche) : 0,
       monstresVague: this.monstresVague(),
@@ -837,7 +894,7 @@ export class Partie {
     for (const m of this.monstres) {
       if (m.pv <= 0 || exclus?.has(m) || distance(centre, m.position) > portee) continue;
       if (!aerien && this.enLAir(m)) continue;
-      if (this.horsDAtteinte(m, sousEau)) continue;
+      if (this.horsDAtteinte(m, sousEau) || !this.eclaire(m.position)) continue;
       if (!meilleur || m.longueur - m.avancement < meilleur.longueur - meilleur.avancement) meilleur = m;
     }
     return meilleur;

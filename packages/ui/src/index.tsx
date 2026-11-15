@@ -2,8 +2,8 @@
 // visible, bulles au clic sur l'île (construire, tour, ronce).
 // Le contrôleur garde l'état de l'interface ; le frontend lui donne les instantanés et lit l'aperçu à dessiner.
 import { render } from 'preact';
-import type { Biome, Capacite, Case, Commande, FleurVue, Ile, Instantane, Niveau, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
-import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, FLEUR, MONSTRES, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, PRIX_RONCE, SEUIL_BOSS, TOURS, TOUTES_CAPACITES } from '@spore-siege/engine';
+import type { Biome, Capacite, Case, Commande, FleurVue, Ile, Instantane, LanterneVue, Niveau, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
+import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, FLEUR, LANTERNE, MONSTRES, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, PRIX_RONCE, SEUIL_BOSS, TOURS, TOUTES_CAPACITES } from '@spore-siege/engine';
 import { icone, type Icone } from './icones';
 import { ecrireAtelier, ecrireDecouverts, ecrireEtoiles, ecrireMusique, ecrireSons, lireAtelier, lireDecouverts, lireEtoiles, lireMusique, lireSons } from './sauvegarde';
 import { Sons } from './sons';
@@ -20,6 +20,8 @@ export interface Jeu {
   ronceLibre(c: Case): boolean;
   /** Une fleur à spores peut-elle être plantée sur la case ? (prairie) */
   fleurLibre(c: Case): boolean;
+  /** Un champignon-lanterne peut-il être posé sur la case ? (grotte) */
+  lanterneLibre(c: Case): boolean;
   readonly emplacementsRonces: readonly Case[];
   readonly ile: Ile;
   /** Id du niveau joué, pour ranger ses étoiles. */
@@ -40,7 +42,7 @@ export interface Fenetre {
 
 export interface OptionsInterface {
   /** Image du modèle ; au stade 4, celui de la capacité. */
-  vignette(type: TypeTour | 'ronce' | 'fleur', stade: number, capacite?: Capacite | null): string;
+  vignette(type: TypeTour | 'ronce' | Plante, stade: number, capacite?: Capacite | null): string;
   vignetteMonstre(type: TypeMonstre): string;
   recommencer(): void;
   fenetre?: Fenetre;
@@ -57,9 +59,12 @@ export interface OptionsInterface {
 /** Accueil (titre + Jouer), archipel, carte d'une île (ses niveaux), ou partie en cours. */
 export type Ecran = 'accueil' | 'carte' | 'niveaux' | 'partie';
 
-/** Tour, ronce ou fleur fantôme à dessiner sur l'île, avec sa portée. */
+/** Ce qui se pose à la place d'une tour : fleur à spores (prairie) ou champignon-lanterne (grotte). */
+export type Plante = 'fleur' | 'lanterne';
+
+/** Tour, ronce, fleur ou lanterne fantôme à dessiner sur l'île, avec sa portée (pour la lanterne : sa lumière). */
 export interface Apercu {
-  type: TypeTour | 'ronce' | 'fleur';
+  type: TypeTour | 'ronce' | Plante;
   case: Case;
   possible: boolean;
   portee: number;
@@ -94,7 +99,7 @@ export class ControleurInterface {
   /** Vitesse choisie avant la pause, pour reprendre au même rythme. */
   private vitesseAvantPause: 1 | 2 = 1;
   private bulle: Bulle | null = null;
-  private survol: TypeTour | 'fleur' | null = null;
+  private survol: TypeTour | Plante | null = null;
   /** Capacité montrée dans la bulle d'une tour au stade 3 (la première tant qu'on n'a rien survolé). */
   private capaciteVue: Capacite | null = null;
   private instantane: Instantane | null = null;
@@ -191,6 +196,7 @@ export class ControleurInterface {
     const ronce = i.ronces.some((r) => memeCase(r, c));
     if (ronce) return { case: c, sorte: 'boite', hauteur: 0.6 };
     if (this.fleurDe(c)) return { case: c, sorte: 'boite', hauteur: 1.45 };
+    if (this.lanterneDe(c)) return { case: c, sorte: 'boite', hauteur: 1.3 };
     // Bulle ouverte sur une case vide : le fantôme suffit.
     if (this.bulle) return null;
     if (nature === 'construire' || (nature === 'ronce' && this.jeu.ronceLibre(c))) return { case: c, sorte: 'case', hauteur: 0 };
@@ -368,6 +374,8 @@ export class ControleurInterface {
       return { type: 'ronce', case: b.case, possible: this.jeu.ronceLibre(b.case), portee: 0.5 };
     if (!this.survol) return null;
     if (this.survol === 'fleur') return { type: 'fleur', case: b.case, possible: this.instantane.spores >= FLEUR.prix, portee: 0 };
+    if (this.survol === 'lanterne')
+      return { type: 'lanterne', case: b.case, possible: this.instantane.spores >= LANTERNE.prix, portee: LANTERNE.rayon };
     const prix = TOURS[this.survol].stades[0].prix;
     return { type: this.survol, case: b.case, possible: this.instantane.spores >= prix, portee: TOURS[this.survol].stades[0].portee };
   }
@@ -390,9 +398,14 @@ export class ControleurInterface {
     return c ? this.instantane?.fleurs.find((f) => memeCase(f.case, c)) : undefined;
   }
 
-  private natureCase(c: Case): 'tour' | 'fleur' | 'ronce' | 'construire' | null {
+  private lanterneDe(c: Case | undefined): LanterneVue | undefined {
+    return c ? this.instantane?.lanternes.find((l) => memeCase(l.case, c)) : undefined;
+  }
+
+  private natureCase(c: Case): 'tour' | 'fleur' | 'lanterne' | 'ronce' | 'construire' | null {
     if (this.tourDe(c)) return 'tour';
     if (this.fleurDe(c)) return 'fleur';
+    if (this.lanterneDe(c)) return 'lanterne';
     if (this.instantane?.regles.ronces !== false && this.jeu.emplacementsRonces.some((e) => memeCase(e, c))) return 'ronce';
     if (this.jeu.libre(c)) return 'construire';
     return null;
@@ -819,12 +832,30 @@ export class ControleurInterface {
     if (nature === 'fleur') {
       const f = this.fleurDe(b.case)!;
       return (
-        <BulleFleur
-          f={f}
+        <BullePlante
+          titre={TEXTES.fleur}
+          role={TEXTES.fleurRoleArracher(FLEUR.rapport)}
+          action={TEXTES.arracher}
+          revente={f.revente}
           enHaut={b.enHaut}
           vignette={this.options.vignette('fleur', 1)}
           fermer={fermer}
-          arracher={() => this.executer({ type: 'arracherFleur', id: f.id }) && fermer()}
+          enlever={() => this.executer({ type: 'arracherFleur', id: f.id }) && fermer()}
+        />
+      );
+    }
+    if (nature === 'lanterne') {
+      const l = this.lanterneDe(b.case)!;
+      return (
+        <BullePlante
+          titre={TEXTES.lanterne}
+          role={TEXTES.lanterneRoleEnlever}
+          action={TEXTES.enlever}
+          revente={l.revente}
+          enHaut={b.enHaut}
+          vignette={this.options.vignette('lanterne', 1)}
+          fermer={fermer}
+          enlever={() => this.executer({ type: 'enleverLanterne', id: l.id }) && fermer()}
         />
       );
     }
@@ -849,7 +880,7 @@ export class ControleurInterface {
         <BulleConstruire
           i={i}
           types={TYPES.filter((t) => this.jeu.libre(b.case, t))}
-          fleur={this.jeu.fleurLibre(b.case)}
+          plante={this.jeu.fleurLibre(b.case) ? 'fleur' : this.jeu.lanterneLibre(b.case) ? 'lanterne' : null}
           enHaut={b.enHaut}
           survol={this.survol}
           vignette={(t) => this.options.vignette(t, 1)}
@@ -859,7 +890,13 @@ export class ControleurInterface {
             this.dessiner();
           }}
           poser={(t) =>
-            this.executer(t === 'fleur' ? { type: 'planterFleur', case: b.case } : { type: 'poserTour', tour: t, case: b.case }) && fermer()
+            this.executer(
+              t === 'fleur'
+                ? { type: 'planterFleur', case: b.case }
+                : t === 'lanterne'
+                  ? { type: 'poserLanterne', case: b.case }
+                  : { type: 'poserTour', tour: t, case: b.case },
+            ) && fermer()
           }
         />
       );
@@ -1168,18 +1205,19 @@ function BulleConstruire(p: {
   i: Instantane;
   /** Tours qui vont sur cette case : celles de terre, le héron sur l'eau, les cinq sur un nénuphar. */
   types: TypeTour[];
-  /** Peut-on planter une fleur à spores ici ? (prairie) : sa carte vient après les tours. */
-  fleur: boolean;
+  /** Fleur à spores (prairie) ou champignon-lanterne (grotte) possible ici : sa carte vient après les tours. */
+  plante: Plante | null;
   enHaut: boolean;
-  survol: TypeTour | 'fleur' | null;
-  vignette: (t: TypeTour | 'fleur') => string;
+  survol: TypeTour | Plante | null;
+  vignette: (t: TypeTour | Plante) => string;
   fermer: () => void;
-  survoler: (t: TypeTour | 'fleur' | null) => void;
-  poser: (t: TypeTour | 'fleur') => void;
+  survoler: (t: TypeTour | Plante | null) => void;
+  poser: (t: TypeTour | Plante) => void;
 }) {
   const permises = p.i.regles.tours;
   const detail = p.survol ?? p.types.find((t) => permises.includes(t)) ?? p.types[0] ?? TYPES[0]!;
-  const sansFleur = p.i.spores < FLEUR.prix;
+  const prixPlante = p.plante === 'lanterne' ? LANTERNE.prix : FLEUR.prix;
+  const sansPlante = p.i.spores < prixPlante;
   return (
     <section class={`bulle ${p.enHaut ? 'haut' : 'bas'}`}>
       <Entete titre={TEXTES.construire} fermer={p.fermer} />
@@ -1211,23 +1249,33 @@ function BulleConstruire(p: {
               </li>
             );
           })}
-          {p.fleur && (
+          {p.plante && (
             <li>
               <button
-                class={`carte${sansFleur ? ' manque' : ''}${p.survol === 'fleur' ? ' choisie' : ''}`}
-                disabled={sansFleur}
-                onMouseEnter={() => p.survoler('fleur')}
-                onClick={() => p.poser('fleur')}
+                class={`carte${sansPlante ? ' manque' : ''}${p.survol === p.plante ? ' choisie' : ''}`}
+                disabled={sansPlante}
+                onMouseEnter={() => p.survoler(p.plante)}
+                onClick={() => p.plante && p.poser(p.plante)}
               >
-                <img class="vignette" src={p.vignette('fleur')} alt="" />
-                <span class="nom">{TEXTES.fleur}</span>
-                <Prix n={FLEUR.prix} manque={sansFleur} />
+                <img class="vignette" src={p.vignette(p.plante)} alt="" />
+                <span class="nom">{p.plante === 'lanterne' ? TEXTES.lanterne : TEXTES.fleur}</span>
+                <Prix n={prixPlante} manque={sansPlante} />
               </button>
             </li>
           )}
         </ul>
         <div class="detail">
-          {detail === 'fleur' ? (
+          {detail === 'lanterne' ? (
+            <>
+              <p>{TEXTES.lanterneRole}</p>
+              <ul class="stats">
+                <li title={TEXTES.lanterneRayonAide}>
+                  <Ico nom="portee" />
+                  {TEXTES.lanterneRayon(LANTERNE.rayon)}
+                </li>
+              </ul>
+            </>
+          ) : detail === 'fleur' ? (
             <>
               <p>{TEXTES.fleurRole}</p>
               <ul class="stats">
@@ -1351,15 +1399,25 @@ function BulleTour(p: {
   );
 }
 
-function BulleFleur(p: { f: FleurVue; enHaut: boolean; vignette: string; fermer: () => void; arracher: () => void }) {
+/** Bulle d'une fleur à spores ou d'un champignon-lanterne posé : à quoi il sert, et l'enlever. */
+function BullePlante(p: {
+  titre: string;
+  role: string;
+  action: string;
+  revente: number;
+  enHaut: boolean;
+  vignette: string;
+  fermer: () => void;
+  enlever: () => void;
+}) {
   return (
     <section class={`bulle ${p.enHaut ? 'haut' : 'bas'}`}>
-      <Entete titre={TEXTES.fleur} vignette={p.vignette} fermer={p.fermer} />
+      <Entete titre={p.titre} vignette={p.vignette} fermer={p.fermer} />
       <div class="corps">
-        <p>{TEXTES.fleurRoleArracher(FLEUR.rapport)}</p>
+        <p>{p.role}</p>
         <div class="rang">
-          <button class="bouton danger" onClick={p.arracher}>
-            {TEXTES.arracher} +{p.f.revente}
+          <button class="bouton danger" onClick={p.enlever}>
+            {p.action} +{p.revente}
           </button>
         </div>
       </div>

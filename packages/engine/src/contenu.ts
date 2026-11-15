@@ -128,6 +128,12 @@ export const PART_RONCE_RENDUE = 0.5;
 /** Fleur à spores (prairie) : prix, spores rapportées à chaque fin de vague, part rendue si on l'arrache. */
 export const FLEUR = { prix: 50, rapport: 15, partRendue: 0.5 };
 
+/**
+ * Grotte : champignon-lanterne (prix, rayon éclairé en cases, part rendue) ; `luisant` = rayon éclairé par un
+ * luisant de la carte.
+ */
+export const LANTERNE = { prix: 30, rayon: 3, partRendue: 0.5, luisant: 2 };
+
 /** Part du prix payé (pose et améliorations) rendue à la revente ; moins pour une tour à capacité (stade 4). */
 export const PART_REVENTE = 0.7;
 export const PART_REVENTE_CAPACITE = 0.5;

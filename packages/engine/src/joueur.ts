@@ -8,8 +8,10 @@
 //    (si une capacité est donnée) passe chacune au stade 4 avec cette capacité. Aucune tour ne doit suffire seule.
 // Les joueurs simple et bon prennent aussi le stade 4 quand ils ont une tour au stade 3, et plantent des fleurs à
 // spores là où le niveau le permet (prairie), loin du sentier, tant qu'il reste assez de vagues pour les rentabiliser.
+// Dans la grotte, tous sauf le naïf posent un champignon-lanterne là où il éclaire le plus de chemin noir à portée
+// de leurs tours (au moins 3 cases).
 import type { Capacite, Case, Ile, Instantane, Phase, Regles, TourVue, TypeMonstre, TypeTour } from './contrat';
-import { CAPACITES, CAPACITES_DE, FLEUR, MONSTRES, PAS_PAR_SECONDE, TOURS, type Vague } from './contenu';
+import { CAPACITES, CAPACITES_DE, FLEUR, LANTERNE, MONSTRES, PAS_PAR_SECONDE, TOURS, type Vague } from './contenu';
 import { Partie } from './partie';
 import { cle, route } from './sentier';
 
@@ -126,6 +128,11 @@ class Joueur {
       auStade3 ? this.partie.executer({ type: 'choisirCapacite', id: auStade3.id, capacite: choix(auStade3) }) : false;
 
     if (this.style === 'naif') return poser('ruche');
+
+    if (this.partie.regles.noir && tours.length > 0) {
+      const c = this.caseLanterne(i);
+      if (c) return () => this.partie.executer({ type: 'poserLanterne', case: c });
+    }
 
     if (this.style.startsWith('seul:')) {
       const nom = this.style.slice('seul:'.length) as TypeTour | Capacite;
@@ -249,6 +256,10 @@ class Joueur {
     const { ile } = this.partie;
     const tours = this.partie.instantane().tours;
     const dedans = (p: Case, x: number, y: number, r: number) => (p.x - x) ** 2 + (p.y - y) ** 2 <= r * r;
+    // Grotte : une case de chemin noire compte moitié (il faudra une lanterne pour y tirer).
+    const lumieres = this.partie.instantane().lumieres.filter((l) => l.allumee);
+    const eclaire = (p: Case) =>
+      lumieres.length === 0 || lumieres.some((l) => Math.hypot(l.position.x - p.x - 0.5, l.position.y - p.y - 0.5) <= l.rayon);
     // Couverture actuelle de chaque route : cases à portée d'une tour, comptées par tour, rapportées à sa longueur.
     const poids = routes.map((r) => {
       let couvert = 0;
@@ -263,7 +274,7 @@ class Joueur {
         if (!this.partie.libre(c, type)) continue;
         let s = 0;
         routes.forEach((r, i) => {
-          for (const p of r) if (dedans(p, x, y, portee)) s += poids[i]!;
+          for (const p of r) if (dedans(p, x, y, portee)) s += poids[i]! * (eclaire(p) ? 1 : 0.9);
         });
         if (s > score) {
           score = s;
@@ -271,6 +282,27 @@ class Joueur {
         }
       }
     }
+    return meilleure;
+  }
+
+  /** Case libre d'où une lanterne éclaire le plus de cases de chemin noires et à portée d'une tour (au moins 2). */
+  private caseLanterne(i: Instantane): Case | null {
+    const { ile } = this.partie;
+    const allumees = i.lumieres.filter((l) => l.allumee);
+    const noires = [...new Map(this.routes().flat().map((p) => [cle(p), p])).values()].filter((p) => {
+      const centre = { x: p.x + 0.5, y: p.y + 0.5 };
+      if (allumees.some((l) => Math.hypot(l.position.x - centre.x, l.position.y - centre.y) <= l.rayon)) return false;
+      return i.tours.some((t) => (p.x - t.case.x) ** 2 + (p.y - t.case.y) ** 2 <= t.portee * t.portee);
+    });
+    let meilleure: Case | null = null;
+    let score = 1;
+    for (let y = 0; y < ile.profondeur; y++)
+      for (let x = 0; x < ile.largeur; x++) {
+        const c = { x, y };
+        if (!this.partie.lanterneLibre(c)) continue;
+        const s = noires.filter((p) => Math.hypot(p.x - x, p.y - y) <= LANTERNE.rayon).length;
+        if (s > score) [meilleure, score] = [c, s];
+      }
     return meilleure;
   }
 

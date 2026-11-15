@@ -4,6 +4,7 @@ import {
   CARTE_BRAS_MORTS,
   CARTE_COEUR,
   CARTE_COEUR_MARAIS,
+  CARTE_GALERIE,
   CARTE_FORET,
   CARTE_FOURRE,
   CARTE_GUES,
@@ -408,8 +409,32 @@ export const NIVEAUX_PRAIRIE: Niveau[] = [
   },
 ];
 
+/**
+ * Galerie des luisants (grotte 1) : 9 vagues qui montent doucement, monstres des trois autres îles. Plage 0 = nord-est,
+ * 1 = ouest.
+ */
+export const VAGUES_GALERIE: Vague[] = [
+  [g('limace', 8, 3, 0, 1)],
+  [g('limace', 14, 2)],
+  [g('limace', 10, 2.2, 0, 1), g('crapaud', 6, 3, 8, 0)],
+  [g('moucheron', 24, 0.8), g('limace', 8, 3, 5)],
+  [g('scarabee', 5, 5, 0, 1), g('limace', 16, 1.5, 3, 0)],
+  [g('amas', 6, 3.5), g('soigneur', 2, 6, 6), g('limace', 10, 1.5, 4)],
+  [g('limace', 14, 1.6, 0, 0), g('crapaud', 10, 2, 4, 1), g('sauterelle', 16, 0.4, 10)],
+  [g('scarabee', 10, 3), g('sauterelle', 30, 0.3, 6)],
+  [g('amas', 10, 2.6, 0, 0), g('scarabee', 10, 2.6, 0, 1), g('limace', 14, 1.4, 12), g('soigneur', 3, 5, 8)],
+];
+
+/**
+ * La grotte : le noir (les tours ne visent que les monstres éclairés), les luisants de la carte et les
+ * champignons-lanternes. Niveau 1 ≈ niveau 3 de la prairie. Les niveaux 2 à 5 viennent en 11d.
+ */
+export const NIVEAUX_GROTTE: Niveau[] = [
+  { id: 'grotte-1', nom: 'Galerie des luisants', biome: 'grotte', carte: CARTE_GALERIE, vagues: renforcer(VAGUES_GALERIE, 0.8, 1.2), regles: { noir: true, spores: 150 } },
+];
+
 /** Niveaux de chaque île, dans l'ordre du parcours ; une île sans niveaux n'est pas encore jouable. */
-export const NIVEAUX: Partial<Record<Biome, Niveau[]>> = { foret: NIVEAUX_FORET, marais: NIVEAUX_MARAIS, prairie: NIVEAUX_PRAIRIE };
+export const NIVEAUX: Partial<Record<Biome, Niveau[]>> = { foret: NIVEAUX_FORET, marais: NIVEAUX_MARAIS, prairie: NIVEAUX_PRAIRIE, grotte: NIVEAUX_GROTTE };
 
 /** Étoiles à réunir sur les 4 niveaux d'une île pour ouvrir son boss. */
 export const SEUIL_BOSS = 8;
