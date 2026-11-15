@@ -31,7 +31,8 @@ export type Effet =
   | 'recolte'
   | 'devore'
   | 'pique'
-  | 'extinction';
+  | 'extinction'
+  | 'souffle';
 
 const VOLUME = 0.22;
 /** Ambiance de fond, basse exprès (même niveau que Tiny Shrooms) ; le vent par-dessus en léger souffle. */
@@ -156,6 +157,11 @@ const EFFETS: Record<Effet, { notes: Note[]; souffles?: Souffle[] }> = {
   extinction: { notes: [{ f: 520, t: 0.02, d: 0.22, vers: 180, onde: 'triangle', v: 0.14 }], souffles: [{ t: 0, d: 0.16, f: 900, v: 0.4 }] },
   devore: { notes: [{ f: 220, t: 0.18, d: 0.08, vers: 150, onde: 'square', v: 0.15 }], souffles: [{ t: 0, d: 0.05, f: 2600, v: 0.35 }, { t: 0.09, d: 0.05, f: 2300, v: 0.35 }, { t: 0.18, d: 0.07, f: 2000, v: 0.4 }] },
   recolte: { notes: [{ f: 1175, t: 0, d: 0.06, onde: 'sine', v: 0.16 }, { f: 1568, t: 0.06, d: 0.1, onde: 'sine', v: 0.14 }] },
+  // Ver des profondeurs qui souffle les lanternes : grondement grave et long souffle.
+  souffle: {
+    notes: [{ f: 70, t: 0, d: 0.7, vers: 45, onde: 'sawtooth', v: 0.45 }, { f: 140, t: 0.05, d: 0.5, vers: 90, onde: 'triangle', v: 0.25 }],
+    souffles: [{ t: 0.05, d: 0.8, f: 500, v: 0.55 }],
+  },
   plongee: {
     notes: [{ f: 180, t: 0, d: 0.35, vers: 60, onde: 'sine', v: 0.5 }],
     souffles: [{ t: 0, d: 0.3, f: 900, v: 0.5 }],

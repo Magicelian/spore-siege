@@ -104,6 +104,11 @@ export const MONSTRES_TEXTES: Record<TypeMonstre, { nom: string; description: st
     description: 'Une carapace de plaques grises sur pattes. Au premier coup, il se roule en boule et presque rien ne le blesse ; puis il se déroule et file plus vite.',
     conseil: 'L’éclair du cristal traverse sa carapace, même en boule. Les gros coups du canon passent aussi.',
   },
+  ver: {
+    nom: 'Ver des profondeurs',
+    description: 'Un ver pâle et gigantesque, monté des entrailles de la grotte. Blessé, il souffle d’un coup toutes les lanternes et lâche sa vermine dans le noir. S’il touche la souche, tout est perdu.',
+    conseil: 'Garde des tours près des luisants de la carte : ce sont les seules lumières qu’il ne peut pas éteindre.',
+  },
 };
 
 export const ILES_TEXTES: Record<Biome, string> = {

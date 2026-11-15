@@ -176,6 +176,7 @@ export class Rendu {
       if (e.type === 'soin') this.monstres.soigner([e.id, ...e.soignes], instant);
       if (e.type === 'ponte') this.monstres.pondre(e.id, instant);
       if (e.type === 'plongee') this.monstres.plonger(e.id, instant);
+      if (e.type === 'souffle') this.monstres.souffler(e.id, instant);
       if (e.type === 'pique') this.monstres.alerter(e.cible, this.ile, instant);
       if (e.type === 'recolte') this.monstres.lacherButin(e.gain, centreCase(e.case.x, e.case.y, this.ile, new THREE.Vector3()), HAUTEUR_FLEUR, instant / 1000);
     }

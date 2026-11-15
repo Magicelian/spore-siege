@@ -1128,6 +1128,15 @@ export class Partie {
     }
   }
 
+  /** Le Ver des profondeurs souffle : chaque lanterne s'éteint `duree` secondes (les luisants de la carte restent). */
+  private toutEteindre(m: Monstre, duree: number): void {
+    this.evenements.push({ type: 'souffle', id: m.id, monstre: m.type, position: { ...m.position }, pas: this.pas });
+    for (const l of this.lanternes) {
+      if (this.pas >= l.eteinteJusqua) this.evenements.push({ type: 'extinction', id: l.id, par: m.id, case: { ...l.case }, pas: this.pas });
+      l.eteinteJusqua = Math.max(l.eteinteJusqua, this.pas + Math.round(duree * PAS_PAR_SECONDE));
+    }
+  }
+
   /**
    * Le boss blessé sous un palier pond son escorte juste derrière lui (plusieurs paliers d'un coup : tout). Le
    * Crapaud-roi, lui, plonge d'abord et ne pond qu'en ressortant.
@@ -1151,10 +1160,12 @@ export class Partie {
         m.escorte = [];
       }
       const escorte: TypeMonstre[] = [];
+      const avant = m.paliers;
       while (m.paliers < boss.paliers.length && m.pv <= boss.paliers[m.paliers]!.part * MONSTRES[m.type].pv) {
         for (const { type, nombre } of boss.paliers[m.paliers]!.escorte) for (let k = 0; k < nombre; k++) escorte.push(type);
         m.paliers++;
       }
+      if (boss.noir && m.paliers > avant) this.toutEteindre(m, boss.noir);
       if (escorte.length === 0) continue;
       if (boss.plongee) {
         m.plongeeFin = this.pas + Math.round(boss.plongee.duree * PAS_PAR_SECONDE);

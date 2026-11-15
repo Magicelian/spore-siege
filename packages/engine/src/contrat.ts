@@ -51,7 +51,8 @@ export type TypeMonstre =
   | 'sauterelle'
   | 'corbeau'
   | 'chauveSouris'
-  | 'cloporte';
+  | 'cloporte'
+  | 'ver';
 
 export interface MonstreVu {
   id: number;
@@ -142,8 +143,10 @@ export type EvenementVu =
   | { type: 'devore'; id: number; monstre: TypeMonstre; fleur: number; case: Case; pas: number }
   /** La fleur à spores `id` vient de rapporter `gain` spores (fin de vague). */
   | { type: 'recolte'; id: number; case: Case; gain: number; pas: number }
-  /** La chauve-souris `par` vient d'éteindre le champignon-lanterne `id`. */
-  | { type: 'extinction'; id: number; par: number; case: Case; pas: number };
+  /** La chauve-souris ou le Ver des profondeurs `par` vient d'éteindre le champignon-lanterne `id`. */
+  | { type: 'extinction'; id: number; par: number; case: Case; pas: number }
+  /** Le Ver des profondeurs `id` souffle toutes les lanternes (palier de vie). */
+  | { type: 'souffle'; id: number; monstre: TypeMonstre; position: Position; pas: number };
 
 /** Fleur à spores plantée par le joueur (prairie) : elle rapporte des spores à chaque fin de vague. */
 export interface FleurVue {

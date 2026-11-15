@@ -27,6 +27,8 @@ export interface FicheMonstre {
      * l'eau, puis ressort et pond son escorte là.
      */
     plongee?: { duree: number; avance: number };
+    /** Ver des profondeurs : à chaque palier, toutes les lanternes s'éteignent pendant `noir` secondes. */
+    noir?: number;
   };
   pv: number;
   /** Cases par seconde. */
@@ -125,6 +127,23 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
   chauveSouris: { pv: 12, vitesse: 1.1, morsure: 1, butin: 3, armure: 0, volant: true, souffle: { rayon: 1.2, duree: 6 } },
   // Grotte, niveau 3 : se roule en boule quand on le touche (le cristal, qui perce l'armure, le blesse quand même).
   cloporte: { pv: 40, vitesse: 0.55, morsure: 2, butin: 5, armure: 1, boule: { duree: 2, armure: 12, recharge: 3, elan: 1.8, elanDuree: 2 } },
+  // Boss de la grotte : énorme et lent ; à chaque palier il souffle toutes les lanternes (seuls les luisants de la
+  // carte restent). Chiffres provisoires, à régler en 11d avec les joueurs scriptés.
+  ver: {
+    pv: 700,
+    vitesse: 0.22,
+    morsure: 20,
+    butin: 70,
+    armure: 3,
+    boss: {
+      noir: 5,
+      paliers: [
+        { part: 0.75, escorte: [{ type: 'chauveSouris', nombre: 3 }] },
+        { part: 0.5, escorte: [{ type: 'cloporte', nombre: 2 }, { type: 'chauveSouris', nombre: 3 }] },
+        { part: 0.25, escorte: [{ type: 'cloporte', nombre: 4 }, { type: 'scarabee', nombre: 2 }] },
+      ],
+    },
+  },
 };
 
 /** Spores au départ : de quoi poser les deux premières tours. */

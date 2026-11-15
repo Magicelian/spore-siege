@@ -38,6 +38,9 @@ const M = {
   membrane: 0x5e4c58,
   cloporte: 0x8f8170,
   cloporteSombre: 0x5c4e42,
+  ver: 0xd8cdbd,
+  verSombre: 0xa89a88,
+  dent: 0xf2ecd8,
 };
 lumineuse(M.oeil, M.soin);
 const C = -0.5;
@@ -308,6 +311,31 @@ function cloporteBoule(): Voxels {
   return v.poser(2, 2, -1, M.oeil).poser(2, 2, 0, M.oeil);
 }
 
+/**
+ * Ver des profondeurs : énorme ver pâle annelé, l'avant dressé ; bouche ronde garnie de dents, couronne d'yeux qui
+ * luisent, taches de rouille et moisissure sur le dos (avant = +x).
+ */
+function ver(): Voxels {
+  const v = new Voxels();
+  // Anneaux : bas et larges à l'arrière, l'avant se dresse.
+  const anneaux: [number, number, number][] = [[-10, 1.6, 1.6], [-8, 1.9, 2], [-6, 2.2, 2.4], [-4, 2.5, 2.7], [-2, 2.9, 2.9], [0, 3.8, 3], [1.6, 5.6, 3], [2.8, 7.6, 2.9], [3.6, 9.6, 2.8]];
+  for (const [x, y, r] of anneaux) v.boule(C + x, y, C, 1.4, r, r, M.ver);
+  // Sillons sombres entre les anneaux, ventre plus sombre.
+  v.peindre((x, _y, _z, c) => c === M.ver && x % 2 !== 0 && x < 2, M.verSombre);
+  v.peindre((_x, y, _z, c) => c === M.ver && y === 0, M.verSombre);
+  taches(v, M.ver, 0.12);
+  duvet(v, M.ver, 0.22);
+  // Bouche ronde face à l'avant, en haut de la partie dressée : cercle de dents, gorge sombre.
+  for (let a = 0; a < 10; a++) {
+    const t = (a / 10) * Math.PI * 2;
+    v.poser(5, Math.round(9.6 + Math.sin(t) * 2), Math.round(-0.5 + Math.cos(t) * 2), M.dent);
+  }
+  v.boite(5, 9, -1, 5, 10, 0, M.sombre).boite(4, 9, -1, 4, 10, 0, M.sombre);
+  // Couronne d'yeux autour de la bouche.
+  for (const [y, z] of [[13, -2], [13, 1], [12, -3], [12, 2], [7, -3], [7, 2]] as const) v.poser(4, y, z, M.oeil);
+  return v;
+}
+
 let modeleBoule: Modele | null = null;
 /** Le cloporte en boule (même palette, maillage échangé). */
 export function modeleCloporteBoule(): Modele {
@@ -332,6 +360,7 @@ export const ECLATS: Record<TypeMonstre, number[]> = {
   corbeau: [M.corbeau, M.plume, M.rouille],
   chauveSouris: [M.chauve, M.membrane, M.rouille],
   cloporte: [M.cloporte, M.cloporteSombre, M.rouille],
+  ver: [M.ver, M.verSombre, M.rouille],
 };
 
 let modeles: Record<TypeMonstre, Modele> | null = null;
@@ -353,6 +382,7 @@ export function modelesMonstres(): Record<TypeMonstre, Modele> {
     corbeau: corbeau().modele(false),
     chauveSouris: chauveSouris().modele(false),
     cloporte: cloporte().modele(false),
+    ver: ver().modele(false),
   };
   return modeles;
 }
@@ -519,7 +549,7 @@ export class MonstresRendu {
         corps.maillage.scale.set(TAILLE_CORBEAU, TAILLE_CORBEAU, TAILLE_CORBEAU * (0.4 + 0.6 * Math.min(1, vol * 4) + Math.sin(instant / 160) * 0.18 * Math.min(1, vol * 4)));
       }
       // Limace et amas ondulent en avançant (et s'arrêtent avec eux).
-      if (m.type === 'limace' || m.type === 'amas' || m.type === 'petitAmas' || m.type === 'limaceMere') {
+      if (m.type === 'limace' || m.type === 'amas' || m.type === 'petitAmas' || m.type === 'limaceMere' || m.type === 'ver') {
         const s = Math.sin((x + y) * 7 + m.id) * 0.07;
         corps.maillage.scale.set(1 + s, 1 - s, 1 + s);
       }
@@ -640,6 +670,14 @@ export class MonstresRendu {
     if (corps.type === 'crapaudRoi') return this.eclabousser(corps, instant, 18);
     const depart = corps.maillage.position.clone().setY(corps.maillage.position.y + corps.hauteur * 0.7);
     this.eclats.lancer(depart, instant / 1000, { couleurs: [M.oeuf, M.gris, M.rouille], nombre: 14, taille: 0.16, force: 1.8, duree: 0.5 });
+  }
+
+  /** Le Ver des profondeurs souffle les lanternes : grand nuage de poussière pâle et de spores éteintes. */
+  souffler(id: number, instant: number): void {
+    const corps = this.corps.get(id);
+    if (!corps) return;
+    const depart = corps.maillage.position.clone().setY(corps.maillage.position.y + corps.hauteur * 0.8);
+    this.eclats.lancer(depart, instant / 1000, { couleurs: [M.ver, M.dent, M.sombre, M.oeil], nombre: 22, taille: 0.14, force: 2.6, duree: 0.6 });
   }
 
   /** Le Crapaud-roi plonge : gerbe d'eau là où il disparaît. */

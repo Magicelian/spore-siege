@@ -101,3 +101,44 @@ describe('cloporte', () => {
     expect(pv - reste).toBeGreaterThanOrEqual(5);
   });
 });
+
+describe('Ver des profondeurs', () => {
+  const vagues: Vague[] = [[{ type: 'ver', nombre: 1, intervalle: 1, plage: 0 }], [{ type: 'limace', nombre: 1, intervalle: 1, plage: 0 }]];
+  const interne = (p: Partie) => (p as unknown as { monstres: { type: string; pv: number }[] }).monstres;
+  const pv = MONSTRES.ver.pv;
+  const noir = MONSTRES.ver.boss!.noir! * PAS_PAR_SECONDE;
+
+  function lancee(): Partie {
+    const p = new Partie(ileGrotte, vagues, 1, galerie.regles);
+    let poses = 0;
+    for (let y = 0; y < ileGrotte.profondeur && poses < 3; y++)
+      for (let x = 0; x < ileGrotte.largeur && poses < 3; x++) if (p.executer({ type: 'poserLanterne', case: { x, y } })) poses++;
+    expect(poses).toBe(3);
+    p.executer({ type: 'lancerVague' });
+    for (let n = 0; n < 200 && interne(p).length === 0; n++) p.avancer();
+    return p;
+  }
+
+  it('à chaque palier, souffle toutes les lanternes un moment et pond son escorte', () => {
+    const p = lancee();
+    interne(p)[0]!.pv = pv * 0.74;
+    p.avancer();
+    const i = p.instantane();
+    expect(i.evenements.filter((e) => e.type === 'souffle')).toHaveLength(1);
+    expect(i.evenements.filter((e) => e.type === 'extinction')).toHaveLength(3);
+    expect(i.lanternes.every((l) => !l.allumee)).toBe(true);
+    // Seuls les luisants de la carte éclairent encore.
+    expect(i.lumieres.filter((l) => l.allumee && l.lanterne !== null)).toHaveLength(0);
+    expect(i.lumieres.some((l) => l.allumee && l.lanterne === null)).toBe(true);
+    expect(i.monstres.length).toBeGreaterThan(1);
+    for (let n = 0; n < noir + 1; n++) p.avancer();
+    expect(p.instantane().lanternes.every((l) => l.allumee)).toBe(true);
+  });
+
+  it('un seul souffle même si un gros coup franchit plusieurs paliers', () => {
+    const p = lancee();
+    interne(p)[0]!.pv = pv * 0.2;
+    p.avancer();
+    expect(p.instantane().evenements.filter((e) => e.type === 'souffle')).toHaveLength(1);
+  });
+});
