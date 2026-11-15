@@ -1,5 +1,5 @@
 // Tous les textes de l'interface, en un seul endroit : l'anglais s'ajoutera ici plus tard.
-import type { Biome, Capacite, TypeMonstre, TypeTour } from '@spore-siege/engine';
+import type { Biome, Capacite, ModeCible, TypeMonstre, TypeTour } from '@spore-siege/engine';
 
 export const TOURS_TEXTES: Record<TypeTour, { nom: string; role: string }> = {
   ruche: { nom: 'Poste-ruche', role: 'Ses abeilles piquent vite, un monstre à la fois.' },
@@ -119,7 +119,15 @@ export const ILES_TEXTES: Record<Biome, string> = {
   futaie: 'Futaie',
 };
 
+/** Modes de ciblage d'une tour : nom court et à quoi il sert. */
+export const MODES_TEXTES: Record<ModeCible, { nom: string; aide: string }> = {
+  premier: { nom: 'Premier', aide: 'Vise le monstre le plus proche de la souche.' },
+  forte: { nom: 'Plus forte', aide: 'Vise le monstre qui a le plus de vie.' },
+  blinde: { nom: 'Blindé', aide: 'Vise le monstre qui a le plus d’armure.' },
+};
+
 export const TEXTES = {
+  cible: 'Cible',
   construire: 'Construire',
   stade: (n: number) => `Stade ${n}/4`,
   capaciteTitre: 'Stade 4 : une capacité au choix',

@@ -230,7 +230,7 @@ export const NIVEAUX_FORET: Niveau[] = [
     nom: 'Fourré',
     biome: 'foret',
     carte: CARTE_FOURRE,
-    vagues: renforcer(VAGUES_FOURRE, 0.8, 2),
+    vagues: renforcer(VAGUES_FOURRE, 0.8, 1.8),
     regles: { tours: ['cristal', 'canon'] },
   },
   { id: 'foret-5', nom: 'Cœur de la forêt', biome: 'foret', carte: CARTE_COEUR, vagues: VAGUES_COEUR, regles: { tours: TOURS_DE_BASE }, boss: true },
@@ -305,7 +305,7 @@ export const VAGUES_COEUR_MARAIS: Vague[] = [
  * réglés en 9e avec les joueurs scriptés (`equilibrage.test.ts`).
  */
 export const NIVEAUX_MARAIS: Niveau[] = [
-  { id: 'marais-1', nom: 'Roselière', biome: 'marais', carte: CARTE_ROSELIERE, vagues: renforcer(VAGUES_FORET, 1.4, 2.4), regles: { spores: 90 } },
+  { id: 'marais-1', nom: 'Roselière', biome: 'marais', carte: CARTE_ROSELIERE, vagues: renforcer(VAGUES_FORET, 1.6, 2.6), regles: { spores: 90 } },
   { id: 'marais-2', nom: 'Les Gués', biome: 'marais', carte: CARTE_GUES, vagues: renforcer(VAGUES_GUES, 1.3, 1.8), regles: { ronces: false } },
   { id: 'marais-3', nom: 'Tourbière', biome: 'marais', carte: CARTE_TOURBIERE, vagues: renforcer(VAGUES_TOURBIERE, 0.5, 0.9), regles: { spores: 100 } },
   {
@@ -403,7 +403,7 @@ export const NIVEAUX_PRAIRIE: Niveau[] = [
     nom: 'Cœur de la prairie',
     biome: 'prairie',
     carte: CARTE_COEUR_PRAIRIE,
-    vagues: renforcer(VAGUES_COEUR_PRAIRIE, 0.8, 1.2),
+    vagues: renforcer(VAGUES_COEUR_PRAIRIE, 0.8, 1.3),
     regles: { fleurs: true },
     boss: true,
   },

@@ -81,6 +81,13 @@ export interface MonstreVu {
 
 export type TypeTour = 'ruche' | 'cristal' | 'mortier' | 'canon' | 'heron';
 
+/**
+ * Qui une tour vise parmi les monstres à portée : `premier` = le plus proche de la souche ; `forte` = le plus de PV
+ * restants ; `blinde` = le plus d'armure. À égalité, le plus proche de la souche.
+ */
+export type ModeCible = 'premier' | 'forte' | 'blinde';
+export const MODES_CIBLE: readonly ModeCible[] = ['premier', 'forte', 'blinde'];
+
 /** Capacité spéciale choisie au stade 4 ; deux par tour (`CAPACITES_DE`). */
 export type Capacite = 'essaim' | 'dard' | 'tempete' | 'prisme' | 'salve' | 'glu' | 'mitraille' | 'grosCalibre' | 'harponChaine' | 'grandHarpon';
 
@@ -95,6 +102,8 @@ export interface TourVue {
   portee: number;
   /** Monstre visé, s'il y en a un à portée. */
   cible: number | null;
+  /** Mode de ciblage choisi (commande `ciblerTour`). */
+  mode: ModeCible;
   /** Pas du dernier tir (-1 : jamais tiré). */
   dernierTir: number;
   /** Cristal : points touchés par le dernier éclair, de la tour au dernier rebond. */
@@ -257,6 +266,7 @@ export type Commande =
   | { type: 'ameliorerTour'; id: number }
   | { type: 'choisirCapacite'; id: number; capacite: Capacite }
   | { type: 'vendreTour'; id: number }
+  | { type: 'ciblerTour'; id: number; mode: ModeCible }
   | { type: 'poserRonce'; case: Case }
   | { type: 'enleverRonce'; case: Case }
   | { type: 'planterFleur'; case: Case }

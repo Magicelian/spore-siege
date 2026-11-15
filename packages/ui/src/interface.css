@@ -328,6 +328,20 @@
   gap: 4px;
   margin-top: 6px;
 }
+/* Rangée « Cible » d'une tour : libellé à gauche, trois petits boutons à droite. */
+.rang-cible {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 4px;
+}
+.rang-cible .discret {
+  flex: 1;
+}
+.rang-cible .bouton.carre {
+  width: 20px;
+  height: 20px;
+}
 
 /* Coûts et chiffres */
 .qte {

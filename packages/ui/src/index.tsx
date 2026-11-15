@@ -2,14 +2,14 @@
 // visible, bulles au clic sur l'île (construire, tour, ronce).
 // Le contrôleur garde l'état de l'interface ; le frontend lui donne les instantanés et lit l'aperçu à dessiner.
 import { render } from 'preact';
-import type { Biome, Capacite, Case, Commande, FleurVue, Ile, Instantane, LanterneVue, Niveau, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
-import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, FLEUR, LANTERNE, MONSTRES, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, PRIX_RONCE, SEUIL_BOSS, TOURS, TOUTES_CAPACITES } from '@spore-siege/engine';
+import type { Biome, Capacite, Case, Commande, FleurVue, Ile, Instantane, LanterneVue, ModeCible, Niveau, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
+import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, FLEUR, LANTERNE, MODES_CIBLE, MONSTRES, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, PRIX_RONCE, SEUIL_BOSS, TOURS, TOUTES_CAPACITES } from '@spore-siege/engine';
 import { icone, type Icone } from './icones';
 import { ecrireAtelier, ecrireDecouverts, ecrireEtoiles, ecrireMusique, ecrireSons, ecrireToursVues, lireAtelier, lireDecouverts, lireEtoiles, lireMusique, lireSons, lireToursVues } from './sauvegarde';
 import { Sons } from './sons';
 
 export type { Effet } from './sons';
-import { CAPACITES_TEXTES, ILES_TEXTES, MONSTRES_TEXTES, nombre, TEXTES, TOURS_TEXTES } from './textes';
+import { CAPACITES_TEXTES, ILES_TEXTES, MODES_TEXTES, MONSTRES_TEXTES, nombre, TEXTES, TOURS_TEXTES } from './textes';
 
 /** Ce que l'interface peut demander à la partie. */
 export interface Jeu {
@@ -866,6 +866,7 @@ export class ControleurInterface {
           fermer={fermer}
           ameliorer={() => this.executer({ type: 'ameliorerTour', id: t.id })}
           vendre={() => this.executer({ type: 'vendreTour', id: t.id }) && fermer()}
+          cibler={(mode) => this.executer({ type: 'ciblerTour', id: t.id, mode })}
         />
       );
     }
@@ -1352,11 +1353,13 @@ function BulleTour(p: {
   fermer: () => void;
   ameliorer: () => void;
   vendre: () => void;
+  cibler: (mode: ModeCible) => void;
 }) {
   const { t } = p;
   const prix = t.prixAmelioration;
   const manque = prix !== null && p.i.spores < prix;
   const sous = t.capacite ? CAPACITES_TEXTES[t.capacite].nom : TEXTES.stade(t.stade);
+  const cible = <RangCible mode={t.mode} cibler={p.cibler} />;
   const vente = (
     <button class="bouton danger" onClick={p.vendre}>
       {TEXTES.vendre} +{t.revente}
@@ -1407,6 +1410,7 @@ function BulleTour(p: {
             <Stats type={t.type} stade={3} vers={{ stade: 4, capacite: vue }} />
             <p class="discret">{TEXTES.capaciteDefinitif}</p>
           </div>
+          {cible}
           <div class="rang">
             {fermeeVue ? (
               <button class="bouton valider manque" disabled>
@@ -1428,6 +1432,7 @@ function BulleTour(p: {
       <Entete titre={TOURS_TEXTES[t.type].nom} sous={sous} vignette={p.vignette} fermer={p.fermer} />
       <div class="corps">
         {t.capacite && <p>{CAPACITES_TEXTES[t.capacite].role}</p>}
+        {cible}
         <Stats type={t.type} stade={t.stade} capacite={t.capacite} vers={prix === null ? undefined : { stade: t.stade + 1 }} />
         <div class="rang">
           {prix !== null && (
@@ -1439,6 +1444,30 @@ function BulleTour(p: {
         </div>
       </div>
     </section>
+  );
+}
+
+const ICONES_MODES: Record<ModeCible, Icone> = { premier: 'premier', forte: 'vie', blinde: 'armure' };
+
+/** Rangée « Cible » d'une tour : trois icônes, celle du mode choisi allumée ; le survol donne le nom et l'aide. */
+function RangCible(p: { mode: ModeCible; cibler: (mode: ModeCible) => void }) {
+  return (
+    <div class="rang-cible">
+      <span class="discret">
+        {TEXTES.cible} · {MODES_TEXTES[p.mode].nom}
+      </span>
+      {MODES_CIBLE.map((m) => (
+        <button
+          class={`bouton carre${m === p.mode ? ' actif' : ''}`}
+          title={`${MODES_TEXTES[m].nom} : ${MODES_TEXTES[m].aide}`}
+          aria-label={MODES_TEXTES[m].nom}
+          aria-pressed={m === p.mode}
+          onClick={() => m !== p.mode && p.cibler(m)}
+        >
+          <Ico nom={ICONES_MODES[m]} />
+        </button>
+      ))}
+    </div>
   );
 }
 

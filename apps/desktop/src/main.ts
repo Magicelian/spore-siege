@@ -50,6 +50,7 @@ const SON_COMMANDE: Partial<Record<Commande['type'], Effet>> = {
   ameliorerTour: 'ameliorer',
   choisirCapacite: 'capacite',
   vendreTour: 'vendre',
+  ciblerTour: 'ouvrir',
   poserRonce: 'ronce',
   enleverRonce: 'ronce',
   planterFleur: 'planter',

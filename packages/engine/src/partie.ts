@@ -1,7 +1,7 @@
 // Une partie sur une île : vagues, monstres qui suivent le sentier, tours qui tirent, spores, vie de la souche.
 // Pur et déterministe : mêmes île, vagues, graine et commandes → même partie, pas pour pas.
-import type { Arrivee, Capacite, Case, Commande, Regles, EvenementVu, FlaqueVu, FleurVue, ImpactVu, Ile, Instantane, LanterneVue, Lumiere, MonstreVu, Phase, Position, TourVue, TypeMonstre, TypeTour } from './contrat';
-import { estSentier } from './contrat';
+import type { Arrivee, Capacite, Case, Commande, Regles, EvenementVu, FlaqueVu, FleurVue, ImpactVu, Ile, Instantane, LanterneVue, Lumiere, ModeCible, MonstreVu, Phase, Position, TourVue, TypeMonstre, TypeTour } from './contrat';
+import { estSentier, MODES_CIBLE } from './contrat';
 import {
   BONUS_PAR_SECONDE_GAGNEE,
   BONUS_VAGUE,
@@ -93,6 +93,7 @@ interface Tour {
   /** Pas à attendre avant de pouvoir tirer. */
   recharge: number;
   cible: number | null;
+  mode: ModeCible;
   dernierTir: number;
   chaine: Position[];
   /** Spores payées (pose et améliorations), pour la revente. */
@@ -214,6 +215,7 @@ export class Partie {
           centre: { x: c.x + 0.5, y: c.y + 0.5 },
           recharge: 0,
           cible: null,
+          mode: TOURS[commande.tour].cible ?? 'premier',
           dernierTir: -1,
           chaine: [],
           depense: prix,
@@ -239,6 +241,12 @@ export class Partie {
         tour.stade = 4;
         tour.capacite = commande.capacite;
         tour.depense += prix;
+        return true;
+      }
+      case 'ciblerTour': {
+        const tour = this.tours.find((t) => t.id === commande.id);
+        if (!tour || !MODES_CIBLE.includes(commande.mode)) return false;
+        tour.mode = commande.mode;
         return true;
       }
       case 'vendreTour': {
@@ -417,6 +425,7 @@ export class Partie {
       case: { ...t.case },
       portee: stadeDe(t).portee,
       cible: t.cible,
+      mode: t.mode,
       dernierTir: t.dernierTir,
       chaine: t.chaine.map((p) => ({ ...p })),
       prixAmelioration: prixAmelioration(t),
@@ -898,23 +907,49 @@ export class Partie {
     m.avancement = 0;
   }
 
-  /** Le monstre vivant le plus proche de la souche, à portée de `centre` (les nageurs sous l'eau : avec `sousEau`). */
-  private viser(centre: Position, portee: number, aerien: boolean, exclus?: Set<Monstre>, sousEau = false): Monstre | null {
+  /**
+   * Le monstre vivant à portée de `centre` que préfère `mode` (à égalité, le plus proche de la souche ; les nageurs
+   * sous l'eau : avec `sousEau`).
+   */
+  private viser(
+    centre: Position,
+    portee: number,
+    aerien: boolean,
+    exclus?: Set<Monstre>,
+    sousEau = false,
+    mode: ModeCible = 'premier',
+  ): Monstre | null {
+    const valeur = (m: Monstre) => (mode === 'forte' ? m.pv : mode === 'blinde' ? this.armureDe(m) : 0);
     let meilleur: Monstre | null = null;
+    let meilleureValeur = 0;
     for (const m of this.monstres) {
       if (m.pv <= 0 || exclus?.has(m) || distance(centre, m.position) > portee) continue;
       if (!aerien && this.enLAir(m)) continue;
       if (this.horsDAtteinte(m, sousEau) || !this.eclaire(m.position)) continue;
-      if (!meilleur || m.longueur - m.avancement < meilleur.longueur - meilleur.avancement) meilleur = m;
+      const v = valeur(m);
+      if (
+        !meilleur ||
+        v > meilleureValeur ||
+        (v === meilleureValeur && m.longueur - m.avancement < meilleur.longueur - meilleur.avancement)
+      ) {
+        meilleur = m;
+        meilleureValeur = v;
+      }
     }
     return meilleur;
+  }
+
+  /** Armure du monstre en ce moment (le cloporte en boule en a bien plus). */
+  private armureDe(m: Monstre): number {
+    const boule = MONSTRES[m.type].boule;
+    return boule && this.enBoule(m) ? boule.armure : MONSTRES[m.type].armure;
   }
 
   private tirer(): void {
     for (const t of this.tours) {
       if (t.recharge > 0) t.recharge--;
       const stade = stadeDe(t);
-      const cible = this.viser(t.centre, stade.portee, TOURS[t.type].aerien ?? false, undefined, TOURS[t.type].sousEau);
+      const cible = this.viser(t.centre, stade.portee, TOURS[t.type].aerien ?? false, undefined, TOURS[t.type].sousEau, t.mode);
       t.cible = cible?.id ?? null;
       if (!cible || t.recharge > 0) continue;
       t.recharge = Math.round(stade.cadence * PAS_PAR_SECONDE);
@@ -964,7 +999,7 @@ export class Partie {
       const touches = new Set<Monstre>([cible]);
       const cibles = [cible];
       while (cibles.length < tirs) {
-        const autre = this.viser(t.centre, stade.portee, TOURS[t.type].aerien ?? false, touches, TOURS[t.type].sousEau);
+        const autre = this.viser(t.centre, stade.portee, TOURS[t.type].aerien ?? false, touches, TOURS[t.type].sousEau, t.mode);
         if (!autre) break;
         touches.add(autre);
         cibles.push(autre);
@@ -1098,7 +1133,7 @@ export class Partie {
   private blesser(m: Monstre, degats: number, percant: boolean, source: TypeTour): void {
     if (m.pv <= 0) return;
     const boule = MONSTRES[m.type].boule;
-    const armure = boule && this.enBoule(m) ? boule.armure : MONSTRES[m.type].armure;
+    const armure = this.armureDe(m);
     const coup = percant ? degats : Math.max(1, degats - armure);
     this.degats[source] += Math.min(coup, m.pv);
     m.pv -= coup;

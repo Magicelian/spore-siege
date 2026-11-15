@@ -1,5 +1,5 @@
 // Chiffres de la partie. Provisoires : la courbe des 10 vagues s'équilibre à l'étape 5 (joueur scripté).
-import type { Capacite, TypeMonstre, TypeTour } from './contrat';
+import type { Capacite, ModeCible, TypeMonstre, TypeTour } from './contrat';
 
 /** Durée d'un pas de simulation : 20 pas par seconde. */
 export const PAS_MS = 50;
@@ -115,7 +115,7 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
   // Boss de la prairie : vole au-dessus de l'île, arrache les fleurs, puis fond sur la souche. Réglé en 10d : seules
   // la ruche et le cristal le touchent en vol, à 300 PV aucun script ne le battait, à 220 le bon gagnait à 1 PV.
   corbeau: {
-    pv: 200,
+    pv: 220,
     vitesse: 1.6,
     morsure: 20,
     butin: 70,
@@ -182,6 +182,8 @@ export interface StadeTour {
 
 export interface FicheTour {
   stades: [StadeTour, StadeTour, StadeTour];
+  /** Mode de ciblage à la pose (défaut : `premier`). */
+  cible?: ModeCible;
   /** Sans projectile, le coup est immédiat (éclair). `guide` : suit sa cible ; sinon vise où elle sera. */
   projectile?: { vitesse: number; guide: boolean; rayon: number };
   /** Cristal : portée d'un rebond et part des dégâts gardée à chaque rebond. */
@@ -212,6 +214,7 @@ export const TOURS: Record<TypeTour, FicheTour> = {
     aerien: true,
   },
   cristal: {
+    cible: 'blinde',
     aerien: true,
     stades: [
       // Rééquilibré le 13/11/2026 : à 70 spores / 6 dégâts / 1,2 s, des cristaux seuls gagnaient à 3 étoiles.
