@@ -59,6 +59,16 @@ export const MONSTRES_TEXTES: Record<TypeMonstre, { nom: string; description: st
     description: 'Un vieux champignon voûté qui répand des spores de rouille. Elles referment les blessures des monstres autour de lui.',
     conseil: 'Abats-le en premier : l’éclair de l’obélisque l’atteint au milieu de son troupeau.',
   },
+  sangsue: {
+    nom: 'Sangsue de vase',
+    description: 'Un long ver annelé, gorgé de rouille. Dans les gués, elle plonge et file sous l’eau sans se laisser ralentir.',
+    conseil: 'Sous l’eau, seul le harpon du héron l’atteint. Sinon, attends-la sur la terre ferme.',
+  },
+  crapaud: {
+    nom: 'Crapaud pustuleux',
+    description: 'Un crapaud trapu couvert de moisissure. Toutes les deux ou trois secondes, il bondit de deux cases d’un coup.',
+    conseil: 'Ses bonds le font passer vite devant tes tours : couvre une longue portion du chemin, pas un seul point.',
+  },
   limaceMere: {
     nom: 'Limace-mère',
     description: 'La reine de la Rouille, grosse comme une souche, le dos couvert d’œufs. Blessée, elle pond une nouvelle escorte. Si elle touche la souche, tout est perdu.',

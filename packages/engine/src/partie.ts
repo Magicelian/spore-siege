@@ -45,6 +45,9 @@ interface Monstre {
   soinRecharge: number;
   /** Boss : paliers de vie déjà franchis. */
   paliers: number;
+  /** Crapaud : pas où a commencé le bond en cours (-1 : aucun), pas du prochain bond. */
+  sautDebut: number;
+  prochainSaut: number;
 }
 
 interface Tour {
@@ -287,6 +290,8 @@ export class Partie {
       pvMax: MONSTRES[m.type].pv,
       ralenti: this.facteurVitesse(m) < 1,
       empoisonne: this.pas < m.poisonJusqua,
+      immerge: this.immerge(m),
+      saut: this.enSaut(m) ? (this.pas - m.sautDebut) / dureeSaut(m.type) : null,
     }));
     const tours: TourVue[] = this.tours.map((t) => ({
       id: t.id,
@@ -417,6 +422,9 @@ export class Partie {
       poisonParPas: 0,
       soinRecharge: Math.round((MONSTRES[type].soin?.cadence ?? 0) * PAS_PAR_SECONDE),
       paliers: 0,
+      sautDebut: -1,
+      // Décalé selon l'id : une file de crapauds ne bondit pas d'un seul bloc.
+      prochainSaut: this.pas + Math.round((MONSTRES[type].saut?.cadence ?? 0) * PAS_PAR_SECONDE) + (this.prochainId % 9),
     };
   }
 
@@ -452,7 +460,20 @@ export class Partie {
 
   /** Vitesse actuelle, en cases par seconde. */
   private vitesse(m: Monstre): number {
+    const saut = MONSTRES[m.type].saut;
+    // En plein bond, rien ne le freine.
+    if (saut && this.enSaut(m)) return saut.distance / saut.duree;
     return MONSTRES[m.type].vitesse * this.facteurVitesse(m);
+  }
+
+  /** Le crapaud est-il en l'air ? */
+  private enSaut(m: Monstre): boolean {
+    return m.sautDebut >= 0 && this.pas < m.sautDebut + dureeSaut(m.type);
+  }
+
+  /** Une sangsue dans un gué : sous l'eau. */
+  private immerge(m: Monstre): boolean {
+    return !!MONSTRES[m.type].nage && terrainSous(this.ile, m.position) === 'gue';
   }
 
   /** Le plus fort des ralentis en cours (coup de mortier, flaque de glu), multiplié par celui du gué. */
@@ -460,7 +481,7 @@ export class Partie {
     let facteur = this.pas < m.ralentiJusqua ? m.facteurRalenti : 1;
     if (MONSTRES[m.type].volant) return facteur;
     for (const f of this.flaques) if (distance(m.position, f.position) <= f.rayon) facteur = Math.min(facteur, f.facteur);
-    return terrainSous(this.ile, m.position) === 'gue' ? facteur * FACTEUR_GUE : facteur;
+    return terrainSous(this.ile, m.position) === 'gue' && !MONSTRES[m.type].nage ? facteur * FACTEUR_GUE : facteur;
   }
 
   /** Chaque soigneur, à son rythme, rend de la vie aux autres monstres blessés autour de lui. */
@@ -487,6 +508,11 @@ export class Partie {
   private deplacer(): void {
     const restants: Monstre[] = [];
     for (const m of this.monstres) {
+      const saut = MONSTRES[m.type].saut;
+      if (saut && !this.enSaut(m) && this.pas >= m.prochainSaut) {
+        m.sautDebut = this.pas;
+        m.prochainSaut = this.pas + Math.round((saut.cadence + saut.duree) * PAS_PAR_SECONDE);
+      }
       m.avancement += this.vitesse(m) / PAS_PAR_SECONDE;
       if (m.avancement >= m.longueur) {
         // Le boss qui touche la souche l'emporte : la partie est perdue.
@@ -501,12 +527,13 @@ export class Partie {
     this.monstres = restants;
   }
 
-  /** Le monstre vivant le plus proche de la souche, à portée de `centre`. */
-  private viser(centre: Position, portee: number, aerien: boolean, exclus?: Set<Monstre>): Monstre | null {
+  /** Le monstre vivant le plus proche de la souche, à portée de `centre` (les nageurs sous l'eau : avec `sousEau`). */
+  private viser(centre: Position, portee: number, aerien: boolean, exclus?: Set<Monstre>, sousEau = false): Monstre | null {
     let meilleur: Monstre | null = null;
     for (const m of this.monstres) {
       if (m.pv <= 0 || exclus?.has(m) || distance(centre, m.position) > portee) continue;
       if (!aerien && MONSTRES[m.type].volant) continue;
+      if (!sousEau && this.immerge(m)) continue;
       if (!meilleur || m.longueur - m.avancement < meilleur.longueur - meilleur.avancement) meilleur = m;
     }
     return meilleur;
@@ -516,7 +543,7 @@ export class Partie {
     for (const t of this.tours) {
       if (t.recharge > 0) t.recharge--;
       const stade = stadeDe(t);
-      const cible = this.viser(t.centre, stade.portee, TOURS[t.type].aerien ?? false);
+      const cible = this.viser(t.centre, stade.portee, TOURS[t.type].aerien ?? false, undefined, TOURS[t.type].sousEau);
       t.cible = cible?.id ?? null;
       if (!cible || t.recharge > 0) continue;
       t.recharge = Math.round(stade.cadence * PAS_PAR_SECONDE);
@@ -566,7 +593,7 @@ export class Partie {
       const touches = new Set<Monstre>([cible]);
       const cibles = [cible];
       while (cibles.length < tirs) {
-        const autre = this.viser(t.centre, stade.portee, TOURS[t.type].aerien ?? false, touches);
+        const autre = this.viser(t.centre, stade.portee, TOURS[t.type].aerien ?? false, touches, TOURS[t.type].sousEau);
         if (!autre) break;
         touches.add(autre);
         cibles.push(autre);
@@ -635,12 +662,15 @@ export class Partie {
         continue;
       }
       if (p.guide) {
-        this.toucher(parId.get(p.cible)!, p);
+        // Plongée entre-temps, la sangsue esquive l'abeille.
+        const cible = parId.get(p.cible)!;
+        if (!this.immerge(cible) || TOURS[p.type].sousEau) this.toucher(cible, p);
         continue;
       }
       for (const m of this.monstres) {
         if (m.pv <= 0 || distance(m.position, p.but) > p.rayon) continue;
         if (MONSTRES[m.type].volant && !TOURS[p.type].aerien) continue;
+        if (this.immerge(m) && !TOURS[p.type].sousEau) continue;
         this.toucher(m, p);
       }
       if (p.flaque) {
@@ -672,7 +702,7 @@ export class Partie {
     }
     if (avance < reste) return true;
     if (h.rebonds <= 0) return false;
-    const suivant = this.viser(p.position, h.saut, false, h.touches);
+    const suivant = this.viser(p.position, h.saut, false, h.touches, true);
     if (!suivant) return false;
     h.rebonds--;
     p.depart = { ...p.position };
@@ -779,6 +809,11 @@ function distanceAuSegment(p: Position, a: Position, b: Position): number {
   if (l2 === 0) return distance(p, a);
   const t = Math.max(0, Math.min(1, ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / l2));
   return distance(p, { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) });
+}
+
+/** Durée d'un bond du crapaud, en pas. */
+function dureeSaut(type: TypeMonstre): number {
+  return Math.round((MONSTRES[type].saut?.duree ?? 0) * PAS_PAR_SECONDE);
 }
 
 /** Terrain sous un point (en cases). */

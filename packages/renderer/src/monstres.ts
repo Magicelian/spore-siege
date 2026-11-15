@@ -23,6 +23,10 @@ const M = {
   soin: 0x9be05a,
   phalene: 0xd9cfb8,
   oeuf: 0xd6d2a8,
+  sangsue: 0x4a4f3a,
+  sangsueVentre: 0x6b6a4a,
+  crapaud: 0x6f7a5a,
+  crapaudVentre: 0xa8a48a,
 };
 lumineuse(M.oeil, M.soin);
 const C = -0.5;
@@ -149,6 +153,31 @@ function limaceMere(): Voxels {
   return v.boite(8, 2, -2, 8, 3, 1, M.sombre);
 }
 
+/** Sangsue : long corps annelé vase sombre, anneaux de rouille, ventouse à l'avant, deux yeux qui luisent (avant = +x). */
+function sangsue(): Voxels {
+  const v = new Voxels();
+  for (const [x, r] of [[-5, 0.9], [-3.5, 1.2], [-2, 1.4], [-0.5, 1.5], [1, 1.4], [2.5, 1.2]] as const) v.boule(C + x, 1.2, C, 1.1, r, r, M.sangsue);
+  v.peindre((_x, y, _z, c) => c === M.sangsue && y === 0, M.sangsueVentre);
+  v.peindre((x, _y, _z, c) => c === M.sangsue && (x & 1) === 0 && x > -6 && hachage(x, 1, 1) < 0.55, M.rouille);
+  duvet(v, M.sangsue, 0.12);
+  v.boite(3, 0, -1, 3, 2, 0, M.sombre).poser(3, 1, -1, M.rouilleSombre).poser(3, 1, 0, M.rouilleSombre);
+  return v.poser(2, 3, -2, M.oeil).poser(2, 3, 1, M.oeil);
+}
+
+/** Crapaud : trapu et large, peau verruqueuse moisie, pustules de rouille, gros yeux luisants sur le dessus. */
+function crapaud(): Voxels {
+  const v = new Voxels().boule(C - 0.5, 2.2, C, 3, 2.3, 2.8, M.crapaud);
+  v.peindre((_x, y, _z, c) => c === M.crapaud && y <= 1, M.crapaudVentre);
+  taches(v, M.crapaud, 0.14);
+  duvet(v, M.crapaud, 0.2);
+  // Pattes arrière repliées, pattes avant.
+  for (const z of [-3, 2]) v.boite(-4, 0, z, -2, 2, z, M.crapaud).boite(1, 0, z, 2, 0, z, M.crapaud);
+  // Yeux en bosse sur le dessus de la tête.
+  for (const z of [-2, 1]) v.boite(1, 4, z, 2, 5, z, M.crapaud).poser(2, 5, z, M.oeil).poser(3, 5, z, M.oeil);
+  // Large bouche sombre.
+  return v.boite(3, 1, -2, 3, 1, 1, M.sombre);
+}
+
 /** Couleurs des éclats quand le monstre meurt. */
 export const ECLATS: Record<TypeMonstre, number[]> = {
   limace: [M.gris, M.rouille, M.grisClair],
@@ -159,6 +188,8 @@ export const ECLATS: Record<TypeMonstre, number[]> = {
   volant: [M.phalene, M.sombre, M.rouille],
   soigneur: [M.chapeau, M.pied, M.soin],
   limaceMere: [M.gris, M.oeuf, M.rouille],
+  sangsue: [M.sangsue, M.rouille, M.sangsueVentre],
+  crapaud: [M.crapaud, M.rouille, M.crapaudVentre],
 };
 
 let modeles: Record<TypeMonstre, Modele> | null = null;
@@ -172,12 +203,18 @@ export function modelesMonstres(): Record<TypeMonstre, Modele> {
     volant: volant().modele(false),
     soigneur: soigneur().modele(false),
     limaceMere: limaceMere().modele(false),
+    sangsue: sangsue().modele(false),
+    crapaud: crapaud().modele(false),
   };
   return modeles;
 }
 
 /** Secondes : le monstre s'écrase, puis ses éclats volent, pendant que son butin monte. */
 const DUREE_ECRASE = 0.12;
+/** Sangsue sous l'eau : de combien elle s'enfonce (unités du monde). */
+const PROFONDEUR_PLONGEE = 0.45;
+/** Crapaud : hauteur du bond. */
+const HAUTEUR_SAUT = 0.55;
 const DUREE_BUTIN = 0.9;
 const DUREE_MORSURE = 0.15;
 
@@ -226,6 +263,8 @@ interface Corps {
   hauteur: number;
   fond: THREE.Sprite;
   jauge: THREE.Sprite;
+  /** Sangsue : 0 en surface, 1 sous l'eau. */
+  plonge?: number;
 }
 interface Mourant {
   maillage: THREE.Mesh;
@@ -284,7 +323,16 @@ export class MonstresRendu {
       versMonde({ x: x + ecart, y: y - ecart }, ile, this.position);
       if (m.type === 'moucheron') this.position.y += Math.sin(instant / 120 + m.id) * 0.06;
       if (m.type === 'volant') this.position.y += Math.sin(instant / 300 + m.id) * 0.08;
+      // Sangsue : s'enfonce sous la surface des gués, ressort sur la terre (en glissant, pas d'un coup).
+      corps.plonge = (corps.plonge ?? 0) + ((m.immerge ? 1 : 0) - (corps.plonge ?? 0)) * 0.25;
+      this.position.y -= corps.plonge * PROFONDEUR_PLONGEE;
+      // Crapaud : bond en cloche.
+      if (m.saut !== null) this.position.y += Math.sin(Math.PI * m.saut) * HAUTEUR_SAUT;
       corps.maillage.position.copy(this.position);
+      if (m.type === 'crapaud') {
+        const etire = m.saut === null ? 0 : Math.sin(Math.PI * m.saut) * 0.25;
+        corps.maillage.scale.set(1 + etire, 1 - etire * 0.6, 1);
+      }
       // La phalène bat des ailes (elles s'étendent le long de z).
       if (m.type === 'volant') corps.maillage.scale.set(1, 1, 1 + Math.sin(instant / 70 + m.id) * 0.3);
       // Limace et amas ondulent en avançant (et s'arrêtent avec eux).
@@ -298,7 +346,7 @@ export class MonstresRendu {
       const dx = this.avant.x - this.position.x;
       const dz = this.avant.z - this.position.z;
       if (dx * dx + dz * dz > 1e-6) corps.maillage.rotation.y = Math.atan2(-dz, dx);
-      this.placerJauge(corps, m.pv / m.pvMax, parPixel);
+      this.placerJauge(corps, m.immerge ? 1 : m.pv / m.pvMax, parPixel);
     }
     for (const [id, corps] of this.corps) {
       if (vus.has(id)) continue;

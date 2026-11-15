@@ -172,6 +172,10 @@ class Joueur {
     if (proches.has('moucheron')) besoins.push('ruche', 'mortier');
     if (proches.has('volant')) besoins.push('ruche', 'cristal');
     if (proches.has('soigneur')) besoins.push('cristal');
+    // Sangsue : le héron la touche sous l'eau ; sans eau utile, les tours de terre l'attendent sur le sentier sec.
+    if (proches.has('sangsue')) besoins.push(this.eauUtile ? 'heron' : 'ruche', this.eauUtile ? 'heron' : 'cristal');
+    // Crapaud : il bondit, mieux vaut des tours qui couvrent large ou ralentissent.
+    if (proches.has('crapaud')) besoins.push('mortier', 'cristal');
     if (proches.has('limaceMere')) besoins.push('cristal', 'canon');
     // Héron : contre les files de marcheurs, s'il a une case d'eau qui voit assez de chemin.
     if (this.eauUtile && (proches.has('limace') || proches.has('amas') || proches.has('scarabee'))) besoins.push('heron');

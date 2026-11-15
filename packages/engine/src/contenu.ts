@@ -30,6 +30,10 @@ export interface FicheMonstre {
   butin: number;
   /** Retiré à chaque coup (au moins 1 dégât passe) ; l'éclair du cristal l'ignore. */
   armure: number;
+  /** Nage sous l'eau des gués : n'y est pas ralentie, et seules les tours `sousEau` l'y atteignent. */
+  nage?: boolean;
+  /** Toutes les `cadence` secondes, bondit de `distance` cases le long du chemin en `duree` secondes. */
+  saut?: { cadence: number; distance: number; duree: number };
 }
 
 export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
@@ -42,6 +46,10 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
   volant: { pv: 14, vitesse: 0.9, morsure: 1, butin: 3, armure: 0, volant: true },
   // Forêt, niveau 4 : rend de la vie aux monstres autour de lui (pas à lui-même).
   soigneur: { pv: 40, vitesse: 0.6, morsure: 2, butin: 6, armure: 1, soin: { rayon: 1.8, pv: 6, cadence: 2 } },
+  // Marais, niveau 2 : sous l'eau des gués, seul le héron la touche ; sur la terre, elle redevient vulnérable.
+  sangsue: { pv: 22, vitesse: 0.9, morsure: 1, butin: 3, armure: 0, nage: true },
+  // Marais, niveau 3 : bondit de deux cases toutes les 2,5 s et passe vite les zones couvertes.
+  crapaud: { pv: 32, vitesse: 0.6, morsure: 1, butin: 3, armure: 1, saut: { cadence: 2.5, distance: 2, duree: 0.4 } },
   // Boss de la forêt (niveau 5, dernière vague). Réglé en 8d : à 2 500 PV le joueur simple perd, à 1 800 il gagne.
   limaceMere: {
     pv: 1500,
@@ -97,6 +105,8 @@ export interface FicheTour {
   aerien?: boolean;
   /** Se pose sur l'eau (eau libre ou nénuphar), nulle part ailleurs. */
   surEau?: boolean;
+  /** Atteint les nageurs sous l'eau des gués (la Sangsue). */
+  sousEau?: boolean;
   /**
    * Héron : le harpon file en ligne droite vers la cible et continue `allonge` cases au-delà de la portée ; il blesse
    * une fois chaque monstre qu'il frôle à moins de `largeur` case.
@@ -143,6 +153,7 @@ export const TOURS: Record<TypeTour, FicheTour> = {
   },
   heron: {
     surEau: true,
+    sousEau: true,
     stades: [
       { prix: 70, degats: 6, portee: 3, cadence: 1.5 },
       { prix: 55, degats: 9, portee: 3.3, cadence: 1.4 },

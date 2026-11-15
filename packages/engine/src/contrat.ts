@@ -35,7 +35,17 @@ export interface Ile {
 // ─── Partie ──────────────────────────────────────────────────────────────────
 
 /** `petitAmas` : ce que laisse un amas de Rouille en mourant. */
-export type TypeMonstre = 'limace' | 'moucheron' | 'scarabee' | 'amas' | 'petitAmas' | 'volant' | 'soigneur' | 'limaceMere';
+export type TypeMonstre =
+  | 'limace'
+  | 'moucheron'
+  | 'scarabee'
+  | 'amas'
+  | 'petitAmas'
+  | 'volant'
+  | 'soigneur'
+  | 'limaceMere'
+  | 'sangsue'
+  | 'crapaud';
 
 export interface MonstreVu {
   id: number;
@@ -48,6 +58,10 @@ export interface MonstreVu {
   ralenti: boolean;
   /** Piqué par le Dard : il perd de la vie un moment. */
   empoisonne: boolean;
+  /** Sangsue dans un gué : invisible, seul le héron l'atteint. */
+  immerge: boolean;
+  /** Crapaud en plein bond : avancée du saut, de 0 à 1 ; `null` au sol. */
+  saut: number | null;
 }
 
 export type TypeTour = 'ruche' | 'cristal' | 'mortier' | 'canon' | 'heron';
