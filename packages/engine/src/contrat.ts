@@ -45,7 +45,8 @@ export type TypeMonstre =
   | 'soigneur'
   | 'limaceMere'
   | 'sangsue'
-  | 'crapaud';
+  | 'crapaud'
+  | 'crapaudRoi';
 
 export interface MonstreVu {
   id: number;
@@ -119,7 +120,9 @@ export type EvenementVu =
   /** Le soigneur `id` vient de rendre de la vie aux monstres `soignes`. */
   | { type: 'soin'; id: number; monstre: TypeMonstre; position: Position; soignes: number[]; pas: number }
   /** Le boss `id` a franchi un palier de vie et pondu les monstres `petits`. */
-  | { type: 'ponte'; id: number; monstre: TypeMonstre; position: Position; petits: number[]; pas: number };
+  | { type: 'ponte'; id: number; monstre: TypeMonstre; position: Position; petits: number[]; pas: number }
+  /** Le Crapaud-roi plonge à un palier : il disparaît quelques secondes et ressortira plus loin avec son escorte. */
+  | { type: 'plongee'; id: number; monstre: TypeMonstre; position: Position; pas: number };
 
 /** Flaque collante laissée par le mortier Glu : les monstres dedans sont ralentis. */
 export interface FlaqueVu {

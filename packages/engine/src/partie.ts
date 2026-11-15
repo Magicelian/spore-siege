@@ -48,6 +48,9 @@ interface Monstre {
   /** Crapaud : pas où a commencé le bond en cours (-1 : aucun), pas du prochain bond. */
   sautDebut: number;
   prochainSaut: number;
+  /** Crapaud-roi : pas où il ressort de sa plongée (-1 : il n'est pas sous l'eau) et l'escorte qu'il pondra alors. */
+  plongeeFin: number;
+  escorte: TypeMonstre[];
 }
 
 interface Tour {
@@ -423,6 +426,8 @@ export class Partie {
       soinRecharge: Math.round((MONSTRES[type].soin?.cadence ?? 0) * PAS_PAR_SECONDE),
       paliers: 0,
       sautDebut: -1,
+      plongeeFin: -1,
+      escorte: [],
       // Décalé selon l'id : une file de crapauds ne bondit pas d'un seul bloc.
       prochainSaut: this.pas + Math.round((MONSTRES[type].saut?.cadence ?? 0) * PAS_PAR_SECONDE) + (this.prochainId % 9),
     };
@@ -460,6 +465,8 @@ export class Partie {
 
   /** Vitesse actuelle, en cases par seconde. */
   private vitesse(m: Monstre): number {
+    const plongee = MONSTRES[m.type].boss?.plongee;
+    if (plongee && this.plonge(m)) return plongee.avance / plongee.duree;
     const saut = MONSTRES[m.type].saut;
     // En plein bond, rien ne le freine.
     if (saut && this.enSaut(m)) return saut.distance / saut.duree;
@@ -473,7 +480,21 @@ export class Partie {
 
   /** Une sangsue dans un gué : sous l'eau. */
   private immerge(m: Monstre): boolean {
+    return this.nageSous(m) || this.plonge(m);
+  }
+
+  private nageSous(m: Monstre): boolean {
     return !!MONSTRES[m.type].nage && terrainSous(this.ile, m.position) === 'gue';
+  }
+
+  /** Le Crapaud-roi en plongée : aucune tour ne l'atteint. */
+  private plonge(m: Monstre): boolean {
+    return m.plongeeFin >= 0 && this.pas < m.plongeeFin;
+  }
+
+  /** Hors d'atteinte d'une tour : boss en plongée, ou nageur sous l'eau pour une tour sans `sousEau`. */
+  private horsDAtteinte(m: Monstre, sousEau = false): boolean {
+    return this.plonge(m) || (!sousEau && this.nageSous(m));
   }
 
   /** Le plus fort des ralentis en cours (coup de mortier, flaque de glu), multiplié par celui du gué. */
@@ -509,7 +530,7 @@ export class Partie {
     const restants: Monstre[] = [];
     for (const m of this.monstres) {
       const saut = MONSTRES[m.type].saut;
-      if (saut && !this.enSaut(m) && this.pas >= m.prochainSaut) {
+      if (saut && !this.enSaut(m) && !this.plonge(m) && this.pas >= m.prochainSaut) {
         m.sautDebut = this.pas;
         m.prochainSaut = this.pas + Math.round((saut.cadence + saut.duree) * PAS_PAR_SECONDE);
       }
@@ -533,7 +554,7 @@ export class Partie {
     for (const m of this.monstres) {
       if (m.pv <= 0 || exclus?.has(m) || distance(centre, m.position) > portee) continue;
       if (!aerien && MONSTRES[m.type].volant) continue;
-      if (!sousEau && this.immerge(m)) continue;
+      if (this.horsDAtteinte(m, sousEau)) continue;
       if (!meilleur || m.longueur - m.avancement < meilleur.longueur - meilleur.avancement) meilleur = m;
     }
     return meilleur;
@@ -664,13 +685,13 @@ export class Partie {
       if (p.guide) {
         // Plongée entre-temps, la sangsue esquive l'abeille.
         const cible = parId.get(p.cible)!;
-        if (!this.immerge(cible) || TOURS[p.type].sousEau) this.toucher(cible, p);
+        if (!this.horsDAtteinte(cible, TOURS[p.type].sousEau)) this.toucher(cible, p);
         continue;
       }
       for (const m of this.monstres) {
         if (m.pv <= 0 || distance(m.position, p.but) > p.rayon) continue;
         if (MONSTRES[m.type].volant && !TOURS[p.type].aerien) continue;
-        if (this.immerge(m) && !TOURS[p.type].sousEau) continue;
+        if (this.horsDAtteinte(m, TOURS[p.type].sousEau)) continue;
         this.toucher(m, p);
       }
       if (p.flaque) {
@@ -695,7 +716,7 @@ export class Partie {
       p.position.y += ((p.but.y - p.position.y) / reste) * avance;
     }
     for (const m of this.monstres) {
-      if (m.pv <= 0 || h.touches.has(m) || MONSTRES[m.type].volant) continue;
+      if (m.pv <= 0 || h.touches.has(m) || MONSTRES[m.type].volant || this.plonge(m)) continue;
       if (distanceAuSegment(m.position, avant, p.position) > h.largeur) continue;
       h.touches.add(m);
       this.toucher(m, p);
@@ -731,24 +752,40 @@ export class Partie {
     m.pv -= coup;
   }
 
-  /** Le boss blessé sous un palier pond son escorte juste derrière lui (plusieurs paliers d'un coup : tout). */
+  /**
+   * Le boss blessé sous un palier pond son escorte juste derrière lui (plusieurs paliers d'un coup : tout). Le
+   * Crapaud-roi, lui, plonge d'abord et ne pond qu'en ressortant.
+   */
   private pondre(): void {
     const nes: Monstre[] = [];
+    const lacher = (m: Monstre, types: TypeMonstre[]) => {
+      const petits = types.map((type, rang) => {
+        const petit = this.nouveauMonstre(type, m.trace, Math.max(0, m.avancement - 0.3 - 0.35 * rang));
+        nes.push(petit);
+        return petit.id;
+      });
+      this.evenements.push({ type: 'ponte', id: m.id, monstre: m.type, position: { ...m.position }, petits, pas: this.pas });
+    };
     for (const m of this.monstres) {
-      const paliers = MONSTRES[m.type].boss?.paliers;
-      if (!paliers || m.pv <= 0) continue;
-      while (m.paliers < paliers.length && m.pv <= paliers[m.paliers]!.part * MONSTRES[m.type].pv) {
-        const petits: number[] = [];
-        let rang = 0;
-        for (const { type, nombre } of paliers[m.paliers]!.escorte)
-          for (let k = 0; k < nombre; k++) {
-            const petit = this.nouveauMonstre(type, m.trace, Math.max(0, m.avancement - 0.3 - 0.35 * rang++));
-            nes.push(petit);
-            petits.push(petit.id);
-          }
-        m.paliers++;
-        this.evenements.push({ type: 'ponte', id: m.id, monstre: m.type, position: { ...m.position }, petits, pas: this.pas });
+      const boss = MONSTRES[m.type].boss;
+      if (!boss || m.pv <= 0) continue;
+      if (m.plongeeFin >= 0 && this.pas >= m.plongeeFin) {
+        m.plongeeFin = -1;
+        lacher(m, m.escorte);
+        m.escorte = [];
       }
+      const escorte: TypeMonstre[] = [];
+      while (m.paliers < boss.paliers.length && m.pv <= boss.paliers[m.paliers]!.part * MONSTRES[m.type].pv) {
+        for (const { type, nombre } of boss.paliers[m.paliers]!.escorte) for (let k = 0; k < nombre; k++) escorte.push(type);
+        m.paliers++;
+      }
+      if (escorte.length === 0) continue;
+      if (boss.plongee) {
+        m.plongeeFin = this.pas + Math.round(boss.plongee.duree * PAS_PAR_SECONDE);
+        m.escorte.push(...escorte);
+        m.sautDebut = -1;
+        this.evenements.push({ type: 'plongee', id: m.id, monstre: m.type, position: { ...m.position }, pas: this.pas });
+      } else lacher(m, escorte);
     }
     this.monstres.push(...nes);
   }

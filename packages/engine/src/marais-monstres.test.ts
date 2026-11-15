@@ -64,3 +64,38 @@ describe('Crapaud', () => {
     expect(r.pas).toBeLessThan(aPied * 0.75);
   });
 });
+
+describe('Crapaud-roi', () => {
+  it('plonge à chaque palier, hors d’atteinte, puis ressort plus loin avec son escorte', () => {
+    const longue = lireCarte(['....................', 'hhhhhhhhhhhhhhhhhhhh', 's=================SS', 'hhhhhhhhhhhhhhhhhhSS'], 'marais');
+    const p = partie('crapaudRoi', longue, { type: 'canon', x: 6, y: 1 });
+    const interne = p as unknown as { monstres: { pv: number; avancement: number }[] };
+    while (p.instantane().monstres.length === 0) p.avancer();
+    // Juste sous 75 % : le palier tombe au pas suivant.
+    interne.monstres[0]!.pv = MONSTRES.crapaudRoi.pv * 0.74;
+    p.avancer();
+    const i = p.instantane();
+    expect(i.evenements.some((e) => e.type === 'plongee')).toBe(true);
+    expect(i.monstres[0]!.immerge).toBe(true);
+    const pv = i.monstres[0]!.pv;
+    const avant = interne.monstres[0]!.avancement;
+    const duree = MONSTRES.crapaudRoi.boss!.plongee!.duree * PAS_PAR_SECONDE;
+    for (let n = 0; n < duree - 1; n++) p.avancer();
+    // Sous l'eau : intouchable, et il a filé de l'avance prévue.
+    expect(p.instantane().monstres[0]!.pv).toBe(pv);
+    expect(interne.monstres[0]!.avancement - avant).toBeGreaterThan(MONSTRES.crapaudRoi.boss!.plongee!.avance * 0.9);
+    expect(p.instantane().monstres).toHaveLength(1);
+    p.avancer();
+    p.avancer();
+    const apres = p.instantane();
+    expect(apres.evenements.some((e) => e.type === 'ponte')).toBe(true);
+    expect(apres.monstres.filter((m) => m.type === 'crapaud')).toHaveLength(4);
+    expect(apres.monstres[0]!.immerge).toBe(false);
+  });
+
+  it('qui touche la souche fait perdre la partie', () => {
+    const p = partie('crapaudRoi', sec);
+    while (p.instantane().phase === 'vague') p.avancer();
+    expect(p.instantane().phase).toBe('defaite');
+  });
+});

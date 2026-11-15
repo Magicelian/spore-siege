@@ -20,7 +20,14 @@ export interface FicheMonstre {
    * Boss : grande barre de vie en haut de l'écran ; s'il touche la souche, la partie est perdue. Sous chaque palier
    * (part de sa vie), il pond une escorte derrière lui.
    */
-  boss?: { paliers: { part: number; escorte: { type: TypeMonstre; nombre: number }[] }[] };
+  boss?: {
+    paliers: { part: number; escorte: { type: TypeMonstre; nombre: number }[] }[];
+    /**
+     * Crapaud-roi : à chaque palier il plonge, hors d'atteinte pendant `duree` secondes, file `avance` cases sous
+     * l'eau, puis ressort et pond son escorte là.
+     */
+    plongee?: { duree: number; avance: number };
+  };
   pv: number;
   /** Cases par seconde. */
   vitesse: number;
@@ -46,10 +53,6 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
   volant: { pv: 14, vitesse: 0.9, morsure: 1, butin: 3, armure: 0, volant: true },
   // Forêt, niveau 4 : rend de la vie aux monstres autour de lui (pas à lui-même).
   soigneur: { pv: 40, vitesse: 0.6, morsure: 2, butin: 6, armure: 1, soin: { rayon: 1.8, pv: 6, cadence: 2 } },
-  // Marais, niveau 2 : sous l'eau des gués, seul le héron la touche ; sur la terre, elle redevient vulnérable.
-  sangsue: { pv: 22, vitesse: 0.9, morsure: 1, butin: 3, armure: 0, nage: true },
-  // Marais, niveau 3 : bondit de deux cases toutes les 2,5 s et passe vite les zones couvertes.
-  crapaud: { pv: 32, vitesse: 0.6, morsure: 1, butin: 3, armure: 1, saut: { cadence: 2.5, distance: 2, duree: 0.4 } },
   // Boss de la forêt (niveau 5, dernière vague). Réglé en 8d : à 2 500 PV le joueur simple perd, à 1 800 il gagne.
   limaceMere: {
     pv: 1500,
@@ -62,6 +65,27 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
         { part: 0.75, escorte: [{ type: 'limace', nombre: 6 }] },
         { part: 0.5, escorte: [{ type: 'limace', nombre: 4 }, { type: 'amas', nombre: 2 }] },
         { part: 0.25, escorte: [{ type: 'scarabee', nombre: 2 }, { type: 'limace', nombre: 4 }] },
+      ],
+    },
+  },
+  // Marais, niveau 2 : sous l'eau des gués, seul le héron la touche ; sur la terre, elle redevient vulnérable.
+  sangsue: { pv: 22, vitesse: 0.9, morsure: 1, butin: 3, armure: 0, nage: true },
+  // Marais, niveau 3 : bondit de deux cases toutes les 2,5 s et passe vite les zones couvertes.
+  crapaud: { pv: 32, vitesse: 0.6, morsure: 1, butin: 3, armure: 1, saut: { cadence: 2.5, distance: 2, duree: 0.4 } },
+  // Boss du marais (niveau 5). Chiffres provisoires, à régler en 9e avec les joueurs scriptés.
+  crapaudRoi: {
+    pv: 1600,
+    vitesse: 0.3,
+    morsure: 20,
+    butin: 70,
+    armure: 4,
+    saut: { cadence: 3.5, distance: 1.5, duree: 0.6 },
+    boss: {
+      plongee: { duree: 3, avance: 3 },
+      paliers: [
+        { part: 0.75, escorte: [{ type: 'crapaud', nombre: 4 }] },
+        { part: 0.5, escorte: [{ type: 'sangsue', nombre: 4 }, { type: 'crapaud', nombre: 2 }] },
+        { part: 0.25, escorte: [{ type: 'scarabee', nombre: 2 }, { type: 'crapaud', nombre: 4 }] },
       ],
     },
   },

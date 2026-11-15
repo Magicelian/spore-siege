@@ -64,6 +64,11 @@ export const MONSTRES_TEXTES: Record<TypeMonstre, { nom: string; description: st
     description: 'Un long ver annelé, gorgé de rouille. Dans les gués, elle plonge et file sous l’eau sans se laisser ralentir.',
     conseil: 'Sous l’eau, seul le harpon du héron l’atteint. Sinon, attends-la sur la terre ferme.',
   },
+  crapaudRoi: {
+    nom: 'Crapaud-roi',
+    description: 'Le maître du marais, couronné de fer rouillé. Il avance par grands bonds ; blessé, il plonge, disparaît et ressort plus loin avec sa cour.',
+    conseil: 'Garde des tours tout le long du chemin : il ressort trois cases plus loin, entouré de crapauds. S’il touche la souche, tout est perdu.',
+  },
   crapaud: {
     nom: 'Crapaud pustuleux',
     description: 'Un crapaud trapu couvert de moisissure. Toutes les deux ou trois secondes, il bondit de deux cases d’un coup.',

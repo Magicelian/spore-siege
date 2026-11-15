@@ -172,6 +172,7 @@ export class Rendu {
     for (const e of nouveaux) {
       if (e.type === 'soin') this.monstres.soigner([e.id, ...e.soignes], instant);
       if (e.type === 'ponte') this.monstres.pondre(e.id, instant);
+      if (e.type === 'plongee') this.monstres.plonger(e.id, instant);
     }
     this.tours.afficher(this.ile, precedent, actuel, alpha, selection, pose, marque, instant, parPixel);
     return nouveaux;

@@ -663,7 +663,7 @@
   margin: 0;
   padding: 2px;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 6px 4px;
 }
 .collection .carte {
@@ -677,9 +677,17 @@
 .collection .carte .vignette {
   grid-row: auto;
 }
+/* 6 cartes par rangée : trop étroites pour un nom ; il reste lisible dans la fiche en dessous (et pour les lecteurs d'écran). */
 .collection .carte .nom {
-  font-size: 10px;
-  line-height: 1.1;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.collection .carte {
+  position: relative;
 }
 .vignette.silhouette {
   filter: brightness(0) opacity(0.55);

@@ -24,7 +24,8 @@ export type Effet =
   | 'mort'
   | 'morsure'
   | 'soin'
-  | 'ponte';
+  | 'ponte'
+  | 'plongee';
 
 const VOLUME = 0.22;
 /** Ambiance de fond, basse exprès (même niveau que Tiny Shrooms) ; le vent par-dessus en léger souffle. */
@@ -134,6 +135,11 @@ const EFFETS: Record<Effet, { notes: Note[]; souffles?: Souffle[] }> = {
   ponte: {
     notes: [{ f: 70, t: 0, d: 0.45, vers: 45, onde: 'sawtooth', v: 0.45 }, { f: 300, t: 0.12, d: 0.12, vers: 120, onde: 'sine', v: 0.3 }],
     souffles: [{ t: 0.1, d: 0.25, f: 600, v: 0.45 }],
+  },
+  // Plongée du Crapaud-roi : gros plouf, une note grave qui s'enfonce.
+  plongee: {
+    notes: [{ f: 180, t: 0, d: 0.35, vers: 60, onde: 'sine', v: 0.5 }],
+    souffles: [{ t: 0, d: 0.3, f: 900, v: 0.5 }],
   },
   // Soin du prêtre champignon : deux notes douces qui montent.
   soin: { notes: [{ f: 520, t: 0, d: 0.09, vers: 700, onde: 'sine', v: 0.16 }, { f: 780, t: 0.07, d: 0.1, vers: 1040, onde: 'sine', v: 0.12 }] },

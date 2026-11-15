@@ -178,6 +178,23 @@ function crapaud(): Voxels {
   return v.boite(3, 1, -2, 3, 1, 1, M.sombre);
 }
 
+/** Crapaud-roi : un crapaud énorme, couronne de métal rouillé, dos de pustules et de vase, gorge pâle, yeux luisants. */
+function crapaudRoi(): Voxels {
+  const v = new Voxels().boule(C - 1, 4.5, C, 7, 4.6, 6, M.crapaud);
+  v.peindre((_x, y, _z, c) => c === M.crapaud && y <= 2, M.crapaudVentre);
+  taches(v, M.crapaud, 0.18);
+  duvet(v, M.crapaud, 0.3);
+  // Pattes arrière énormes, repliées ; pattes avant.
+  for (const z of [-7, 5]) v.boule(-5, 2, z + 0.5, 2.6, 2, 1.6, M.crapaud);
+  for (const z of [-5, 4]) v.boite(3, 0, z, 5, 1, z, M.crapaud);
+  // Yeux en bosse et couronne entre les deux.
+  for (const z of [-4, 3]) v.boule(3, 8.5, z, 1.4, 1.4, 1.4, M.crapaud).boite(4, 9, z, 4, 9, z, M.oeil).poser(5, 9, z, M.oeil);
+  v.boite(-2, 9, -3, 1, 9, 2, M.rouilleSombre);
+  for (const [x, z] of [[-2, -3], [1, -3], [-2, 2], [1, 2], [-0.5, -0.5]] as const) v.boite(Math.round(x), 10, Math.round(z), Math.round(x), 11, Math.round(z), M.rouille);
+  // Large bouche sombre.
+  return v.boite(6, 3, -4, 6, 3, 3, M.sombre);
+}
+
 /** Couleurs des éclats quand le monstre meurt. */
 export const ECLATS: Record<TypeMonstre, number[]> = {
   limace: [M.gris, M.rouille, M.grisClair],
@@ -190,6 +207,7 @@ export const ECLATS: Record<TypeMonstre, number[]> = {
   limaceMere: [M.gris, M.oeuf, M.rouille],
   sangsue: [M.sangsue, M.rouille, M.sangsueVentre],
   crapaud: [M.crapaud, M.rouille, M.crapaudVentre],
+  crapaudRoi: [M.crapaud, M.rouille, M.crapaudVentre],
 };
 
 let modeles: Record<TypeMonstre, Modele> | null = null;
@@ -205,12 +223,16 @@ export function modelesMonstres(): Record<TypeMonstre, Modele> {
     limaceMere: limaceMere().modele(false),
     sangsue: sangsue().modele(false),
     crapaud: crapaud().modele(false),
+    crapaudRoi: crapaudRoi().modele(false),
   };
   return modeles;
 }
 
 /** Secondes : le monstre s'écrase, puis ses éclats volent, pendant que son butin monte. */
 const DUREE_ECRASE = 0.12;
+/** Gerbes d'eau du Crapaud-roi. */
+const EAU = 0x4a9a8e;
+const EAU_CLAIRE = 0xa8dcd2;
 /** Sangsue sous l'eau : de combien elle s'enfonce (unités du monde). */
 const PROFONDEUR_PLONGEE = 0.45;
 /** Crapaud : hauteur du bond. */
@@ -325,11 +347,12 @@ export class MonstresRendu {
       if (m.type === 'volant') this.position.y += Math.sin(instant / 300 + m.id) * 0.08;
       // Sangsue : s'enfonce sous la surface des gués, ressort sur la terre (en glissant, pas d'un coup).
       corps.plonge = (corps.plonge ?? 0) + ((m.immerge ? 1 : 0) - (corps.plonge ?? 0)) * 0.25;
-      this.position.y -= corps.plonge * PROFONDEUR_PLONGEE;
-      // Crapaud : bond en cloche.
-      if (m.saut !== null) this.position.y += Math.sin(Math.PI * m.saut) * HAUTEUR_SAUT;
+      // Le boss s'enfonce tout entier.
+      this.position.y -= corps.plonge * Math.max(PROFONDEUR_PLONGEE, corps.hauteur + 0.1);
+      // Crapaud : bond en cloche (le roi bondit plus haut).
+      if (m.saut !== null) this.position.y += Math.sin(Math.PI * m.saut) * HAUTEUR_SAUT * (m.type === 'crapaudRoi' ? 1.6 : 1);
       corps.maillage.position.copy(this.position);
-      if (m.type === 'crapaud') {
+      if (m.type === 'crapaud' || m.type === 'crapaudRoi') {
         const etire = m.saut === null ? 0 : Math.sin(Math.PI * m.saut) * 0.25;
         corps.maillage.scale.set(1 + etire, 1 - etire * 0.6, 1);
       }
@@ -407,12 +430,24 @@ export class MonstresRendu {
     });
   }
 
-  /** Le boss pond : grosse gerbe d'œufs et de moisissure là où il est. */
+  /** Le boss pond : grosse gerbe d'œufs et de moisissure là où il est (le Crapaud-roi : gerbe d'eau en ressortant). */
   pondre(id: number, instant: number): void {
     const corps = this.corps.get(id);
     if (!corps) return;
+    if (corps.type === 'crapaudRoi') return this.eclabousser(corps, instant, 18);
     const depart = corps.maillage.position.clone().setY(corps.maillage.position.y + corps.hauteur * 0.7);
     this.eclats.lancer(depart, instant / 1000, { couleurs: [M.oeuf, M.gris, M.rouille], nombre: 14, taille: 0.16, force: 1.8, duree: 0.5 });
+  }
+
+  /** Le Crapaud-roi plonge : gerbe d'eau là où il disparaît. */
+  plonger(id: number, instant: number): void {
+    const corps = this.corps.get(id);
+    if (corps) this.eclabousser(corps, instant, 14);
+  }
+
+  private eclabousser(corps: Corps, instant: number, nombre: number): void {
+    const depart = corps.maillage.position.clone().setY(Math.max(0, corps.maillage.position.y) + 0.2);
+    this.eclats.lancer(depart, instant / 1000, { couleurs: [EAU, EAU_CLAIRE, M.crapaud], nombre, taille: 0.14, force: 2, duree: 0.55 });
   }
 
   /** Un soigneur a soigné : petite gerbe verte sur lui et sur chaque monstre soigné. */
