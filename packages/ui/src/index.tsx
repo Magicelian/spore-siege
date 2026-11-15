@@ -3,7 +3,7 @@
 // Le contrôleur garde l'état de l'interface ; le frontend lui donne les instantanés et lit l'aperçu à dessiner.
 import { render } from 'preact';
 import type { Biome, Capacite, Case, Difficulte, Commande, FleurVue, Ile, Instantane, LanterneVue, ModeCible, Niveau, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
-import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, FLEUR, LANTERNE, MODES_CIBLE, MONSTRES, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, PRIX_RONCE, SEUIL_BOSS, PLATEFORME, prixPour, surPlateforme, TOURS, TOURS_DE_BASE, TOUTES_CAPACITES } from '@spore-siege/engine';
+import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, FLEUR, LANTERNE, MODES_CIBLE, MONSTRES, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, VIE_DIFFICULTE, PRIX_RONCE, SEUIL_BOSS, PLATEFORME, prixPour, surPlateforme, TOURS, TOURS_DE_BASE, TOUTES_CAPACITES } from '@spore-siege/engine';
 import { icone, type Icone } from './icones';
 import { ecrireAtelier, ecrireDecouverts, ecrireEtoiles, ecrireMusique, ecrireParties, ecrireSons, ecrireToursVues, effacerPartie, lireAtelier, lireDecouverts, lireEtoiles, lireMusique, lireParties, lireSons, lireToursVues, type Etoiles, type Sauvegarde } from './sauvegarde';
 import { Sons } from './sons';
@@ -584,58 +584,72 @@ export class ControleurInterface {
   }
 
   private dessinerEmplacement(n: number, p: Sauvegarde | null) {
+    const numero = <span class="numero">{n + 1}</span>;
     if (!p) {
       if (this.creation !== n) {
         return (
           <button class="emplacement vide" onClick={() => ((this.creation = n), (this.aSupprimer = null), this.dessiner())}>
-            <span class="numero">{n + 1}</span>
-            <span class="nouvelle">+ {TEXTES.nouvellePartie}</span>
+            {numero}
+            <span class="plus">+</span>
+            <span class="nouvelle">{TEXTES.nouvellePartie}</span>
           </button>
         );
       }
       return (
         <div class="emplacement">
-          <span class="numero">{n + 1}</span>
-          <div class="contenu">
+          <header>
+            {numero}
             <span class="titre-emplacement">{TEXTES.choisirDifficulte}</span>
-            <div class="difficultes">
-              {DIFFICULTES.map((d) => (
-                <button class={`bouton${d === 'normal' ? ' valider' : ''}`} title={TEXTES.difficulteAide[d]} onClick={() => this.creer(n, d)}>
-                  {TEXTES.difficulte[d]}
-                </button>
-              ))}
-            </div>
+            <button class="bouton fermer" title={TEXTES.annuler} onClick={() => ((this.creation = null), this.dessiner())}>
+              ✕
+            </button>
+          </header>
+          <div class="corps difficultes">
+            {DIFFICULTES.map((d) => (
+              <button class={`bouton choix-difficulte ${d}`} title={TEXTES.difficulteAide[d]} onClick={() => this.creer(n, d)}>
+                <span class="nom">{TEXTES.difficulte[d]}</span>
+                <span class="vie-monstres">
+                  <Ico nom="vie" />
+                  {Math.round(VIE_DIFFICULTE[d] * 100)} %
+                </span>
+              </button>
+            ))}
           </div>
-          <button class="bouton fermer" title={TEXTES.annuler} onClick={() => ((this.creation = null), this.dessiner())}>
-            ✕
-          </button>
         </div>
       );
     }
     const etoiles = lireEtoiles(n);
     const biomes = Object.keys(NIVEAUX) as Biome[];
+    const toutes = Object.keys(ILES_TEXTES) as Biome[];
     const gagnees = Object.values(etoiles).reduce((t, e) => t + e, 0);
     // Comme le bandeau de l'archipel : les îles à venir comptent 5 niveaux.
-    const maximum = (Object.keys(ILES_TEXTES) as Biome[]).reduce((t, b) => t + 3 * (NIVEAUX[b]?.length ?? 5), 0);
+    const maximum = toutes.reduce((t, b) => t + 3 * (NIVEAUX[b]?.length ?? 5), 0);
     // Île atteinte : la dernière ouverte (le boss de la précédente battu).
-    let atteinte = biomes[0]!;
+    let atteinte = 0;
     for (let k = 1; k < biomes.length; k++) {
       const prec = NIVEAUX[biomes[k - 1]!]!;
       if ((etoiles[prec[prec.length - 1]!.id] ?? 0) < 1) break;
-      atteinte = biomes[k]!;
+      atteinte = k;
     }
+    const ile = biomes[atteinte]!;
     if (this.aSupprimer === n) {
       return (
         <div class="emplacement alerte">
-          <span class="numero">{n + 1}</span>
-          <div class="contenu">
+          <header>
+            {numero}
             <span class="titre-emplacement">{TEXTES.supprimerQuestion}</span>
-            <div class="difficultes">
-              <button class="bouton danger" onClick={() => this.supprimer(n)}>
-                {TEXTES.supprimer}
-              </button>
+          </header>
+          <div class="corps">
+            <p class="perte">
+              {ILES_TEXTES[ile]} · <Ico nom="etoile" />
+              {`${gagnees}/${maximum}`} · {TEXTES.perdue}
+            </p>
+            <div class="actions">
               <button class="bouton" onClick={() => ((this.aSupprimer = null), this.dessiner())}>
                 {TEXTES.annuler}
+              </button>
+              <button class="bouton danger" onClick={() => this.supprimer(n)}>
+                {TEXTES.supprimer}
               </button>
             </div>
           </div>
@@ -644,23 +658,31 @@ export class ControleurInterface {
     }
     return (
       <div class="emplacement">
-        <button class="jouer-emplacement" title={TEXTES.continuer} onClick={() => this.reprendre(n)}>
-          <span class="numero">{n + 1}</span>
-          <span class="contenu">
-            <span class="titre-emplacement">
-              {ILES_TEXTES[atteinte]}
-              <span class={`difficulte ${p.difficulte}`}>{TEXTES.difficulte[p.difficulte]}</span>
-            </span>
+        <header>
+          {numero}
+          <span class="titre-emplacement">{ILES_TEXTES[ile]}</span>
+          <span class={`difficulte ${p.difficulte}`}>{TEXTES.difficulte[p.difficulte]}</span>
+          <button class="bouton fermer" title={TEXTES.supprimer} onClick={() => ((this.aSupprimer = n), (this.creation = null), this.dessiner())}>
+            ✕
+          </button>
+        </header>
+        <div class="corps">
+          <div class="progres">
             <span class="etoiles-emplacement">
               <Ico nom="etoile" />
-              {`${gagnees}/${maximum}`}
+              {gagnees}
+              <span class="sur">/{maximum}</span>
             </span>
-          </span>
-          <span class="fleche">▶</span>
-        </button>
-        <button class="bouton carre danger" title={TEXTES.supprimer} onClick={() => ((this.aSupprimer = n), (this.creation = null), this.dessiner())}>
-          ✕
-        </button>
+            <span class="piste" title={ILES_TEXTES[ile]}>
+              {toutes.map((b, k) => (
+                <span class={`ilot-piste ${b}${k < atteinte ? ' faite' : k === atteinte ? ' ici' : ''}`} title={ILES_TEXTES[b]} />
+              ))}
+            </span>
+          </div>
+          <button class="bouton valider continuer" title={TEXTES.continuer} onClick={() => this.reprendre(n)}>
+            {TEXTES.jouer} <span class="fleche">▶</span>
+          </button>
+        </div>
       </div>
     );
   }

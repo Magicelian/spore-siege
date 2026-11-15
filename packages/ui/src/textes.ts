@@ -254,6 +254,7 @@ export const TEXTES = {
   continuer: 'Continuer cette partie',
   supprimer: 'Supprimer',
   supprimerQuestion: 'Supprimer cette partie ?',
+  perdue: 'tout sera perdu',
   annuler: 'Annuler',
   etoilesTotal: 'Étoiles gagnées sur toutes les îles',
   jouerIle: (nom: string) => `Défendre l’île : ${nom}`,

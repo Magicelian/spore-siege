@@ -1051,7 +1051,7 @@ table.stades .icone {
   margin: 0;
 }
 
-/* ─── Parties : 3 emplacements en cadres de bois, sur l'archipel ──────────────────────────── */
+/* ─── Parties : 3 emplacements en cadres de bois rivetés, sur l'archipel ────────────────────── */
 .emplacements {
   position: absolute;
   inset: 40px 0 12px;
@@ -1061,18 +1061,15 @@ table.stades .icone {
   justify-content: center;
   gap: 14px;
 }
+/* Partie : cadre de bois brûlé comme une bulle (en-tête sur le bois, corps en parchemin). */
 .emplacement {
   position: relative;
   width: min(280px, calc(100% - 24px));
-  min-height: 64px;
   box-sizing: border-box;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px 6px 6px;
+  flex-direction: column;
+  padding: 4px;
   font: inherit;
-  color: var(--parchemin-clair);
-  text-shadow: var(--texte-cerne);
   background: var(--bois);
   border: none;
   box-shadow:
@@ -1081,106 +1078,282 @@ table.stades .icone {
     var(--contour),
     0 5px 0 var(--encre);
 }
-.emplacement.alerte {
-  background: #5a2a22;
-}
-.emplacement.vide {
-  justify-content: center;
-  cursor: pointer;
-  background: var(--bois-fonce);
-  color: var(--accent);
-}
-.emplacement.vide:hover,
-.jouer-emplacement:hover {
-  filter: brightness(1.12);
-}
-.emplacement .numero {
+/* Deux rivets en haut, comme les planches. */
+.emplacement::before,
+.emplacement::after {
+  content: '';
   position: absolute;
-  left: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font: 700 18px/1 'Jersey 10', monospace;
-  color: var(--encre);
-  text-shadow: none;
+  top: 3px;
+  width: 2px;
+  height: 2px;
   background: var(--metal);
-  box-shadow: var(--contour);
+  box-shadow: 0 1px 0 var(--encre);
+  pointer-events: none;
 }
-.emplacement .nouvelle {
-  font-size: 15px;
-  font-weight: 700;
+.emplacement::before {
+  left: 3px;
 }
-.emplacement > .contenu,
-.jouer-emplacement .contenu {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-left: 34px;
-  min-width: 0;
+.emplacement::after {
+  right: 3px;
 }
-.jouer-emplacement {
-  flex: 1;
-  align-self: stretch;
-  display: flex;
-  align-items: center;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  text-shadow: inherit;
-  text-align: left;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-.titre-emplacement {
+.emplacement header {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 15px;
-  font-weight: 700;
-}
-.titre-emplacement .difficulte {
-  padding: 0 4px 1px;
-  font-size: 11px;
+  min-height: 26px;
+  padding: 0 0 4px 4px;
   color: var(--parchemin-clair);
-  background: var(--vert);
-  box-shadow: var(--contour);
+  text-shadow: var(--texte-cerne);
 }
-.titre-emplacement .difficulte.normal {
-  background: var(--accent);
+.emplacement .numero {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 17px/1 'Jersey 10', monospace;
   color: var(--encre);
   text-shadow: none;
+  background: var(--metal);
+  box-shadow:
+    inset 0 2px 0 rgb(255 255 255 / 0.35),
+    inset 0 -2px 0 rgb(0 0 0 / 0.25),
+    var(--contour);
 }
-.titre-emplacement .difficulte.difficile {
+.titre-emplacement {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.emplacement .difficulte {
+  padding: 1px 5px 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--parchemin-clair);
+  text-shadow: var(--texte-cerne);
+  background: var(--vert);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.3),
+    var(--contour);
+}
+.emplacement .difficulte.normal {
+  background: var(--accent);
+}
+.emplacement .difficulte.difficile {
   background: var(--rouge);
+}
+.emplacement header .bouton.fermer {
+  margin: 0 2px 0 0;
+}
+.emplacement .corps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 8px 8px;
+  color: var(--bois-fonce);
+  background:
+    repeating-conic-gradient(rgb(74 51 38 / 0.06) 0 25%, transparent 0 50%) 0 0 / 4px 4px,
+    var(--parchemin);
+  box-shadow:
+    inset 0 2px 0 var(--bois-fonce),
+    inset 2px 0 0 rgb(0 0 0 / 0.08);
+}
+.emplacement .progres {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 .etoiles-emplacement {
   display: flex;
   align-items: center;
   gap: 3px;
-  font: 18px/1 'Jersey 10', monospace;
-  color: var(--accent);
+  font: 20px/1 'Jersey 10', monospace;
+  color: var(--bois-fonce);
 }
-.jouer-emplacement .fleche {
-  font-size: 16px;
-  color: var(--accent);
+.etoiles-emplacement .icone {
+  width: 13px;
+  height: 13px;
 }
-.difficultes {
+.etoiles-emplacement .sur {
+  color: var(--discret);
+}
+/* Piste des 5 îles : faites, celle où l'on est (qui bat), à venir. */
+.piste {
   display: flex;
+  align-items: center;
   gap: 4px;
 }
-.difficultes .bouton {
+.ilot-piste {
+  position: relative;
+  width: 10px;
+  height: 8px;
+  background: #cbbd9f;
+  box-shadow: 0 0 0 2px #a8977a;
+}
+.ilot-piste + .ilot-piste::before {
+  content: '';
+  position: absolute;
+  right: 12px;
+  top: 3px;
+  width: 2px;
+  height: 2px;
+  background: #a8977a;
+}
+.ilot-piste.faite,
+.ilot-piste.ici {
+  box-shadow:
+    inset 0 2px 0 rgb(255 255 255 / 0.3),
+    var(--contour);
+}
+.ilot-piste.faite + .ilot-piste::before {
+  background: var(--bois-fonce);
+}
+.ilot-piste.foret { --ile: var(--vert); }
+.ilot-piste.marais { --ile: #4f8a7c; }
+.ilot-piste.prairie { --ile: #c9b84a; }
+.ilot-piste.grotte { --ile: #6d5aa8; }
+.ilot-piste.futaie { --ile: #9a6232; }
+.ilot-piste.faite,
+.ilot-piste.ici {
+  background: var(--ile);
+}
+.ilot-piste.ici {
+  animation: battre 1.4s steps(2) infinite;
+}
+@keyframes battre {
+  50% {
+    transform: translateY(-2px);
+  }
+}
+.bouton.continuer {
+  margin: 0 2px 4px;
+  padding: 5px 10px 6px;
+  font-size: 15px;
+}
+.bouton.continuer .fleche {
+  font-size: 11px;
+}
+/* Emplacement vide : planche creusée, « + » sur une plaque de métal. */
+.emplacement.vide {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 4px 10px 4px 8px;
+  cursor: pointer;
+  color: var(--parchemin);
+  text-shadow: var(--texte-cerne);
+  background:
+    linear-gradient(transparent 48%, rgb(0 0 0 / 0.25) 48% 54%, transparent 54%),
+    var(--bois-fonce);
+  box-shadow:
+    inset 0 3px 0 rgb(0 0 0 / 0.45),
+    inset 0 -2px 0 var(--bois),
+    var(--contour),
+    0 3px 0 var(--encre);
+  opacity: 0.92;
+}
+.emplacement.vide .numero {
+  background: #5c5f66;
+  color: #2a2426;
+}
+.emplacement.vide .plus {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  font: 700 18px/1 'Jersey 10', monospace;
+  color: var(--encre);
+  text-shadow: none;
+  background: var(--accent);
+  box-shadow:
+    inset 0 2px 0 rgb(255 255 255 / 0.4),
+    inset 0 -2px 0 rgb(0 0 0 / 0.2),
+    var(--contour);
+}
+.emplacement.vide .nouvelle {
+  margin-right: auto;
+  font-size: 14px;
+  font-weight: 700;
+}
+.emplacement.vide:hover {
+  opacity: 1;
+  filter: brightness(1.2);
+}
+.emplacement.vide:hover .plus {
+  transform: translateY(-1px);
+}
+.emplacement.vide:active {
+  transform: translateY(2px);
+}
+/* Choix de la difficulté : trois planchettes, la vie des monstres en dessous. */
+.emplacement .corps.difficultes {
+  gap: 4px;
+  padding: 8px 6px 10px;
+}
+.choix-difficulte {
   flex: 1;
-  margin: 0 0 4px;
-  padding: 2px 4px 3px;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 2px;
+  padding: 4px 2px 6px;
+}
+.choix-difficulte .nom {
+  font-size: 13px;
+}
+.choix-difficulte .vie-monstres {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font: 15px/1 'Jersey 10', monospace;
+  opacity: 0.85;
+}
+.choix-difficulte.facile {
+  background: var(--vert);
+  color: var(--parchemin-clair);
+  text-shadow: var(--texte-cerne);
+}
+.choix-difficulte.normal {
+  background: var(--accent);
+}
+.choix-difficulte.difficile {
+  background: var(--rouge);
+  color: var(--parchemin-clair);
+  text-shadow: var(--texte-cerne);
+}
+/* Suppression : cadre rougi, ce qui sera perdu, Annuler / Supprimer. */
+.emplacement.alerte {
+  background: #5a2a22;
+}
+.emplacement.alerte .corps {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.emplacement .perte {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0;
   font-size: 12px;
 }
-.emplacement .bouton.fermer {
-  position: static;
-  align-self: flex-start;
+.emplacement .perte .icone {
+  width: 11px;
+  height: 11px;
+}
+.emplacement .actions {
+  display: flex;
+  gap: 6px;
+}
+.emplacement .actions .bouton {
+  flex: 1;
+  margin: 0 2px 4px;
 }
