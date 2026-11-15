@@ -161,6 +161,7 @@ export const TEXTES = {
   arracher: 'Arracher',
   fleurRoleArracher: (n: number) => `Rapporte ${n} spores à chaque vague terminée. Arrachée, elle rend la moitié de son prix.`,
   lanterne: 'Champignon-lanterne',
+  plateforme: (portee: number, surcout: number) => `Plateforme : +${portee} de portée, tout coûte ${surcout} % plus cher.`,
   lanterneRole: 'Éclaire autour de lui : dans la grotte, tes tours ne tirent que sur ce qui est éclairé.',
   lanterneRayon: (n: number) => `Éclaire ${n} cases`,
   lanterneRayonAide: 'Rayon de lumière autour du champignon',

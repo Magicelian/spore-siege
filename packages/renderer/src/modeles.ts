@@ -140,7 +140,7 @@ export function modeleSouche(tailleCases: number): Modele {
 
 // ─── Décor et éléments ─────────────────────────────────────────────────────────
 
-export type Decor = 'arbre' | 'roseau' | 'fleur' | 'luisant' | 'chene' | 'buisson' | 'caillou' | 'nenuphar';
+export type Decor = 'arbre' | 'roseau' | 'fleur' | 'luisant' | 'chene' | 'buisson' | 'caillou' | 'nenuphar' | 'plateforme';
 let cacheDecor: Record<Decor, Modele> | null = null;
 
 /** Arbre, roseaux, fleurs, luisants, vieux chêne, buisson sauvage, rocher et nénuphar, posés en instances sur le terrain. */
@@ -196,7 +196,27 @@ export function modelesDecor(): Record<Decor, Modele> {
   chene.boule(2.5, 13, 1, 3.6, 2.8, 3.6, COULEURS.feuillageChene);
   chene.boule(-3, 13.5, -2, 3.2, 2.6, 3.2, COULEURS.feuillageChene);
   chene.peindre((x, y, z, c) => c === COULEURS.feuillageChene && (x * 5 + y * 3 + z * 7) % 6 === 0, COULEURS.feuillageCheneClair);
+  // Plateforme de la futaie : gros tronc aux racines saillantes, plancher qui couvre la case (dessus à 14 voxels,
+  // `HAUTEUR_PLATEFORME`), jambes de force, poteaux aux coins, échelle de corde et touffes de feuilles dessous.
+  const plateforme = new Voxels();
+  plateforme.cylindre(C, C, 0, 11, 3.2, COULEURS.troncChene, 2.6);
+  for (const [x, z] of [[-4, -1], [3, -1], [-1, -4], [-1, 3], [-4, 2], [2, -4]] as const) plateforme.boite(x, 0, z, x, 1, z, COULEURS.troncChene);
+  for (const [dx, dz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]] as const) {
+    for (let k = 0; k < 4; k++) plateforme.poser(Math.round(C + dx * (2 + k)), 8 + k, Math.round(C + dz * (2 + k)), COULEURS.troncChene);
+  }
+  plateforme.boite(-6, 12, -6, 5, 13, 5, COULEURS.planche);
+  plateforme.peindre((x, y, z, c) => c === COULEURS.planche && (y === 12 || (x + 6) % 3 === 2), COULEURS.plancheSombre);
+  for (const [x, z] of [[-6, -6], [5, -6], [-6, 5], [5, 5]] as const) plateforme.boite(x, 14, z, x, 15, z, COULEURS.plancheSombre);
+  for (let y = 1; y <= 11; y++) {
+    plateforme.poser(-2, y, 6, COULEURS.corde).poser(1, y, 6, COULEURS.corde);
+    if (y % 2 === 0) plateforme.boite(-1, y, 6, 0, y, 6, COULEURS.corde);
+  }
+  plateforme.boule(-6.5, 10, 2, 2.4, 1.8, 2.6, COULEURS.feuillageChene);
+  plateforme.boule(5.5, 10.5, -2.5, 2.2, 1.6, 2.4, COULEURS.feuillageChene);
+  plateforme.boule(2, 10, -6.5, 2.4, 1.6, 2, COULEURS.feuillageChene);
+  plateforme.peindre((x, y, z, c) => c === COULEURS.feuillageChene && (x * 5 + y * 3 + z * 7) % 5 === 0, COULEURS.feuillageCheneClair);
   cacheDecor = {
+    plateforme: plateforme.modele(),
     arbre: arbre.modele(),
     roseau: roseau.modele(),
     fleur: fleur.modele(),

@@ -24,6 +24,9 @@ export const COULEURS = {
   troncChene: 0x5a3a24,
   feuillageChene: 0x2e6e35,
   feuillageCheneClair: 0x4a8f3e,
+  planche: 0x9a6b42,
+  plancheSombre: 0x7a5233,
+  corde: 0xc9a66b,
   caillou: 0x9a9ea8,
   pied: 0xf2e6cf,
   chantier: 0xd9c9a3,
@@ -50,7 +53,7 @@ const HERBE_FUTAIE = 0x5f9e4a;
 function surfaces(sol: number, eau: number): Record<Exclude<Terrain, 'vide'>, number> {
   // Le gué : eau peu profonde, troublée par la vase du sentier ; le nénuphar flotte sur l'eau.
   const gue = new THREE.Color(eau).lerp(new THREE.Color(COULEURS.sentier), 0.35).getHex();
-  return { herbe: sol, foret: sol, fleurs: sol, buisson: sol, rocher: sol, eau, sable: COULEURS.sable, sentier: COULEURS.sentier, gue, nenuphar: eau, luisant: sol };
+  return { herbe: sol, foret: sol, fleurs: sol, buisson: sol, rocher: sol, eau, sable: COULEURS.sable, sentier: COULEURS.sentier, gue, nenuphar: eau, luisant: sol, plateforme: sol };
 }
 export const SURFACES_PAR_BIOME: Record<Biome, Record<Exclude<Terrain, 'vide'>, number>> = {
   foret: COULEURS_SURFACE,

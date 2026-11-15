@@ -13,7 +13,7 @@ export interface Position {
 }
 
 /** `sentier` : là où marchent les monstres ; `sable` : plage de débarquement. */
-export type Terrain = 'vide' | 'herbe' | 'foret' | 'fleurs' | 'buisson' | 'rocher' | 'eau' | 'sable' | 'sentier' | 'gue' | 'nenuphar' | 'luisant';
+export type Terrain = 'vide' | 'herbe' | 'foret' | 'fleurs' | 'buisson' | 'rocher' | 'eau' | 'sable' | 'sentier' | 'gue' | 'nenuphar' | 'luisant' | 'plateforme';
 /** Cases où marchent les monstres : le sentier et ses gués (sentier dans l'eau). */
 export const estSentier = (t: Terrain | undefined) => t === 'sentier' || t === 'gue';
 
@@ -99,6 +99,8 @@ export interface TourVue {
   /** Capacité choisie au stade 4. */
   capacite: Capacite | null;
   case: Case;
+  /** Posée sur une plateforme de la futaie (plus haut, plus loin, plus cher). */
+  haute: boolean;
   portee: number;
   /** Monstre visé, s'il y en a un à portée. */
   cible: number | null;

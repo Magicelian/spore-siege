@@ -16,6 +16,8 @@ import {
   PART_REVENTE_CAPACITE,
   PAS_PAR_SECONDE,
   PAUSE_SECONDES,
+  PLATEFORME,
+  prixPour,
   PRIX_RONCE,
   PV_SOUCHE,
   SPORES_DEPART,
@@ -98,6 +100,8 @@ interface Tour {
   chaine: Position[];
   /** Spores payées (pose et améliorations), pour la revente. */
   depense: number;
+  /** Sur une plateforme de la futaie. */
+  haute: boolean;
 }
 
 interface Projectile {
@@ -202,8 +206,9 @@ export class Partie {
         return true;
       }
       case 'poserTour': {
-        const prix = TOURS[commande.tour].stades[0].prix;
         const c = commande.case;
+        const haute = surPlateforme(this.ile, c);
+        const prix = prixPour(TOURS[commande.tour].stades[0].prix, haute);
         if (!this.regles.tours.includes(commande.tour) || !this.libre(c, commande.tour) || this.spores < prix) return false;
         this.spores -= prix;
         this.tours.push({
@@ -212,6 +217,7 @@ export class Partie {
           stade: 1,
           capacite: null,
           case: { x: c.x, y: c.y },
+          haute,
           centre: { x: c.x + 0.5, y: c.y + 0.5 },
           recharge: 0,
           cible: null,
@@ -235,7 +241,7 @@ export class Partie {
         const tour = this.tours.find((t) => t.id === commande.id);
         if (!tour || tour.stade !== 3 || !CAPACITES_DE[tour.type].includes(commande.capacite)) return false;
         if (!this.regles.capacites.includes(commande.capacite)) return false;
-        const prix = CAPACITES[commande.capacite].prix;
+        const prix = prixPour(CAPACITES[commande.capacite].prix, tour.haute);
         if (this.spores < prix) return false;
         this.spores -= prix;
         tour.stade = 4;
@@ -325,12 +331,12 @@ export class Partie {
 
   /** Une fleur à spores peut-elle être plantée ici ? Là où pousse une tour de terre, si le niveau le permet. */
   fleurLibre(c: Case): boolean {
-    return this.regles.fleurs && constructible(this.ile, c, 'ruche') && !this.occupee(c);
+    return this.regles.fleurs && constructible(this.ile, c, 'ruche') && !surPlateforme(this.ile, c) && !this.occupee(c);
   }
 
   /** Un champignon-lanterne peut-il être posé ici ? Là où pousse une tour de terre, dans la grotte. */
   lanterneLibre(c: Case): boolean {
-    return this.regles.noir && constructible(this.ile, c, 'ruche') && !this.occupee(c);
+    return this.regles.noir && constructible(this.ile, c, 'ruche') && !surPlateforme(this.ile, c) && !this.occupee(c);
   }
 
   /** Une tour, une fleur ou une lanterne est-elle déjà sur cette case ? */
@@ -423,13 +429,14 @@ export class Partie {
       stade: t.stade,
       capacite: t.capacite,
       case: { ...t.case },
-      portee: stadeDe(t).portee,
+      haute: t.haute,
+      portee: porteeDe(t),
       cible: t.cible,
       mode: t.mode,
       dernierTir: t.dernierTir,
       chaine: t.chaine.map((p) => ({ ...p })),
       prixAmelioration: prixAmelioration(t),
-      prixCapacites: t.stade === 3 ? [CAPACITES[CAPACITES_DE[t.type][0]].prix, CAPACITES[CAPACITES_DE[t.type][1]].prix] : null,
+      prixCapacites: t.stade === 3 ? [prixPour(CAPACITES[CAPACITES_DE[t.type][0]].prix, t.haute), prixPour(CAPACITES[CAPACITES_DE[t.type][1]].prix, t.haute)] : null,
       revente: revente(t),
     }));
     return {
@@ -954,7 +961,7 @@ export class Partie {
     for (const t of this.tours) {
       if (t.recharge > 0) t.recharge--;
       const stade = stadeDe(t);
-      const cible = this.viser(t.centre, stade.portee, TOURS[t.type].aerien ?? false, undefined, TOURS[t.type].sousEau, t.mode);
+      const cible = this.viser(t.centre, porteeDe(t), TOURS[t.type].aerien ?? false, undefined, TOURS[t.type].sousEau, t.mode);
       t.cible = cible?.id ?? null;
       if (!cible || t.recharge > 0) continue;
       t.recharge = Math.round(stade.cadence * PAS_PAR_SECONDE);
@@ -982,7 +989,7 @@ export class Partie {
       };
       if (fiche.harpon) {
         const vise = this.ouSera(cible, t.centre, base.vitesse);
-        const but = prolonger(t.centre, vise, stade.portee + fiche.harpon.allonge);
+        const but = prolonger(t.centre, vise, porteeDe(t) + fiche.harpon.allonge);
         const harpon = { largeur: fiche.harpon.largeur, rebonds: capacite?.rebonds ?? 0, saut: capacite?.saut ?? 0, touches: new Set<Monstre>() };
         this.projectiles.push({ ...base, id: this.prochainId++, position: { ...t.centre }, but, cible: cible.id, harpon });
         continue;
@@ -1004,7 +1011,7 @@ export class Partie {
       const touches = new Set<Monstre>([cible]);
       const cibles = [cible];
       while (cibles.length < tirs) {
-        const autre = this.viser(t.centre, stade.portee, TOURS[t.type].aerien ?? false, touches, TOURS[t.type].sousEau, t.mode);
+        const autre = this.viser(t.centre, porteeDe(t), TOURS[t.type].aerien ?? false, touches, TOURS[t.type].sousEau, t.mode);
         if (!autre) break;
         touches.add(autre);
         cibles.push(autre);
@@ -1255,7 +1262,7 @@ export function constructible(ile: Ile, c: Case, tour?: TypeTour): boolean {
   const terrain = ile.terrain[c.y * ile.largeur + c.x];
   if (terrain === 'nenuphar') return true;
   const surEau = terrain === 'eau';
-  const surTerre = terrain === 'herbe' || terrain === 'fleurs';
+  const surTerre = terrain === 'herbe' || terrain === 'fleurs' || terrain === 'plateforme';
   if (!tour) return surEau || surTerre;
   return TOURS[tour].surEau ? surEau : surTerre;
 }
@@ -1327,7 +1334,17 @@ function stadeDe(t: Tour): StadeTour {
 }
 
 function prixAmelioration(t: Tour): number | null {
-  return t.stade < 3 ? TOURS[t.type].stades[t.stade]!.prix : null;
+  return t.stade < 3 ? prixPour(TOURS[t.type].stades[t.stade]!.prix, t.haute) : null;
+}
+
+/** Portée d'une tour, plus loin depuis une plateforme. */
+function porteeDe(t: Tour): number {
+  return stadeDe(t).portee + (t.haute ? PLATEFORME.portee : 0);
+}
+
+/** La case est-elle une plateforme de la futaie ? */
+export function surPlateforme(ile: Ile, c: Case): boolean {
+  return ile.terrain[c.y * ile.largeur + c.x] === 'plateforme';
 }
 
 function revente(t: Tour): number {

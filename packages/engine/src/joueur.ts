@@ -11,8 +11,8 @@
 // Dans la grotte, tous sauf le naïf posent un champignon-lanterne là où il éclaire le plus de chemin noir à portée
 // de leurs tours (au moins 3 cases).
 import type { Capacite, Case, Ile, Instantane, Phase, Regles, TourVue, TypeMonstre, TypeTour } from './contrat';
-import { CAPACITES, CAPACITES_DE, FLEUR, LANTERNE, MONSTRES, PAS_PAR_SECONDE, TOURS, type Vague } from './contenu';
-import { Partie } from './partie';
+import { CAPACITES, CAPACITES_DE, FLEUR, LANTERNE, MONSTRES, PAS_PAR_SECONDE, PLATEFORME, TOURS, type Vague } from './contenu';
+import { Partie, surPlateforme } from './partie';
 import { cle, route } from './sentier';
 
 export type Style = 'naif' | 'simple' | 'bon' | `seul:${TypeTour | Capacite}`;
@@ -300,10 +300,14 @@ class Joueur {
       for (let x = 0; x < ile.largeur; x++) {
         const c = { x, y };
         if (!this.partie.libre(c, type)) continue;
+        // Futaie : d'une plateforme on voit plus loin, mais on paie plus (score rapporté au prix).
+        const haute = surPlateforme(ile, c);
+        const r0 = portee + (haute ? PLATEFORME.portee : 0);
         let s = 0;
         routes.forEach((r, i) => {
-          for (const p of r) if (dedans(p, x, y, portee)) s += poids[i]! * (eclaire(p) ? 1 : 0.9);
+          for (const p of r) if (dedans(p, x, y, r0)) s += poids[i]! * (eclaire(p) ? 1 : 0.9);
         });
+        if (haute) s /= PLATEFORME.surcout;
         if (s > score) {
           score = s;
           meilleure = c;

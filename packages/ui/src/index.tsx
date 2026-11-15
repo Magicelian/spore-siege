@@ -3,7 +3,7 @@
 // Le contrôleur garde l'état de l'interface ; le frontend lui donne les instantanés et lit l'aperçu à dessiner.
 import { render } from 'preact';
 import type { Biome, Capacite, Case, Difficulte, Commande, FleurVue, Ile, Instantane, LanterneVue, ModeCible, Niveau, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
-import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, FLEUR, LANTERNE, MODES_CIBLE, MONSTRES, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, PRIX_RONCE, SEUIL_BOSS, TOURS, TOURS_DE_BASE, TOUTES_CAPACITES } from '@spore-siege/engine';
+import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, FLEUR, LANTERNE, MODES_CIBLE, MONSTRES, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, PRIX_RONCE, SEUIL_BOSS, PLATEFORME, prixPour, surPlateforme, TOURS, TOURS_DE_BASE, TOUTES_CAPACITES } from '@spore-siege/engine';
 import { icone, type Icone } from './icones';
 import { ecrireAtelier, ecrireDecouverts, ecrireEtoiles, ecrireMusique, ecrireParties, ecrireSons, ecrireToursVues, effacerPartie, lireAtelier, lireDecouverts, lireEtoiles, lireMusique, lireParties, lireSons, lireToursVues, type Etoiles, type Sauvegarde } from './sauvegarde';
 import { Sons } from './sons';
@@ -422,8 +422,10 @@ export class ControleurInterface {
     if (this.survol === 'fleur') return { type: 'fleur', case: b.case, possible: this.instantane.spores >= FLEUR.prix, portee: 0 };
     if (this.survol === 'lanterne')
       return { type: 'lanterne', case: b.case, possible: this.instantane.spores >= LANTERNE.prix, portee: LANTERNE.rayon };
-    const prix = TOURS[this.survol].stades[0].prix;
-    return { type: this.survol, case: b.case, possible: this.instantane.spores >= prix, portee: TOURS[this.survol].stades[0].portee };
+    const haute = surPlateforme(this.jeu.ile, b.case);
+    const prix = prixPour(TOURS[this.survol].stades[0].prix, haute);
+    const portee = TOURS[this.survol].stades[0].portee + (haute ? PLATEFORME.portee : 0);
+    return { type: this.survol, case: b.case, possible: this.instantane.spores >= prix, portee };
   }
 
   /** Tour dont on montre la portée : celle de la bulle ouverte. */
@@ -1062,6 +1064,7 @@ export class ControleurInterface {
         <BulleConstruire
           i={i}
           types={types}
+          haute={surPlateforme(this.jeu.ile, b.case)}
           plante={this.jeu.fleurLibre(b.case) ? 'fleur' : this.jeu.lanterneLibre(b.case) ? 'lanterne' : null}
           enHaut={b.enHaut}
           survol={this.survol}
@@ -1200,9 +1203,23 @@ function extrasDe(type: TypeTour, s: StadeTour, capacite: Capacite | null): stri
 }
 
 /** Les trois chiffres d'un stade, et la flèche vers le suivant (stade ou capacité) s'il y en a un. */
-function Stats({ type, stade, capacite = null, vers }: { type: TypeTour; stade: number; capacite?: Capacite | null; vers?: { stade: number; capacite?: Capacite } }) {
-  const a = stadeVu(type, stade, capacite);
-  const b = vers ? stadeVu(type, vers.stade, vers.capacite ?? null) : undefined;
+function Stats({
+  type,
+  stade,
+  capacite = null,
+  vers,
+  bonusPortee = 0,
+}: {
+  type: TypeTour;
+  stade: number;
+  capacite?: Capacite | null;
+  vers?: { stade: number; capacite?: Capacite };
+  /** Portée en plus (tour sur une plateforme). */
+  bonusPortee?: number;
+}) {
+  const plus = <T extends { portee: number }>(s: T): T => ({ ...s, portee: s.portee + bonusPortee });
+  const a = plus(stadeVu(type, stade, capacite));
+  const b = vers ? plus(stadeVu(type, vers.stade, vers.capacite ?? null)) : undefined;
   const fleche = (x: number, y: number | undefined, f: (n: number) => string = nombre) =>
     y === undefined || f(y) === f(x) ? f(x) : (
       <>
@@ -1388,6 +1405,8 @@ function BulleConstruire(p: {
   i: Instantane;
   /** Tours qui vont sur cette case : celles de terre, le héron sur l'eau, les cinq sur un nénuphar. */
   types: TypeTour[];
+  /** Plateforme de la futaie : prix +30 %, portée +1. */
+  haute: boolean;
   /** Fleur à spores (prairie) ou champignon-lanterne (grotte) possible ici : sa carte vient après les tours. */
   plante: Plante | null;
   enHaut: boolean;
@@ -1407,7 +1426,7 @@ function BulleConstruire(p: {
       <div class="corps">
         <ul class="catalogue" onMouseLeave={() => p.survoler(null)}>
           {p.types.map((t) => {
-            const prix = TOURS[t].stades[0].prix;
+            const prix = prixPour(TOURS[t].stades[0].prix, p.haute);
             const interdite = !permises.includes(t);
             const manque = interdite || p.i.spores < prix;
             return (
@@ -1471,7 +1490,8 @@ function BulleConstruire(p: {
           ) : (
             <>
               <p>{TOURS_TEXTES[detail].role}</p>
-              <Stats type={detail} stade={1} />
+              <Stats type={detail} stade={1} bonusPortee={p.haute ? PLATEFORME.portee : 0} />
+              {p.haute && <p class="discret">{TEXTES.plateforme(PLATEFORME.portee, Math.round((PLATEFORME.surcout - 1) * 100))}</p>}
             </>
           )}
         </div>
@@ -1546,7 +1566,7 @@ function BulleTour(p: {
           </ul>
           <div class="detail">
             <p>{CAPACITES_TEXTES[vue].role}</p>
-            <Stats type={t.type} stade={3} vers={{ stade: 4, capacite: vue }} />
+            <Stats type={t.type} stade={3} vers={{ stade: 4, capacite: vue }} bonusPortee={t.haute ? PLATEFORME.portee : 0} />
             <p class="discret">{TEXTES.capaciteDefinitif}</p>
           </div>
           {cible}
@@ -1572,7 +1592,7 @@ function BulleTour(p: {
       <div class="corps">
         {t.capacite && <p>{CAPACITES_TEXTES[t.capacite].role}</p>}
         {cible}
-        <Stats type={t.type} stade={t.stade} capacite={t.capacite} vers={prix === null ? undefined : { stade: t.stade + 1 }} />
+        <Stats type={t.type} stade={t.stade} capacite={t.capacite} vers={prix === null ? undefined : { stade: t.stade + 1 }} bonusPortee={t.haute ? PLATEFORME.portee : 0} />
         <div class="rang">
           {prix !== null && (
             <button class={`bouton valider${manque ? ' manque' : ''}`} disabled={manque} onClick={p.ameliorer}>

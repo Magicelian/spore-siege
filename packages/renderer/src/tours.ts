@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import type { Capacite, Case, ImpactVu, Ile, Instantane, ProjectileVu, TypeTour } from '@spore-siege/engine';
 import { Eclats } from './effets';
-import { centreCase, versMonde } from './repere';
+import { centreCase, HAUTEUR_PLATEFORME, hauteurCase, versMonde } from './repere';
 import { fortin } from './fortins';
 import { lumineuse } from './palette';
 import { Voxels, type Modele } from './voxels';
@@ -252,9 +252,10 @@ export class ToursRendu {
     this.sol.visible = marque?.sorte === 'case';
     this.surlignage.visible = marque?.sorte === 'boite';
     if (!marque) return;
-    if (marque.sorte === 'case') centreCase(marque.case.x, marque.case.y, ile, this.sol.position).setY(0.02);
+    const h = hauteurCase(ile, marque.case.x, marque.case.y);
+    if (marque.sorte === 'case') centreCase(marque.case.x, marque.case.y, ile, this.sol.position).setY(h + 0.02);
     else {
-      centreCase(marque.case.x, marque.case.y, ile, this.surlignage.position);
+      centreCase(marque.case.x, marque.case.y, ile, this.surlignage.position).y += h;
       this.surlignage.scale.set(1, marque.hauteur + 0.05, 1);
     }
   }
@@ -271,7 +272,7 @@ export class ToursRendu {
         const modele = modeleTour(tv.type, tv.stade, tv.capacite);
         const maillage = new THREE.Mesh(modele.geometrie, modele.materiaux);
         maillage.castShadow = maillage.receiveShadow = true;
-        centreCase(tv.case.x, tv.case.y, ile, maillage.position);
+        centreCase(tv.case.x, tv.case.y, ile, maillage.position).setY(tv.haute ? HAUTEUR_PLATEFORME : 0);
         corps = { maillage, cle, poseA: t, tirA: -Infinity, dernierTir: tv.dernierTir, hauteur: modele.hauteur };
         this.tours.set(tv.id, corps);
         this.groupe.add(maillage);
@@ -519,7 +520,7 @@ export class ToursRendu {
       }
       ligne.coeur.material = rayon ? RAYON : ECLAIR;
       ligne.halo.material = rayon ? HALO_RAYON : HALO;
-      const sommets = t.chaine.map((p, i) => versMonde(p, ile).setY(i === 0 ? (t.stade >= 4 ? 1.6 : 1.1) : 0.3));
+      const sommets = t.chaine.map((p, i) => versMonde(p, ile).setY(i === 0 ? (t.stade >= 4 ? 1.6 : 1.1) + (t.haute ? HAUTEUR_PLATEFORME : 0) : 0.3));
       const points: THREE.Vector3[] = [];
       sommets.forEach((p, i) => {
         // Le Prisme tire droit ; l'éclair zigzague.
@@ -575,7 +576,7 @@ export class ToursRendu {
       }
     }
     if (pose && this.fantome) {
-      centreCase(pose.case.x, pose.case.y, ile, this.fantome.maillage.position);
+      centreCase(pose.case.x, pose.case.y, ile, this.fantome.maillage.position).setY(hauteurCase(ile, pose.case.x, pose.case.y));
       this.fantome.maillage.visible = pose.possible;
     }
   }
@@ -587,6 +588,12 @@ export function caseSous(ndc: THREE.Vector2, camera: THREE.Camera, ile: Ile): Ca
   camera.updateMatrixWorld();
   rayon.setFromCamera(ndc, camera);
   const point = new THREE.Vector3();
+  // D'abord le plancher des plateformes (futaie) : il cache le sol derrière lui.
+  if (ile.terrain.includes('plateforme') && rayon.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -HAUTEUR_PLATEFORME), point)) {
+    const x = Math.floor(point.x + ile.largeur / 2);
+    const y = Math.floor(point.z + ile.profondeur / 2);
+    if (x >= 0 && y >= 0 && x < ile.largeur && y < ile.profondeur && hauteurCase(ile, x, y) > 0) return { x, y };
+  }
   if (!rayon.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), point)) return null;
   const x = Math.floor(point.x + ile.largeur / 2);
   const y = Math.floor(point.z + ile.profondeur / 2);

@@ -63,6 +63,9 @@ export function construireIle(ile: Ile): THREE.Group {
       } else if (terrain === 'luisant') {
         // Grosse touffe de luisants (grotte) : elle éclaire autour d'elle.
         poser('luisant', 0, 'porte', decalage, echelle.setScalar(1.25 + b * 0.2), quart(b));
+      } else if (terrain === 'plateforme') {
+        // Grand arbre à plateforme (futaie) : centré et à taille fixe, pour que la tour tombe pile sur le plancher.
+        poser('plateforme', 0, 'porte', centre.clone(), echelle.setScalar(1), quart(b));
       } else if (terrain === 'rocher') {
         poser('caillou', 0, 'porte', decalage, echelle.set(0.85, 0.75 + b * 0.3, 0.85), quart(b));
       } else if (terrain === 'nenuphar') {

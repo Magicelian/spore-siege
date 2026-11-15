@@ -164,6 +164,14 @@ export const FLEUR = { prix: 50, rapport: 15, partRendue: 0.5 };
  */
 export const LANTERNE = { prix: 30, rayon: 3, partRendue: 0.5, luisant: 2 };
 
+/** Plateforme de la futaie : une tour posée là-haut voit plus loin, mais tout y coûte plus cher (pose, stades). */
+export const PLATEFORME = { portee: 1, surcout: 1.3 };
+
+/** Prix d'un achat pour une tour en hauteur ou au sol. */
+export function prixPour(prix: number, haute: boolean): number {
+  return haute ? Math.round(prix * PLATEFORME.surcout) : prix;
+}
+
 /** Part du prix payé (pose et améliorations) rendue à la revente ; moins pour une tour à capacité (stade 4). */
 export const PART_REVENTE = 0.7;
 export const PART_REVENTE_CAPACITE = 0.5;

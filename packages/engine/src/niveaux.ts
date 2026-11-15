@@ -1,6 +1,7 @@
 // Les niveaux : une carte, des vagues et des contraintes. Une île = 5 niveaux (4 + un boss), cahier §3.
 import type { Biome, Capacite, Difficulte, Ile, Regles } from './contrat';
 import {
+  CARTE_ALLEE,
   CARTE_BRAS_MORTS,
   CARTE_COEUR,
   CARTE_COEUR_MARAIS,
@@ -505,8 +506,27 @@ export const NIVEAUX_GROTTE: Niveau[] = [
   },
 ];
 
+/** Allée des géants (futaie 1) : les monstres des quatre îles, sans sangsue (pas d'eau). */
+export const VAGUES_ALLEE: Vague[] = [
+  [g('limace', 12, 2)],
+  [g('scarabee', 4, 4, 0, 1), g('limace', 10, 1.8, 4, 0)],
+  [g('volant', 6, 2), g('amas', 6, 3, 4)],
+  [g('cloporte', 6, 3), g('sauterelle', 20, 0.4, 6)],
+  [g('scarabee', 6, 3.5), g('soigneur', 2, 6, 4), g('limace', 14, 1.4, 6)],
+  [g('crapaud', 8, 2.4), g('chauveSouris', 8, 1.6, 6)],
+  [g('amas', 10, 2.4), g('cloporte', 8, 2.6, 6)],
+  [g('sauterelle', 30, 0.3), g('scarabee', 8, 3, 6)],
+  [g('cloporte', 12, 2.2), g('volant', 10, 1.6, 6), g('soigneur', 3, 5, 8)],
+  [g('scarabee', 12, 2.4), g('amas', 12, 2, 6), g('crapaud', 10, 2, 10), g('chauveSouris', 12, 1.4, 12)],
+];
+
+/** Futaie (étape 12) : plateformes dans les grands arbres ; le niveau 1 vaut à peu près le niveau 3 de la grotte. */
+export const NIVEAUX_FUTAIE: Niveau[] = [
+  { id: 'futaie-1', nom: 'Allée des géants', biome: 'futaie', carte: CARTE_ALLEE, vagues: renforcer(VAGUES_ALLEE, 0.5, 0.95), regles: { spores: 240 } },
+];
+
 /** Niveaux de chaque île, dans l'ordre du parcours ; une île sans niveaux n'est pas encore jouable. */
-export const NIVEAUX: Partial<Record<Biome, Niveau[]>> = { foret: NIVEAUX_FORET, marais: NIVEAUX_MARAIS, prairie: NIVEAUX_PRAIRIE, grotte: NIVEAUX_GROTTE };
+export const NIVEAUX: Partial<Record<Biome, Niveau[]>> = { foret: NIVEAUX_FORET, marais: NIVEAUX_MARAIS, prairie: NIVEAUX_PRAIRIE, grotte: NIVEAUX_GROTTE, futaie: NIVEAUX_FUTAIE };
 
 /** Étoiles à réunir sur les 4 niveaux d'une île pour ouvrir son boss. */
 export const SEUIL_BOSS = 8;

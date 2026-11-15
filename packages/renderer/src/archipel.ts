@@ -101,7 +101,8 @@ export function reduire(carte: readonly string[]): string[] {
   for (let y = 0; y < carte.length; y += 2) {
     let ligne = '';
     for (let x = 0; x < (carte[0]?.length ?? 0); x += 2) {
-      const bloc = [carte[y]?.[x], carte[y]?.[x + 1], carte[y + 1]?.[x], carte[y + 1]?.[x + 1]].filter((l): l is string => !!l);
+      // Les plateformes deviennent des arbres : trop petites pour l'îlot de la carte.
+      const bloc = [carte[y]?.[x], carte[y]?.[x + 1], carte[y + 1]?.[x], carte[y + 1]?.[x + 1]].filter((l): l is string => !!l).map((l) => (l === 'P' ? 'f' : l));
       const prioritaire = ['S', '=', 'g', 's', 'e', 'l'].find((l) => bloc.includes(l));
       if (prioritaire) ligne += prioritaire;
       else if (bloc.filter((l) => l === '.').length >= 2) ligne += '.';

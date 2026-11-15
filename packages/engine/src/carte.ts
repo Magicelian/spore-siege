@@ -17,6 +17,8 @@ const LETTRES: Record<string, Terrain> = {
   n: 'nenuphar',
   // Touffe de champignons luisants (grotte) : elle éclaire autour d'elle, on ne construit pas dessus.
   l: 'luisant',
+  // Plateforme dans les branches d'un grand arbre (futaie) : une tour de terre s'y pose, plus haut et plus loin.
+  P: 'plateforme',
   // La souche est posée sur de l'herbe.
   S: 'herbe',
 };
@@ -561,4 +563,31 @@ export const CARTE_GALERIE = [
   '...rhhhrhhhhhhhrhr..',
   '....rrhhhhhhrhhrh...',
   '......rhrhhhhh......',
+] as const;
+
+/**
+ * Allée des géants (futaie 1) : forêt dense de grands arbres, 6 plateformes (`P`) aux meilleures places. Plages
+ * ouest et nord-est ; raccourci (7, 7) → (11, 7) qu'une ronce ferme (l'ouest par la boucle sud, 13 → ~25 cases).
+ */
+export const CARTE_ALLEE = [
+  '.....ffffff....sss..',
+  '...fffffffff..fsss..',
+  '..frffffffffpffh=ff.',
+  '.ffffffffffffffh=hff',
+  'sshhfhhhhffffffh=hff',
+  'ss======hffffffP=hff',
+  'sfhhhhf=hPhfhhhh=hrf',
+  'ffffffP==========fff',
+  'ffffffh=hhh=hfhhhhff',
+  '.fffffh=hSS=Phfffff.',
+  'ffffffh=hSS==hfffbf.',
+  'ffpffff=hhhf=hffffff',
+  '.fffffP=hfPh=hfffff.',
+  '.fffffh=fhhh=ffffff.',
+  '.fffffh======hfbfff.',
+  '..ffffhhhhfhhhfffff.',
+  '..ffpffffbfffffffff.',
+  '...ffffffffffrffff..',
+  '....fffffffffffff...',
+  '......ffffffff......',
 ] as const;
