@@ -1,8 +1,8 @@
 // Sons synthétisés avec Web Audio, aucun fichier (principe repris de Tiny Shrooms) : bruitages brefs façon 8-bit
 // pour les tirs, les explosions, les morts, la souche mordue et l'interface ; ambiance de fond comme Tiny Shrooms
-// (vent qui respire, oiseaux de temps en temps) ; musique de combat pendant les vagues (`musique.ts`).
+// (vent qui respire, oiseaux de temps en temps ; au marais, grenouilles et grillons) ; musique de combat pendant les vagues (`musique.ts`).
 // Coupé par défaut ; le contexte audio n'est créé qu'une fois le son allumé.
-import type { TypeTour } from '@spore-siege/engine';
+import type { Biome, TypeTour } from '@spore-siege/engine';
 import { MusiqueCombat } from './musique';
 
 export type Effet =
@@ -156,6 +156,8 @@ export class Sons {
   private effets: GainNode | null = null;
   private bruit: AudioBuffer | null = null;
   private ambiance: GainNode | null = null;
+  /** Île jouée : au marais, grenouilles et grillons au lieu des oiseaux. */
+  private biome: Biome = 'foret';
   private minuterie: ReturnType<typeof setTimeout> | null = null;
   private allume = false;
   /** Fenêtre cachée : silence, sans changer le réglage Son. */
@@ -181,6 +183,11 @@ export class Sons {
     this.maitre.gain.setTargetAtTime(allume && !this.cache ? 1 : 0, t, 0.05);
     if (allume && !this.cache) void this.contexte.resume();
     this.reglerMusique();
+  }
+
+  /** L'île à l'écran, pour l'ambiance. */
+  paysage(biome: Biome): void {
+    this.biome = biome;
   }
 
   /** Fenêtre cachée ou montrée : coupe tout (effets, ambiance, musique) puis le rend, réglage Son inchangé. */
@@ -298,7 +305,11 @@ export class Sons {
     // WebKit crée parfois le contexte suspendu : le premier appui le réveille.
     addEventListener('pointerdown', () => void ctx.resume(), { once: true });
     const suivant = () => {
-      if (this.allume && ctx.state === 'running') this.oiseau(ctx.currentTime);
+      if (this.allume && ctx.state === 'running') {
+        if (this.biome !== 'marais') this.oiseau(ctx.currentTime);
+        else if (Math.random() < 0.7) this.grenouille(ctx.currentTime);
+        else this.grillon(ctx.currentTime);
+      }
       this.minuterie = setTimeout(suivant, 4000 + Math.random() * 6000);
     };
     if (this.minuterie) clearTimeout(this.minuterie);
@@ -312,6 +323,23 @@ export class Sons {
       const t = i * (0.11 + Math.random() * 0.05);
       this.note({ f: base, t, d: 0.07, vers: base * (1.2 + Math.random() * 0.3), onde: 'sine', v: 0.35 }, debut, this.ambiance!);
     }
+  }
+
+  /** Coassement : deux ou trois « crôa » graves, rauques, qui montent un peu. */
+  private grenouille(debut: number): void {
+    const base = 120 + Math.random() * 70;
+    const cris = 2 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < cris; i++) {
+      const t = i * (0.2 + Math.random() * 0.06);
+      this.note({ f: base, t, d: 0.12, vers: base * 1.35, onde: 'square', v: 0.22 }, debut, this.ambiance!);
+      this.note({ f: base * 2, t, d: 0.08, vers: base * 2.4, onde: 'triangle', v: 0.12 }, debut, this.ambiance!);
+    }
+  }
+
+  /** Grillon : une rafale de petits cris aigus. */
+  private grillon(debut: number): void {
+    const base = 4200 + Math.random() * 800;
+    for (let i = 0; i < 6; i++) this.note({ f: base, t: i * 0.045, d: 0.025, vers: base, onde: 'sine', v: 0.12 }, debut, this.ambiance!);
   }
 
   private note(n: Note, debut: number, sortie: AudioNode = this.effets!): void {

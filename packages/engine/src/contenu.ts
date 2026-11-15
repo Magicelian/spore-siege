@@ -71,17 +71,17 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
   // Marais, niveau 2 : sous l'eau des gués, seul le héron la touche ; sur la terre, elle redevient vulnérable.
   sangsue: { pv: 22, vitesse: 0.9, morsure: 1, butin: 3, armure: 0, nage: true },
   // Marais, niveau 3 : bondit de deux cases toutes les 2,5 s et passe vite les zones couvertes.
-  crapaud: { pv: 32, vitesse: 0.6, morsure: 1, butin: 3, armure: 1, saut: { cadence: 2.5, distance: 2, duree: 0.4 } },
+  crapaud: { pv: 26, vitesse: 0.6, morsure: 1, butin: 3, armure: 0, saut: { cadence: 2.5, distance: 2, duree: 0.4 } },
   // Boss du marais (niveau 5). Chiffres provisoires, à régler en 9e avec les joueurs scriptés.
   crapaudRoi: {
-    pv: 1600,
-    vitesse: 0.3,
+    pv: 500,
+    vitesse: 0.2,
     morsure: 20,
     butin: 70,
-    armure: 4,
-    saut: { cadence: 3.5, distance: 1.5, duree: 0.6 },
+    armure: 3,
+    saut: { cadence: 5, distance: 1.5, duree: 0.7 },
     boss: {
-      plongee: { duree: 3, avance: 3 },
+      plongee: { duree: 3, avance: 2 },
       paliers: [
         { part: 0.75, escorte: [{ type: 'crapaud', nombre: 4 }] },
         { part: 0.5, escorte: [{ type: 'sangsue', nombre: 4 }, { type: 'crapaud', nombre: 2 }] },

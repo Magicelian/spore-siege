@@ -144,7 +144,8 @@ export const CARTE_COEUR = [
 
 /**
  * Marais, niveau 1 (Roselière) : une plage au nord-est. Le long sentier descend, traverse l'étang sud à gué et
- * remonte vers la souche ; un raccourci passe l'étang nord à gué, une ronce en (15, 5) le ferme.
+ * remonte vers la souche ; un raccourci sec longe l'étang nord, une ronce en (15, 5) le ferme (les gués
+ * sont sur le long chemin : sur un raccourci, ils rendaient la défense trop facile).
  */
 export const CARTE_ROSELIERE = [
   '.....ffffff....sss..',
@@ -152,10 +153,10 @@ export const CARTE_ROSELIERE = [
   '..ffhhhhhhhheeeh=hf.',
   '.ffbhhhhpheeeene=hff',
   '.fhhhhhhfhneeeee=hff',
-  'fheehhhhhhee=gg==hhf',
-  'feeehhhphheegeee=hhf',
-  'fenehhhhhhhhgnee=hhf',
-  'feeehhhhhhhh=hhh=hff',
+  'fheehhhhhhhh=====hhf',
+  'feeehhhphhhh=eee=hhf',
+  'fenehhhhhhhh=nee=hhf',
+  'feeehhhhhhhh=eeh=hff',
   '.heehhhhhSS==hhh=bf.',
   'fhhhh====SShhhhh=hf.',
   'fhhhh=hhhhhhhhhh=hff',
@@ -164,6 +165,103 @@ export const CARTE_ROSELIERE = [
   '.ffhh=ggggggggg==hf.',
   '..fhhheeeeeeeeehhhf.',
   '..ffhhheeeneehhhhff.',
+  '...ffhhhhhhhhhhfff..',
+  '....fffhhhhhhffff...',
+  '......ffffffff......',
+] as const;
+
+/** Marais, niveau 2 (Les Gués) : plages nord-est et ouest réunies en (12, 5) ; le chemin de l'ouest et le tronc passent à gué ; ronces interdites. */
+export const CARTE_GUES = [
+  '.....ffffff....sss..',
+  '...fffhhhhff..ss=s..',
+  '..ffhhhhhhhheeeh=hf.',
+  '.ffphhheneeeeene=hff',
+  '.fhhhheeeeeeeeee=hff',
+  'ffhhh=gggggggggg=hhf',
+  'fhhhh=eneeeegeeehhhf',
+  'fhhhh=heeenegneehhhf',
+  'fhhbh=hhhhhh=hhhhhff',
+  '.hhhh=hhhSS==hhbhhf.',
+  'ss====hhhSShhhhhhpf.',
+  'sshhhhhhhhhhhhhhhhff',
+  '.fhhhhhhhhhhheeeehf.',
+  '.fheeeehhhhhheneehf.',
+  '.feeneehhhhhheeeehf.',
+  '..eeeeehphhhheeehhf.',
+  '..eeeeehhhfbhhhhhff.',
+  '...ffhhhhhhhhhhfff..',
+  '....fffhhhhhhffff...',
+  '......ffffffff......',
+] as const;
+
+/** Marais, niveau 3 (Tourbière) : une plage au sud ; raccourci par l'ouest (un gué) qu'une ronce en (8, 16) ferme, long détour par l'est et ses gués. */
+export const CARTE_TOURBIERE = [
+  '.....ffffff....hhh..',
+  '...fffhhhhff..hhhh..',
+  '..ffhhbhhhhhhffhhhf.',
+  '.ffhhhhhhhhhhhhhhhff',
+  '.fhhhhhhfh======hhff',
+  'ffhheeehhh=eeeh=hhhf',
+  'fhheneephh=eneh=hhhf',
+  'fhheeeehhh=hhhegehhf',
+  'fhheeehhhh=hhhegneff',
+  '.hrhhhhhhSShhbegeef.',
+  'hhhhh====SShhhngeef.',
+  'hhhhh=hhhhhhhhegehff',
+  '.fhhh=hbhhheeeh=hhf.',
+  '.fhhegehhhheneh=hhf.',
+  '.ffhegebhhheeeh=hrf.',
+  '..fbh=hhhhhhhhh=hhf.',
+  '..ffh===========hff.',
+  '...ffhhhh=hhphhfff..',
+  '....fffhh=hhhffff...',
+  '......fffssfff......',
+] as const;
+
+/** Marais, niveau 4 (Bras morts) : trois plages à l'est réunies tôt ; le tronc longe un canal, de l'eau des deux côtés pour le héron. */
+export const CARTE_BRAS_MORTS = [
+  '.....ffffff....sss..',
+  '...fffhhhhff..ss=s..',
+  '..ffhhhhhhhheeeh=hf.',
+  '.ffhhhhhhphheneh=hff',
+  '.fhheeeeehhheeeh=hff',
+  'ffhheeneehhhhhhh=hhf',
+  'fhhheeeeehhhhhhh===s',
+  'fhhhhhhhhhhhhphe=ehf',
+  'fhhhhhhhhhhhhhhe=nff',
+  '.hhhhbhhhSShhhhn=ef.',
+  'hhhhhhhhhSS=hhhe=ef.',
+  'hhhhhhhhhhhgeeee=efs',
+  '.fhbhhhhhhh==gg===s.',
+  '.fhhhhhhhhheneeeeef.',
+  '.ffhhhhhhhhheenehhf.',
+  '..fhhhhbhhhheeeehhf.',
+  '..ffhhhhhhfhhhhhhff.',
+  '...ffhhhhhhhhhhfff..',
+  '....fffhhhhhhffff...',
+  '......ffffffff......',
+] as const;
+
+/** Marais, niveau 5 (Cœur du marais, boss) : plages réunies en (12, 4) ; long tronc qui contourne la souche (gués au sud), sans raccourci :
+ * le boss doit rester longtemps à portée (avec un raccourci, il arrivait à la souche presque intact). */
+export const CARTE_COEUR_MARAIS = [
+  '.....ffffff....sss..',
+  '...fffeeeeef..ss=s..',
+  '..ffhheeneehhffh=hf.',
+  '.ffhhhhhhhhhhhhh=hff',
+  '.fhh=============hff',
+  'feee=hhhhhhh=hhhhhhf',
+  'fene=hphhhph=eeeehhf',
+  'feee=hhhhhhh=eneeehf',
+  'feee=hbhhhhh=eeeeeff',
+  '.hhh=hhhhSSh=eeeeef.',
+  'ss===hhhhSSh=eeenef.',
+  'sshhhhhhh=hh=eeneeff',
+  '.fhhhhh===hh=heeehf.',
+  '.fhhhhhgeene=hhhhhf.',
+  '.ffbhhhggggg=hhhhpf.',
+  '..fhhhheneeehhhbhhf.',
+  '..ffhhheeeehhhhhhff.',
   '...ffhhhhhhhhhhfff..',
   '....fffhhhhhhffff...',
   '......ffffffff......',

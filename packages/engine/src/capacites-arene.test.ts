@@ -10,8 +10,8 @@ import { Partie } from './partie';
 declare const process: { stderr: { write(t: string): void } };
 
 const PRES = { x: 6, y: 6 };
-/** Le héron va sur l'eau : Roselière, au bord des gués du raccourci que prennent les monstres. */
-const PRES_EAU = { x: 14, y: 6 };
+/** Le héron va sur l'eau : Roselière, au bord du raccourci que prennent les monstres. */
+const PRES_EAU = { x: 13, y: 6 };
 const GROUPE: Vague = [
   { type: 'moucheron', nombre: 30, intervalle: 0.5, plage: 1 },
   { type: 'limace', nombre: 15, intervalle: 1, plage: 1 },

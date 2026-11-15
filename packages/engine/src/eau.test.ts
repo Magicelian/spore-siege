@@ -10,6 +10,8 @@ const uneLimace: Vague[] = [[{ type: 'limace', nombre: 1, intervalle: 1 }]];
 
 /** Pas écoulés entre le lancement de la vague et la première morsure. */
 function tempsJusquaSouche(partie: Partie): number {
+  // La ronce envoie la limace par le long chemin, celui des gués.
+  partie.executer({ type: 'poserRonce', case: { x: 15, y: 5 } });
   partie.executer({ type: 'lancerVague' });
   for (let n = 1; n < 20_000; n++) {
     partie.avancer();
@@ -34,7 +36,7 @@ describe('eau du marais', () => {
   it('les tours de terre vont sur l’herbe et les nénuphars, pas sur l’eau ni les gués', () => {
     expect(constructible(roseliere, { x: 10, y: 4 }, 'ruche')).toBe(true); // nénuphar
     expect(constructible(roseliere, { x: 11, y: 4 }, 'ruche')).toBe(false); // eau
-    expect(constructible(roseliere, { x: 13, y: 5 })).toBe(false); // gué, pour aucune tour
+    expect(constructible(roseliere, { x: 7, y: 14 })).toBe(false); // gué, pour aucune tour
   });
 
   it('pas de ronce dans un gué ; celle de (15, 5) ferme le raccourci', () => {

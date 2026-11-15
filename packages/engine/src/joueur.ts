@@ -7,7 +7,7 @@
 //  - seul:<tour ou capacité> : une seule sorte de tour, six au meilleur endroit, puis améliore la plus faible, puis
 //    (si une capacité est donnée) passe chacune au stade 4 avec cette capacité. Aucune tour ne doit suffire seule.
 // Les joueurs simple et bon prennent aussi le stade 4 quand ils ont une tour au stade 3.
-import type { Capacite, Case, Ile, Phase, Regles, TourVue, TypeMonstre, TypeTour } from './contrat';
+import type { Capacite, Case, Ile, Instantane, Phase, Regles, TourVue, TypeMonstre, TypeTour } from './contrat';
 import { CAPACITES, CAPACITES_DE, PAS_PAR_SECONDE, TOURS, type Vague } from './contenu';
 import { Partie } from './partie';
 import { cle, route } from './sentier';
@@ -32,8 +32,10 @@ export interface Bilan {
 /** Le joueur réfléchit une fois par seconde de jeu. */
 const PAS_ENTRE_DECISIONS = PAS_PAR_SECONDE;
 const CYCLE_SIMPLE: TypeTour[] = ['ruche', 'ruche', 'cristal', 'canon', 'mortier'];
+const CYCLE_SIMPLE_EAU: TypeTour[] = ['ruche', 'heron', 'ruche', 'cristal', 'heron', 'canon', 'mortier'];
 
-export function jouer(style: Style, ile: Ile, vagues: readonly Vague[], regles: Partial<Regles> = {}): Bilan {
+/** `observer` : appelé à chaque pas avec l'instantané (pour enquêter sur une partie). */
+export function jouer(style: Style, ile: Ile, vagues: readonly Vague[], regles: Partial<Regles> = {}, observer?: (i: Instantane) => void): Bilan {
   const partie = new Partie(ile, vagues, 1, regles);
   const joueur = new Joueur(style, partie);
   const pertes: number[] = vagues.map(() => 0);
@@ -45,6 +47,7 @@ export function jouer(style: Style, ile: Ile, vagues: readonly Vague[], regles: 
     partie.avancer();
     pas++;
     const suivant = partie.instantane();
+    observer?.(suivant);
     pertes[i.vague - 1]! += pv - suivant.souche.pv;
     i = suivant;
   }
@@ -85,8 +88,9 @@ class Joueur {
     });
     const portee = TOURS.heron.stades[0].portee;
     const chemins = prevues.flat();
+    // Le joueur simple ne pense au héron qu'au marais (les repères de la forêt ont été réglés sans lui).
     this.eauUtile =
-      style === 'bon' &&
+      (style === 'bon' || (style === 'simple' && ile.biome === 'marais')) &&
       partie.regles.tours.includes('heron') &&
       ile.terrain.some((_, k) => {
         const c = { x: k % ile.largeur, y: Math.floor(k / ile.largeur) };
@@ -138,7 +142,9 @@ class Joueur {
         // Pas de réflexion : une capacité sur deux, selon la tour.
         if (auStade3) return specialiser((t) => CAPACITES_DE[t.type][t.id % 2]!);
       }
-      return poser(CYCLE_SIMPLE[tours.length % CYCLE_SIMPLE.length]!);
+      // Avec de l'eau près du chemin, le héron entre dans le cycle.
+      const cycle = this.eauUtile ? CYCLE_SIMPLE_EAU : CYCLE_SIMPLE;
+      return poser(cycle[tours.length % cycle.length]!);
     }
 
     // Bon joueur.

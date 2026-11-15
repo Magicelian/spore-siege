@@ -142,6 +142,7 @@ function recommencer(): void {
 rendu.surImage = (instant) => {
   // Musique de combat seulement pendant une vague, île à l'écran.
   ui.sons.combattre(ui.ecran === 'partie' && actuel.phase === 'vague');
+  ui.sons.paysage(ui.ecran === 'partie' ? niveau.biome : 'foret');
   if (ui.ecran !== 'partie') return;
   reserve += dernierInstant === null ? 0 : (instant - dernierInstant) * vitesseEffective();
   dernierInstant = instant;

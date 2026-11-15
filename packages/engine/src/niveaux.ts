@@ -1,7 +1,19 @@
 // Les niveaux : une carte, des vagues et des contraintes. Une île = 5 niveaux (4 + un boss), cahier §3.
 import type { Biome, Capacite, Ile, Regles } from './contrat';
-import { CARTE_COEUR, CARTE_FORET, CARTE_FOURRE, CARTE_ROSELIERE, CARTE_SOUS_BOIS, CARTE_TROIS_SENTIERS, lireCarte } from './carte';
-import { VAGUES_FORET } from './contenu';
+import {
+  CARTE_BRAS_MORTS,
+  CARTE_COEUR,
+  CARTE_COEUR_MARAIS,
+  CARTE_FORET,
+  CARTE_FOURRE,
+  CARTE_GUES,
+  CARTE_ROSELIERE,
+  CARTE_SOUS_BOIS,
+  CARTE_TOURBIERE,
+  CARTE_TROIS_SENTIERS,
+  lireCarte,
+} from './carte';
+import { MONSTRES, VAGUES_FORET } from './contenu';
 import type { Vague } from './contenu';
 import { Partie } from './partie';
 
@@ -29,7 +41,7 @@ export function renforcer(vagues: readonly Vague[], debut: number, fin = debut):
     const facteur = debut + ((fin - debut) * i) / Math.max(1, vagues.length - 1);
     return v.map((g) => ({
       ...g,
-      nombre: g.type === 'limaceMere' ? 1 : Math.max(1, Math.round(g.nombre * facteur)),
+      nombre: MONSTRES[g.type].boss ? 1 : Math.max(1, Math.round(g.nombre * facteur)),
       intervalle: Math.round((g.intervalle / Math.sqrt(facteur)) * 100) / 100,
     }));
   });
@@ -217,9 +229,88 @@ export const NIVEAUX_FORET: Niveau[] = [
   },
   { id: 'foret-5', nom: 'Cœur de la forêt', biome: 'foret', carte: CARTE_COEUR, vagues: VAGUES_COEUR, regles: {}, boss: true },
 ];
-/** Les niveaux du marais (cahier §3) : l'eau, ses gués qui ralentissent et ses nénuphars. */
+type G = Vague[number];
+const g = (type: G['type'], nombre: number, intervalle: number, debut?: number, plage?: number): G => ({
+  type,
+  nombre,
+  intervalle,
+  ...(debut !== undefined && { debut }),
+  ...(plage !== undefined && { plage }),
+});
+
+/** Les Gués (marais, niveau 2) : la Sangsue arrive. Plage 0 au nord-est, 1 à l'ouest (le chemin des gués). */
+export const VAGUES_GUES: Vague[] = [
+  [g('limace', 12, 2)],
+  [g('sangsue', 8, 2.2, 0, 1)],
+  [g('limace', 10, 2), g('moucheron', 14, 1, 8)],
+  [g('sangsue', 12, 1.6), g('limace', 8, 2, 6)],
+  [g('scarabee', 5, 4), g('sangsue', 10, 1.5, 4)],
+  [g('amas', 8, 3), g('volant', 6, 2, 10)],
+  [g('sangsue', 18, 1), g('scarabee', 6, 3, 6)],
+  [g('moucheron', 30, 0.6), g('soigneur', 3, 5, 8)],
+  [g('amas', 12, 2.5), g('sangsue', 16, 1.2, 5)],
+  [g('scarabee', 14, 2.2), g('sangsue', 20, 1, 6), g('volant', 8, 1.6, 12)],
+];
+
+/** Tourbière (marais, niveau 3) : le Crapaud arrive. Une seule plage, au sud. */
+export const VAGUES_TOURBIERE: Vague[] = [
+  [g('limace', 14, 1.8)],
+  [g('crapaud', 8, 2.5)],
+  [g('moucheron', 20, 0.9), g('crapaud', 6, 2.5, 8)],
+  [g('scarabee', 6, 3.5), g('limace', 12, 1.5, 4)],
+  [g('crapaud', 14, 1.6), g('sangsue', 8, 1.8, 6)],
+  [g('amas', 10, 2.6), g('soigneur', 3, 5, 8)],
+  [g('crapaud', 18, 1.3), g('scarabee', 6, 3, 10)],
+  [g('volant', 10, 1.6), g('amas', 10, 2.5, 6)],
+  [g('sangsue', 16, 1.1), g('crapaud', 16, 1.2, 6)],
+  [g('scarabee', 14, 2.2), g('crapaud', 20, 1, 6), g('soigneur', 4, 4, 12)],
+];
+
+/** Bras morts (marais, niveau 4) : héron et mortier seuls, donc pas de phalène (ni l'un ni l'autre ne l'atteint). */
+export const VAGUES_BRAS_MORTS: Vague[] = [
+  [g('limace', 14, 1.8)],
+  [g('sangsue', 12, 1.8)],
+  [g('crapaud', 10, 2), g('moucheron', 16, 1, 6)],
+  [g('amas', 8, 3), g('limace', 12, 1.5, 5)],
+  [g('scarabee', 8, 3), g('sangsue', 12, 1.5, 5)],
+  [g('crapaud', 16, 1.4), g('soigneur', 3, 5, 8)],
+  [g('moucheron', 36, 0.5), g('amas', 8, 3, 8)],
+  [g('scarabee', 12, 2.5), g('crapaud', 14, 1.3, 6)],
+  [g('sangsue', 20, 1), g('amas', 12, 2.5, 5), g('soigneur', 4, 4, 10)],
+  [g('scarabee', 16, 2.2), g('crapaud', 20, 1, 6), g('sangsue', 16, 1, 12)],
+];
+
+/** Cœur du marais (niveau 5, boss) : plage 0 au nord-est, 1 à l'ouest. Le Crapaud-roi ferme la marche. */
+export const VAGUES_COEUR_MARAIS: Vague[] = [
+  [g('limace', 14, 1.8)],
+  [g('sangsue', 12, 1.8)],
+  [g('crapaud', 12, 1.8), g('moucheron', 16, 1, 6)],
+  [g('amas', 8, 3), g('volant', 4, 3, 6)],
+  [g('soigneur', 3, 5), g('scarabee', 8, 3.5, 3)],
+  [g('sangsue', 18, 1.1), g('crapaud', 12, 1.6, 6)],
+  [g('scarabee', 12, 2.8), g('volant', 5, 2.5, 8), g('soigneur', 4, 4.5, 5)],
+  [g('amas', 14, 2.4), g('crapaud', 18, 1.2, 6)],
+  [g('scarabee', 16, 2.2), g('sangsue', 20, 1, 8), g('volant', 6, 2, 14)],
+  [g('crapaudRoi', 1, 1, 0, 1), g('crapaud', 16, 1.5, 5), g('sangsue', 12, 1.6, 10)],
+];
+
+/**
+ * Les niveaux du marais (cahier §3) : l'eau, ses gués qui ralentissent et ses nénuphars. Facteurs de `renforcer`
+ * réglés en 9e avec les joueurs scriptés (`equilibrage.test.ts`).
+ */
 export const NIVEAUX_MARAIS: Niveau[] = [
-  { id: 'marais-1', nom: 'Roselière', biome: 'marais', carte: CARTE_ROSELIERE, vagues: renforcer(VAGUES_FORET, 1.8, 3.2), regles: {} },
+  { id: 'marais-1', nom: 'Roselière', biome: 'marais', carte: CARTE_ROSELIERE, vagues: renforcer(VAGUES_FORET, 1.4, 2.4), regles: { spores: 90 } },
+  { id: 'marais-2', nom: 'Les Gués', biome: 'marais', carte: CARTE_GUES, vagues: renforcer(VAGUES_GUES, 1.3, 1.8), regles: { ronces: false } },
+  { id: 'marais-3', nom: 'Tourbière', biome: 'marais', carte: CARTE_TOURBIERE, vagues: renforcer(VAGUES_TOURBIERE, 0.5, 0.9), regles: { spores: 100 } },
+  {
+    id: 'marais-4',
+    nom: 'Bras morts',
+    biome: 'marais',
+    carte: CARTE_BRAS_MORTS,
+    vagues: renforcer(VAGUES_BRAS_MORTS, 1, 1.6),
+    regles: { tours: ['heron', 'mortier'] },
+  },
+  { id: 'marais-5', nom: 'Cœur du marais', biome: 'marais', carte: CARTE_COEUR_MARAIS, vagues: renforcer(VAGUES_COEUR_MARAIS, 0.8, 1.2), regles: {}, boss: true },
 ];
 
 /** Niveaux de chaque île, dans l'ordre du parcours ; une île sans niveaux n'est pas encore jouable. */

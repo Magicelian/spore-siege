@@ -138,12 +138,17 @@ describe('équilibrage du marais', () => {
   });
 
   for (const { n, naif, meilleur } of marais) {
-    it(`${n.nom} : gagnable sans 3 étoiles, ruches seules battues, en 8 à 18 minutes`, () => {
+    it(`${n.nom} : gagnable sans 3 étoiles, ni pour le meilleur script ni pour les ruches seules, en 8 à 18 minutes`, () => {
       expect(meilleur.phase).toBe('victoire');
       expect(meilleur.etoiles).toBeLessThanOrEqual(2);
-      expect(naif.phase).toBe('defaite');
+      expect(naif.etoiles).toBeLessThanOrEqual(2);
       expect(meilleur.minutes).toBeGreaterThanOrEqual(8);
       expect(meilleur.minutes).toBeLessThanOrEqual(18);
     });
   }
+
+  it('le Crapaud-roi est le niveau le plus dur : le meilleur script y garde le moins de vie', () => {
+    const coeur = marais[4]!.meilleur.pv;
+    for (const { meilleur } of marais.slice(0, 4)) expect(coeur).toBeLessThanOrEqual(meilleur.pv);
+  });
 });

@@ -18,7 +18,7 @@ describe('nid de héron', () => {
     expect(constructible(roseliere, { x: 11, y: 4 }, 'heron')).toBe(true); // eau
     expect(constructible(roseliere, { x: 10, y: 4 }, 'heron')).toBe(true); // nénuphar
     expect(constructible(roseliere, { x: 5, y: 5 }, 'heron')).toBe(false); // herbe
-    expect(constructible(roseliere, { x: 13, y: 5 }, 'heron')).toBe(false); // gué
+    expect(constructible(roseliere, { x: 7, y: 14 }, 'heron')).toBe(false); // gué
     expect(constructible(roseliere, { x: 11, y: 4 }, 'ruche')).toBe(false);
     expect(constructible(roseliere, { x: 10, y: 4 }, 'ruche')).toBe(true);
     expect(constructible(roseliere, { x: 11, y: 4 })).toBe(true); // au moins une tour
