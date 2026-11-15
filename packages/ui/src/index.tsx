@@ -2,8 +2,8 @@
 // visible, bulles au clic sur l'île (construire, tour, ronce).
 // Le contrôleur garde l'état de l'interface ; le frontend lui donne les instantanés et lit l'aperçu à dessiner.
 import { render } from 'preact';
-import type { Biome, Capacite, Case, Commande, Ile, Instantane, Niveau, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
-import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, MONSTRES, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, PRIX_RONCE, SEUIL_BOSS, TOURS, TOUTES_CAPACITES } from '@spore-siege/engine';
+import type { Biome, Capacite, Case, Commande, FleurVue, Ile, Instantane, Niveau, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
+import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, FLEUR, MONSTRES, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, PRIX_RONCE, SEUIL_BOSS, TOURS, TOUTES_CAPACITES } from '@spore-siege/engine';
 import { icone, type Icone } from './icones';
 import { ecrireAtelier, ecrireDecouverts, ecrireEtoiles, ecrireMusique, ecrireSons, lireAtelier, lireDecouverts, lireEtoiles, lireMusique, lireSons } from './sauvegarde';
 import { Sons } from './sons';
@@ -18,6 +18,8 @@ export interface Jeu {
   /** Une tour (de cette sorte, ou de n'importe laquelle) peut-elle être posée sur la case ? */
   libre(c: Case, tour?: TypeTour): boolean;
   ronceLibre(c: Case): boolean;
+  /** Une fleur à spores peut-elle être plantée sur la case ? (prairie) */
+  fleurLibre(c: Case): boolean;
   readonly emplacementsRonces: readonly Case[];
   readonly ile: Ile;
   /** Id du niveau joué, pour ranger ses étoiles. */
@@ -38,7 +40,7 @@ export interface Fenetre {
 
 export interface OptionsInterface {
   /** Image du modèle ; au stade 4, celui de la capacité. */
-  vignette(type: TypeTour | 'ronce', stade: number, capacite?: Capacite | null): string;
+  vignette(type: TypeTour | 'ronce' | 'fleur', stade: number, capacite?: Capacite | null): string;
   vignetteMonstre(type: TypeMonstre): string;
   recommencer(): void;
   fenetre?: Fenetre;
@@ -55,9 +57,9 @@ export interface OptionsInterface {
 /** Accueil (titre + Jouer), archipel, carte d'une île (ses niveaux), ou partie en cours. */
 export type Ecran = 'accueil' | 'carte' | 'niveaux' | 'partie';
 
-/** Tour ou ronce fantôme à dessiner sur l'île, avec sa portée. */
+/** Tour, ronce ou fleur fantôme à dessiner sur l'île, avec sa portée. */
 export interface Apercu {
-  type: TypeTour | 'ronce';
+  type: TypeTour | 'ronce' | 'fleur';
   case: Case;
   possible: boolean;
   portee: number;
@@ -92,7 +94,7 @@ export class ControleurInterface {
   /** Vitesse choisie avant la pause, pour reprendre au même rythme. */
   private vitesseAvantPause: 1 | 2 = 1;
   private bulle: Bulle | null = null;
-  private survol: TypeTour | null = null;
+  private survol: TypeTour | 'fleur' | null = null;
   /** Capacité montrée dans la bulle d'une tour au stade 3 (la première tant qu'on n'a rien survolé). */
   private capaciteVue: Capacite | null = null;
   private instantane: Instantane | null = null;
@@ -188,6 +190,7 @@ export class ControleurInterface {
     if (tour) return { case: c, sorte: 'boite', hauteur: 0.45 + tour.stade * 0.4 };
     const ronce = i.ronces.some((r) => memeCase(r, c));
     if (ronce) return { case: c, sorte: 'boite', hauteur: 0.6 };
+    if (this.fleurDe(c)) return { case: c, sorte: 'boite', hauteur: 1.45 };
     // Bulle ouverte sur une case vide : le fantôme suffit.
     if (this.bulle) return null;
     if (nature === 'construire' || (nature === 'ronce' && this.jeu.ronceLibre(c))) return { case: c, sorte: 'case', hauteur: 0 };
@@ -364,6 +367,7 @@ export class ControleurInterface {
     if (this.natureCase(b.case) === 'ronce' && !this.instantane.ronces.some((r) => memeCase(r, b.case)))
       return { type: 'ronce', case: b.case, possible: this.jeu.ronceLibre(b.case), portee: 0.5 };
     if (!this.survol) return null;
+    if (this.survol === 'fleur') return { type: 'fleur', case: b.case, possible: this.instantane.spores >= FLEUR.prix, portee: 0 };
     const prix = TOURS[this.survol].stades[0].prix;
     return { type: this.survol, case: b.case, possible: this.instantane.spores >= prix, portee: TOURS[this.survol].stades[0].portee };
   }
@@ -382,8 +386,13 @@ export class ControleurInterface {
     return c ? this.instantane?.tours.find((t) => memeCase(t.case, c)) : undefined;
   }
 
-  private natureCase(c: Case): 'tour' | 'ronce' | 'construire' | null {
+  private fleurDe(c: Case | undefined): FleurVue | undefined {
+    return c ? this.instantane?.fleurs.find((f) => memeCase(f.case, c)) : undefined;
+  }
+
+  private natureCase(c: Case): 'tour' | 'fleur' | 'ronce' | 'construire' | null {
     if (this.tourDe(c)) return 'tour';
+    if (this.fleurDe(c)) return 'fleur';
     if (this.instantane?.regles.ronces !== false && this.jeu.emplacementsRonces.some((e) => memeCase(e, c))) return 'ronce';
     if (this.jeu.libre(c)) return 'construire';
     return null;
@@ -807,6 +816,18 @@ export class ControleurInterface {
         />
       );
     }
+    if (nature === 'fleur') {
+      const f = this.fleurDe(b.case)!;
+      return (
+        <BulleFleur
+          f={f}
+          enHaut={b.enHaut}
+          vignette={this.options.vignette('fleur', 1)}
+          fermer={fermer}
+          arracher={() => this.executer({ type: 'arracherFleur', id: f.id }) && fermer()}
+        />
+      );
+    }
     if (nature === 'ronce') {
       const posee = i.ronces.some((r) => memeCase(r, b.case));
       return (
@@ -828,6 +849,7 @@ export class ControleurInterface {
         <BulleConstruire
           i={i}
           types={TYPES.filter((t) => this.jeu.libre(b.case, t))}
+          fleur={this.jeu.fleurLibre(b.case)}
           enHaut={b.enHaut}
           survol={this.survol}
           vignette={(t) => this.options.vignette(t, 1)}
@@ -836,7 +858,9 @@ export class ControleurInterface {
             this.survol = t;
             this.dessiner();
           }}
-          poser={(t) => this.executer({ type: 'poserTour', tour: t, case: b.case }) && fermer()}
+          poser={(t) =>
+            this.executer(t === 'fleur' ? { type: 'planterFleur', case: b.case } : { type: 'poserTour', tour: t, case: b.case }) && fermer()
+          }
         />
       );
     return null;
@@ -1144,15 +1168,18 @@ function BulleConstruire(p: {
   i: Instantane;
   /** Tours qui vont sur cette case : celles de terre, le héron sur l'eau, les cinq sur un nénuphar. */
   types: TypeTour[];
+  /** Peut-on planter une fleur à spores ici ? (prairie) : sa carte vient après les tours. */
+  fleur: boolean;
   enHaut: boolean;
-  survol: TypeTour | null;
-  vignette: (t: TypeTour) => string;
+  survol: TypeTour | 'fleur' | null;
+  vignette: (t: TypeTour | 'fleur') => string;
   fermer: () => void;
-  survoler: (t: TypeTour | null) => void;
-  poser: (t: TypeTour) => void;
+  survoler: (t: TypeTour | 'fleur' | null) => void;
+  poser: (t: TypeTour | 'fleur') => void;
 }) {
   const permises = p.i.regles.tours;
   const detail = p.survol ?? p.types.find((t) => permises.includes(t)) ?? p.types[0] ?? TYPES[0]!;
+  const sansFleur = p.i.spores < FLEUR.prix;
   return (
     <section class={`bulle ${p.enHaut ? 'haut' : 'bas'}`}>
       <Entete titre={TEXTES.construire} fermer={p.fermer} />
@@ -1184,10 +1211,38 @@ function BulleConstruire(p: {
               </li>
             );
           })}
+          {p.fleur && (
+            <li>
+              <button
+                class={`carte${sansFleur ? ' manque' : ''}${p.survol === 'fleur' ? ' choisie' : ''}`}
+                disabled={sansFleur}
+                onMouseEnter={() => p.survoler('fleur')}
+                onClick={() => p.poser('fleur')}
+              >
+                <img class="vignette" src={p.vignette('fleur')} alt="" />
+                <span class="nom">{TEXTES.fleur}</span>
+                <Prix n={FLEUR.prix} manque={sansFleur} />
+              </button>
+            </li>
+          )}
         </ul>
         <div class="detail">
-          <p>{TOURS_TEXTES[detail].role}</p>
-          <Stats type={detail} stade={1} />
+          {detail === 'fleur' ? (
+            <>
+              <p>{TEXTES.fleurRole}</p>
+              <ul class="stats">
+                <li title={TEXTES.fleurRapportAide}>
+                  <Ico nom="spore" />
+                  {TEXTES.fleurRapport(FLEUR.rapport)}
+                </li>
+              </ul>
+            </>
+          ) : (
+            <>
+              <p>{TOURS_TEXTES[detail].role}</p>
+              <Stats type={detail} stade={1} />
+            </>
+          )}
         </div>
       </div>
     </section>
@@ -1290,6 +1345,22 @@ function BulleTour(p: {
             </button>
           )}
           {vente}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BulleFleur(p: { f: FleurVue; enHaut: boolean; vignette: string; fermer: () => void; arracher: () => void }) {
+  return (
+    <section class={`bulle ${p.enHaut ? 'haut' : 'bas'}`}>
+      <Entete titre={TEXTES.fleur} vignette={p.vignette} fermer={p.fermer} />
+      <div class="corps">
+        <p>{TEXTES.fleurRoleArracher(FLEUR.rapport)}</p>
+        <div class="rang">
+          <button class="bouton danger" onClick={p.arracher}>
+            {TEXTES.arracher} +{p.f.revente}
+          </button>
         </div>
       </div>
     </section>

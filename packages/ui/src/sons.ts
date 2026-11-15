@@ -25,7 +25,10 @@ export type Effet =
   | 'morsure'
   | 'soin'
   | 'ponte'
-  | 'plongee';
+  | 'plongee'
+  | 'planter'
+  | 'arracher'
+  | 'recolte';
 
 const VOLUME = 0.22;
 /** Ambiance de fond, basse exprès (même niveau que Tiny Shrooms) ; le vent par-dessus en léger souffle. */
@@ -34,7 +37,7 @@ const VENT = 0.18;
 /** Musique de combat : sous les effets, pour que les tirs restent lisibles. */
 const VOLUME_MUSIQUE = 0.13;
 /** Deux effets identiques plus rapprochés que ceci n'en font qu'un (les ruches tirent beaucoup). */
-const ECART_MIN_S: Partial<Record<Effet, number>> = { soin: 0.3, 'tir-ruche': 0.14, 'tir-cristal': 0.1, mort: 0.05, explosion: 0.08 };
+const ECART_MIN_S: Partial<Record<Effet, number>> = { recolte: 0.12, soin: 0.3, 'tir-ruche': 0.14, 'tir-cristal': 0.1, mort: 0.05, explosion: 0.08 };
 const ECART_DEFAUT_S = 0.06;
 
 /** Une note : fréquence (Hz), départ et durée (s) relatifs à l'effet, glissement final éventuel. */
@@ -137,6 +140,10 @@ const EFFETS: Record<Effet, { notes: Note[]; souffles?: Souffle[] }> = {
     souffles: [{ t: 0.1, d: 0.25, f: 600, v: 0.45 }],
   },
   // Plongée du Crapaud-roi : gros plouf, une note grave qui s'enfonce.
+  // Fleur à spores : petit « pop » montant quand on plante, descendant quand on arrache ; récolte = deux notes claires.
+  planter: { notes: [{ f: 440, t: 0, d: 0.08, vers: 660, onde: 'triangle', v: 0.3 }, { f: 880, t: 0.07, d: 0.09, onde: 'sine', v: 0.18 }], souffles: [{ t: 0, d: 0.1, f: 2200, v: 0.2 }] },
+  arracher: { notes: [{ f: 520, t: 0, d: 0.12, vers: 260, onde: 'triangle', v: 0.3 }], souffles: [{ t: 0, d: 0.12, f: 1600, v: 0.3 }] },
+  recolte: { notes: [{ f: 1175, t: 0, d: 0.06, onde: 'sine', v: 0.16 }, { f: 1568, t: 0.06, d: 0.1, onde: 'sine', v: 0.14 }] },
   plongee: {
     notes: [{ f: 180, t: 0, d: 0.35, vers: 60, onde: 'sine', v: 0.5 }],
     souffles: [{ t: 0, d: 0.3, f: 900, v: 0.5 }],

@@ -52,6 +52,8 @@ const SON_COMMANDE: Partial<Record<Commande['type'], Effet>> = {
   vendreTour: 'vendre',
   poserRonce: 'ronce',
   enleverRonce: 'ronce',
+  planterFleur: 'planter',
+  arracherFleur: 'arracher',
 };
 
 /** Ce que les sons ont déjà entendu : phase, dernier tir de chaque tour, dernière explosion. */
@@ -94,6 +96,7 @@ function jeuDe(p: Partie): Jeu {
     instantane: () => actuel,
     libre: (c, tour) => p.libre(c, tour),
     ronceLibre: (c) => p.ronceLibre(c),
+    fleurLibre: (c) => p.fleurLibre(c),
     emplacementsRonces: p.emplacementsRonces,
     ile: p.ile,
     niveau: niveau.id,

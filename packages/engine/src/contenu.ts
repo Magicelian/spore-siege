@@ -100,6 +100,8 @@ export const BONUS_PAR_SECONDE_GAGNEE = 1;
 /** Une ronce ferme une branche à un carrefour ; enlevée, elle rend la moitié de son prix. */
 export const PRIX_RONCE = 40;
 export const PART_RONCE_RENDUE = 0.5;
+/** Fleur à spores (prairie) : prix, spores rapportées à chaque fin de vague, part rendue si on l'arrache. */
+export const FLEUR = { prix: 50, rapport: 15, partRendue: 0.5 };
 
 /** Part du prix payé (pose et améliorations) rendue à la revente ; moins pour une tour à capacité (stade 4). */
 export const PART_REVENTE = 0.7;

@@ -122,7 +122,17 @@ export type EvenementVu =
   /** Le boss `id` a franchi un palier de vie et pondu les monstres `petits`. */
   | { type: 'ponte'; id: number; monstre: TypeMonstre; position: Position; petits: number[]; pas: number }
   /** Le Crapaud-roi plonge à un palier : il disparaît quelques secondes et ressortira plus loin avec son escorte. */
-  | { type: 'plongee'; id: number; monstre: TypeMonstre; position: Position; pas: number };
+  | { type: 'plongee'; id: number; monstre: TypeMonstre; position: Position; pas: number }
+  /** La fleur à spores `id` vient de rapporter `gain` spores (fin de vague). */
+  | { type: 'recolte'; id: number; case: Case; gain: number; pas: number };
+
+/** Fleur à spores plantée par le joueur (prairie) : elle rapporte des spores à chaque fin de vague. */
+export interface FleurVue {
+  id: number;
+  case: Case;
+  /** Spores rendues si on l'arrache. */
+  revente: number;
+}
 
 /** Flaque collante laissée par le mortier Glu : les monstres dedans sont ralentis. */
 export interface FlaqueVu {
@@ -144,6 +154,8 @@ export interface Regles {
   tours: TypeTour[];
   /** Peut-on faire pousser des ronces ? */
   ronces: boolean;
+  /** Peut-on planter des fleurs à spores ? (prairie) */
+  fleurs: boolean;
   /** Capacités du stade 4 ouvertes dans l'Atelier (avec les étoiles) ; les autres sont refusées. */
   capacites: Capacite[];
 }
@@ -169,6 +181,8 @@ export interface Instantane {
   flaques: FlaqueVu[];
   /** Cases de sentier fermées par une ronce. */
   ronces: Case[];
+  /** Fleurs à spores plantées. */
+  fleurs: FleurVue[];
   /** Spores gagnées en lançant la vague maintenant (0 hors pause). */
   bonusLancer: number;
   /** Étoiles gagnées, une fois la partie gagnée (1 à 3) ; 0 sinon. */
@@ -198,4 +212,6 @@ export type Commande =
   | { type: 'choisirCapacite'; id: number; capacite: Capacite }
   | { type: 'vendreTour'; id: number }
   | { type: 'poserRonce'; case: Case }
-  | { type: 'enleverRonce'; case: Case };
+  | { type: 'enleverRonce'; case: Case }
+  | { type: 'planterFleur'; case: Case }
+  | { type: 'arracherFleur'; id: number };

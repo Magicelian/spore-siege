@@ -7,6 +7,7 @@ import {
   CARTE_FORET,
   CARTE_FOURRE,
   CARTE_GUES,
+  CARTE_PRES_FLEURIS,
   CARTE_ROSELIERE,
   CARTE_SOUS_BOIS,
   CARTE_TOURBIERE,
@@ -313,8 +314,16 @@ export const NIVEAUX_MARAIS: Niveau[] = [
   { id: 'marais-5', nom: 'Cœur du marais', biome: 'marais', carte: CARTE_COEUR_MARAIS, vagues: renforcer(VAGUES_COEUR_MARAIS, 0.8, 1.2), regles: {}, boss: true },
 ];
 
+/**
+ * Les niveaux de la prairie (cahier §3) : les fleurs à spores, qu'on plante à la place d'une tour et qui rapportent à
+ * chaque fin de vague. Pour l'instant le seul niveau 1 (étape 10a) ; chiffres provisoires, à régler en 10d.
+ */
+export const NIVEAUX_PRAIRIE: Niveau[] = [
+  { id: 'prairie-1', nom: 'Prés fleuris', biome: 'prairie', carte: CARTE_PRES_FLEURIS, vagues: renforcer(VAGUES_FORET, 0.8, 1.4), regles: { fleurs: true } },
+];
+
 /** Niveaux de chaque île, dans l'ordre du parcours ; une île sans niveaux n'est pas encore jouable. */
-export const NIVEAUX: Partial<Record<Biome, Niveau[]>> = { foret: NIVEAUX_FORET, marais: NIVEAUX_MARAIS };
+export const NIVEAUX: Partial<Record<Biome, Niveau[]>> = { foret: NIVEAUX_FORET, marais: NIVEAUX_MARAIS, prairie: NIVEAUX_PRAIRIE };
 
 /** Étoiles à réunir sur les 4 niveaux d'une île pour ouvrir son boss. */
 export const SEUIL_BOSS = 8;

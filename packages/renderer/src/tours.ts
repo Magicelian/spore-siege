@@ -4,6 +4,7 @@ import type { Capacite, Case, ImpactVu, Ile, Instantane, ProjectileVu, TypeTour 
 import { Eclats } from './effets';
 import { centreCase, versMonde } from './repere';
 import { fortin } from './fortins';
+import { lumineuse } from './palette';
 import { Voxels, type Modele } from './voxels';
 
 /** Ronce : buisson de tiges épineuses qui barre le sentier, quelques baies. */
@@ -21,13 +22,40 @@ function ronce(): Voxels {
   return v;
 }
 
+/** Fleur à spores (prairie) : haute tige, grandes pétales mauves, cœur doré qui luit, semé de spores. */
+const FLEUR = { tige: 0x4f7a32, feuille: 0x6a9a3a, petale: 0xc58ad8, bord: 0x9a5cb8, coeur: 0xffc84a, spore: 0xfff0b0, terre: 0x6a4a2e };
+lumineuse(FLEUR.coeur, FLEUR.spore);
+function fleur(): Voxels {
+  const v = new Voxels();
+  const f = FLEUR;
+  v.dome(0, 0, 0, 3.5, 1, f.terre);
+  v.cylindre(0, 0, 1, 13, 0.7, f.tige);
+  v.boule(-2.5, 5, 0, 2.6, 0.9, 1.4, f.feuille);
+  v.boule(2.5, 9, 0.5, 2.4, 0.9, 1.4, f.feuille);
+  // Six grandes pétales en couronne, bordées plus sombre.
+  for (let i = 0; i < 6; i++) {
+    const a = (i * Math.PI) / 3;
+    v.boule(Math.cos(a) * 3.6, 14 + (i % 2), Math.sin(a) * 3.6, 2.6, 1, 2.6, f.petale);
+  }
+  v.peindre((x, _y, z, c) => c === f.petale && x * x + z * z > 30, f.bord);
+  v.dome(0, 0, 14, 2.6, 2, f.coeur);
+  for (const [x, y, z] of [[0, 17, 0], [-1, 16, 1], [1, 16, -1], [1, 16, 1], [-1, 16, -1]] as const) v.poser(x, y, z, f.spore);
+  return v;
+}
+
+/** Ce qui se pose sur une case : une tour, une ronce ou une fleur à spores. */
+export type Objet = TypeTour | 'ronce' | 'fleur';
+
 const modeles = new Map<string, Modele>();
-export function modeleTour(type: TypeTour | 'ronce', stade: number, capacite: Capacite | null = null): Modele {
+export function modeleTour(type: Objet, stade: number, capacite: Capacite | null = null): Modele {
   const cle = `${type}${stade}${capacite ?? ''}`;
   let m = modeles.get(cle);
-  if (!m) modeles.set(cle, (m = (type === 'ronce' ? ronce() : fortin(type, stade, capacite)).modele(false)));
+  if (!m) modeles.set(cle, (m = (type === 'ronce' ? ronce() : type === 'fleur' ? fleur() : fortin(type, stade, capacite)).modele(false)));
   return m;
 }
+
+/** Hauteur de la fleur à spores, en cases (pour son « +N » et sa boîte de survol). */
+export const HAUTEUR_FLEUR = 17 / 12;
 
 /** Copie transparente des matériaux, pour la tour fantôme qu'on s'apprête à poser. */
 function fantome(modele: Modele): THREE.Material[] {
@@ -118,7 +146,7 @@ const SOL = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
 const BOITE = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
 
 export interface Pose {
-  type: TypeTour | 'ronce';
+  type: Objet;
   case: Case;
   possible: boolean;
   portee: number;
@@ -148,6 +176,7 @@ export class ToursRendu {
   /** Dernière bulle de poison lâchée par chaque monstre empoisonné (secondes). */
   private readonly bulles = new Map<number, number>();
   private readonly ronces = new Map<string, THREE.Mesh>();
+  private readonly fleurs = new Map<number, { maillage: THREE.Mesh; poseA: number; phase: number }>();
   private readonly portee = anneau(0xffffff, 0.7);
   private fantome: { maillage: THREE.Mesh; cle: string } | null = null;
   private readonly sol = new THREE.Mesh(SOL, new THREE.MeshBasicMaterial({ color: 0xb6ff5c, transparent: true, opacity: 0.6, depthWrite: false }));
@@ -185,6 +214,7 @@ export class ToursRendu {
     this.afficherMarque(ile, marque);
     this.afficherTours(ile, actuel, t);
     this.afficherRonces(ile, actuel);
+    this.afficherFleurs(ile, actuel, t);
     this.afficherProjectiles(ile, precedent, actuel, alpha, instant, parPixel);
     this.afficherImpacts(ile, actuel, alpha, t);
     this.afficherEclairs(ile, actuel, parPixel);
@@ -264,6 +294,35 @@ export class ToursRendu {
       if (vues.has(cle)) continue;
       this.groupe.remove(maillage);
       this.ronces.delete(cle);
+    }
+  }
+
+  /** Fleurs à spores : poussent avec un rebond, se balancent doucement ; arrachées, elles volent en pétales. */
+  private afficherFleurs(ile: Ile, vue: Instantane, t: number): void {
+    const vues = new Set<number>();
+    for (const f of vue.fleurs) {
+      vues.add(f.id);
+      let corps = this.fleurs.get(f.id);
+      if (!corps) {
+        const modele = modeleTour('fleur', 1);
+        const maillage = new THREE.Mesh(modele.geometrie, modele.materiaux);
+        maillage.castShadow = maillage.receiveShadow = true;
+        centreCase(f.case.x, f.case.y, ile, maillage.position);
+        corps = { maillage, poseA: t, phase: f.id * 1.7 };
+        this.fleurs.set(f.id, corps);
+        this.groupe.add(maillage);
+      }
+      const r = Math.min(1, (t - corps.poseA) / DUREE_REBOND);
+      const sy = r < 1 ? 1 - 0.5 * (1 - r) ** 2 * Math.cos(r * Math.PI * 2.5) : 1;
+      corps.maillage.scale.set(1 - (sy - 1) * 0.5, sy, 1 - (sy - 1) * 0.5);
+      corps.maillage.rotation.z = Math.sin(t * 1.3 + corps.phase) * 0.05;
+    }
+    for (const [id, corps] of this.fleurs) {
+      if (vues.has(id)) continue;
+      this.groupe.remove(corps.maillage);
+      this.fleurs.delete(id);
+      const p = corps.maillage.position;
+      this.eclats.lancer(new THREE.Vector3(p.x, p.y + HAUTEUR_FLEUR * 0.8, p.z), t, { couleurs: [FLEUR.petale, FLEUR.bord, FLEUR.feuille], nombre: 10, taille: 0.1, force: 1 });
     }
   }
 

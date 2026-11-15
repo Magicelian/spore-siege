@@ -268,6 +268,33 @@ export const CARTE_COEUR_MARAIS = [
 ] as const;
 
 /** Lit une carte en lettres ; la souche est le carré de `S`. */
+/**
+ * Prairie, niveau 1 (Prés fleuris) : plages ouest et nord-est. Elles se rejoignent sur la ligne 7, qui descend à la
+ * souche par (10, 8) ; une ronce en (7, 7) envoie l'ouest par la grande boucle sud, une en (10, 8) y envoie tout le monde.
+ */
+export const CARTE_PRES_FLEURIS = [
+  '.....hfhpfh....sss..',
+  '...fhfhhhhhh..ss=s..',
+  '..ffhhpphhhhhfhh=hf.',
+  '.ffhhrhhhhphhhhh=hff',
+  'ss=====hfhhhhphh=pfh',
+  'shhhhh=hhhhhhhhh=hph',
+  'fhhhhh=hhhhhhhhp=hhp',
+  'hhhphh===========hhf',
+  'phhhhp=hhh=hhhhhhhff',
+  '.hhhhh=hpSShhhhhhhh.',
+  'hhhhhh=hhSS===hhhhf.',
+  'hhhhhh=hhhhhh=hhhpff',
+  '.fhhhh=hhhhhh=hhhhf.',
+  '.hhhhp=hphhhh=heehh.',
+  '.hfhhh========heeef.',
+  '..hrhhhhhhhhhhrhhhf.',
+  '..fhhhhhhhfhhhhphph.',
+  '...fhhhhhphhhhhfhf..',
+  '....ffphhhhhhhhfh...',
+  '......fhfhphhh......',
+] as const;
+
 export function lireCarte(lignes: readonly string[], biome: Biome): Ile {
   const profondeur = lignes.length;
   const largeur = lignes[0]?.length ?? 0;

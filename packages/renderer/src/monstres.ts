@@ -407,7 +407,8 @@ export class MonstresRendu {
     corps.jauge.renderOrder = 2;
   }
 
-  private lacherButin(n: number, position: THREE.Vector3, hauteur: number, t: number): void {
+  /** « +N » qui monte au-dessus de `position` (butin d'un mort, récolte d'une fleur). */
+  lacherButin(n: number, position: THREE.Vector3, hauteur: number, t: number): void {
     const { materiau, largeur, hauteur: h } = texteButin(n);
     const sprite = new THREE.Sprite(materiau.clone());
     sprite.renderOrder = 3;

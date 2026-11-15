@@ -1,12 +1,13 @@
 // Une partie sur une île : vagues, monstres qui suivent le sentier, tours qui tirent, spores, vie de la souche.
 // Pur et déterministe : mêmes île, vagues, graine et commandes → même partie, pas pour pas.
-import type { Arrivee, Capacite, Case, Commande, Regles, EvenementVu, FlaqueVu, ImpactVu, Ile, Instantane, MonstreVu, Phase, Position, TourVue, TypeMonstre, TypeTour } from './contrat';
+import type { Arrivee, Capacite, Case, Commande, Regles, EvenementVu, FlaqueVu, FleurVue, ImpactVu, Ile, Instantane, MonstreVu, Phase, Position, TourVue, TypeMonstre, TypeTour } from './contrat';
 import {
   BONUS_PAR_SECONDE_GAGNEE,
   BONUS_VAGUE,
   CAPACITES,
   CAPACITES_DE,
   FACTEUR_GUE,
+  FLEUR,
   MONSTRES,
   PART_RONCE_RENDUE,
   PART_REVENTE,
@@ -118,6 +119,7 @@ export class Partie {
   /** Cases où une ronce peut pousser : l'entrée de chaque branche, autour des carrefours. */
   readonly emplacementsRonces: Case[];
   private ronces = new Set<string>();
+  private fleurs: { id: number; case: Case }[] = [];
   private pas = 0;
   private phase: Phase = 'pause';
   private vague = 1;
@@ -144,7 +146,7 @@ export class Partie {
     graine: number,
     regles: Partial<Regles> = {},
   ) {
-    this.regles = { spores: SPORES_DEPART, tours: [...TYPES_TOURS], ronces: true, capacites: [...TOUTES_CAPACITES], ...regles };
+    this.regles = { spores: SPORES_DEPART, tours: [...TYPES_TOURS], ronces: true, fleurs: false, capacites: [...TOUTES_CAPACITES], ...regles };
     this.spores = this.regles.spores;
     this.sentier = lireSentier(ile);
     this.emplacementsRonces = emplacementsRonces(ile, this.sentier.carrefours);
@@ -222,6 +224,20 @@ export class Partie {
         this.rerouter();
         return true;
       }
+      case 'planterFleur': {
+        const c = commande.case;
+        if (this.spores < FLEUR.prix || !this.fleurLibre(c)) return false;
+        this.spores -= FLEUR.prix;
+        this.fleurs.push({ id: this.prochainId++, case: { x: c.x, y: c.y } });
+        return true;
+      }
+      case 'arracherFleur': {
+        const fleur = this.fleurs.find((f) => f.id === commande.id);
+        if (!fleur) return false;
+        this.spores += Math.floor(FLEUR.prix * FLEUR.partRendue);
+        this.fleurs = this.fleurs.filter((f) => f !== fleur);
+        return true;
+      }
     }
   }
 
@@ -245,7 +261,18 @@ export class Partie {
 
   /** Une tour (de cette sorte, ou de n'importe laquelle) peut-elle être posée sur cette case ? */
   libre(c: Case, tour?: TypeTour): boolean {
-    return constructible(this.ile, c, tour) && !this.tours.some((t) => t.case.x === c.x && t.case.y === c.y);
+    return constructible(this.ile, c, tour) && !this.occupee(c);
+  }
+
+  /** Une fleur à spores peut-elle être plantée ici ? Là où pousse une tour de terre, si le niveau le permet. */
+  fleurLibre(c: Case): boolean {
+    return this.regles.fleurs && constructible(this.ile, c, 'ruche') && !this.occupee(c);
+  }
+
+  /** Une tour ou une fleur est-elle déjà sur cette case ? */
+  private occupee(c: Case): boolean {
+    const ici = (o: { case: Case }) => o.case.x === c.x && o.case.y === c.y;
+    return this.tours.some(ici) || this.fleurs.some(ici);
   }
 
   /** Un pas de simulation. */
@@ -277,6 +304,7 @@ export class Partie {
       if (this.vague >= this.vagues.length) this.phase = 'victoire';
       else {
         this.spores += BONUS_VAGUE.fixe + BONUS_VAGUE.parVague * this.vague;
+        this.recolter();
         this.vague++;
         this.phase = 'pause';
         this.pasPhase = 0;
@@ -327,7 +355,9 @@ export class Partie {
             ? { ...e, position: { ...e.position }, soignes: [...e.soignes] }
             : e.type === 'ponte'
               ? { ...e, position: { ...e.position }, petits: [...e.petits] }
-              : { ...e },
+              : e.type === 'recolte'
+                ? { ...e, case: { ...e.case } }
+                : { ...e },
       ),
       flaques: this.flaques.map(
         (f): FlaqueVu => ({ id: f.id, position: { ...f.position }, rayon: f.rayon, reste: Math.max(0, (f.fin - this.pas) / (f.fin - f.debut)) }),
@@ -336,6 +366,7 @@ export class Partie {
         const [x, y] = k.split(',').map(Number) as [number, number];
         return { x, y };
       }),
+      fleurs: this.fleurs.map((f): FleurVue => ({ id: f.id, case: { ...f.case }, revente: Math.floor(FLEUR.prix * FLEUR.partRendue) })),
       bonusLancer: this.bonusLancer(),
       etoiles: this.phase === 'victoire' ? etoiles(this.pvSouche) : 0,
       monstresVague: this.monstresVague(),
@@ -343,6 +374,14 @@ export class Partie {
       regles: { ...this.regles, tours: [...this.regles.tours], capacites: [...this.regles.capacites] },
       degats: { ...this.degats },
     };
+  }
+
+  /** Fin de vague : chaque fleur à spores rapporte. */
+  private recolter(): void {
+    for (const f of this.fleurs) {
+      this.spores += FLEUR.rapport;
+      this.evenements.push({ type: 'recolte', id: f.id, case: { ...f.case }, gain: FLEUR.rapport, pas: this.pas });
+    }
   }
 
   /** Sortes de monstres de la vague en cours ou à venir, dans l'ordre ; l'amas amène ses petits. */

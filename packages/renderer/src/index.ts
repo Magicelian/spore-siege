@@ -8,7 +8,7 @@ import { centreCase } from './repere';
 import { MonstresRendu } from './monstres';
 import { Pixelisation } from './pixelisation';
 import { SoucheRendu } from './souche';
-import { caseSous, ToursRendu, type Marque, type Pose } from './tours';
+import { caseSous, HAUTEUR_FLEUR, ToursRendu, type Marque, type Pose } from './tours';
 import { Vignettes } from './vignettes';
 
 export type { Marque, Pose } from './tours';
@@ -173,6 +173,7 @@ export class Rendu {
       if (e.type === 'soin') this.monstres.soigner([e.id, ...e.soignes], instant);
       if (e.type === 'ponte') this.monstres.pondre(e.id, instant);
       if (e.type === 'plongee') this.monstres.plonger(e.id, instant);
+      if (e.type === 'recolte') this.monstres.lacherButin(e.gain, centreCase(e.case.x, e.case.y, this.ile, new THREE.Vector3()), HAUTEUR_FLEUR, instant / 1000);
     }
     this.tours.afficher(this.ile, precedent, actuel, alpha, selection, pose, marque, instant, parPixel);
     return nouveaux;
