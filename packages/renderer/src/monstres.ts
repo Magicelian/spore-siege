@@ -31,6 +31,9 @@ const M = {
   chenilleVentre: 0xa9ad86,
   sauterelle: 0x9a9462,
   sauterelleSombre: 0x5e5a38,
+  corbeau: 0x2b2d38,
+  plume: 0x3f4352,
+  bec: 0x5a5048,
 };
 lumineuse(M.oeil, M.soin);
 const C = -0.5;
@@ -229,6 +232,36 @@ function sauterelle(): Voxels {
   return v.poser(3, 3, -1, M.oeil).poser(3, 3, 0, M.oeil);
 }
 
+/**
+ * Grand Corbeau rouillé : corps noir-bleu, ailes déployées le long de z frangées de plumes plus claires, plaques de
+ * métal rouillé sur les ailes, bec sombre, yeux qui luisent, queue en éventail.
+ */
+function corbeau(): Voxels {
+  const v = new Voxels().boule(C - 0.5, 4, C, 4.5, 2.4, 2.4, M.corbeau);
+  v.boule(C + 4, 5.5, C, 2, 2, 1.8, M.corbeau);
+  // Bec long et épais, un peu crochu.
+  v.boite(6, 5, -1, 8, 6, 0, M.bec).poser(9, 5, -1, M.bec).poser(9, 5, 0, M.bec).poser(9, 4, 0, M.bec);
+  v.poser(5, 7, -2, M.oeil).poser(5, 7, 1, M.oeil);
+  // Queue en éventail.
+  for (let x = -5; x >= -8; x--) v.boite(x, 4, -1 - (-5 - x), x, 4, (-5 - x), M.plume);
+  // Ailes : envergure de chaque côté selon z, plus courte vers l'arrière ; bout des plumes plus clair.
+  const envergure: Record<number, number> = { 3: 6, 2: 9, 1: 10, 0: 10, [-1]: 9, [-2]: 8, [-3]: 6, [-4]: 4 };
+  for (const [cle, n] of Object.entries(envergure)) {
+    const x = Number(cle);
+    for (let k = 2; k <= n; k++) {
+      const couleur = k >= n - 1 || (k > 4 && x <= -2) ? M.plume : M.corbeau;
+      v.poser(x, 5, k, couleur).poser(x, 5, -1 - k, couleur);
+    }
+  }
+  // Plaques de métal rouillé rivées sur les ailes.
+  for (const [x, z] of [[1, 4], [0, 5], [1, 5], [-1, 4], [2, 6]] as const) v.poser(x, 6, z, M.rouille).poser(x, 6, -1 - z, M.rouille);
+  v.poser(0, 6, 7, M.rouilleSombre).poser(0, 6, -8, M.rouilleSombre);
+  taches(v, M.corbeau, 0.06);
+  // Pattes griffues.
+  for (const z of [-2, 1]) v.boite(0, 0, z, 0, 1, z, M.bec).poser(1, 0, z, M.bec);
+  return v;
+}
+
 /** Couleurs des éclats quand le monstre meurt. */
 export const ECLATS: Record<TypeMonstre, number[]> = {
   limace: [M.gris, M.rouille, M.grisClair],
@@ -244,6 +277,7 @@ export const ECLATS: Record<TypeMonstre, number[]> = {
   crapaudRoi: [M.crapaud, M.rouille, M.crapaudVentre],
   chenille: [M.chenille, M.rouille, M.chenilleVentre],
   sauterelle: [M.sauterelle, M.sauterelleSombre, M.rouille],
+  corbeau: [M.corbeau, M.plume, M.rouille],
 };
 
 let modeles: Record<TypeMonstre, Modele> | null = null;
@@ -262,6 +296,7 @@ export function modelesMonstres(): Record<TypeMonstre, Modele> {
     crapaudRoi: crapaudRoi().modele(false),
     chenille: chenille().modele(false),
     sauterelle: sauterelle().modele(false),
+    corbeau: corbeau().modele(false),
   };
   return modeles;
 }
@@ -325,7 +360,19 @@ interface Corps {
   jauge: THREE.Sprite;
   /** Sangsue : 0 en surface, 1 sous l'eau. */
   plonge?: number;
+  /** Grand Corbeau : son ombre au sol, et sa hauteur affichée (lissée). */
+  ombre?: THREE.Mesh;
+  vol?: number;
 }
+
+/** Hauteur du Grand Corbeau quand il tourne au-dessus de l'île, en cases. */
+const HAUTEUR_VOL = 2.4;
+/** Le corbeau est un boss : son modèle est grossi d'autant. */
+const TAILLE_CORBEAU = 1.5;
+const OMBRE = new THREE.CircleGeometry(0.55, 20).rotateX(-Math.PI / 2);
+/** Cible d'un piqué du corbeau : anneau rouge qui bat, le temps qu'il arrive. */
+const ALERTE = new THREE.RingGeometry(0.4, 0.55, 24).rotateX(-Math.PI / 2);
+const DUREE_ALERTE = 1.6;
 interface Mourant {
   maillage: THREE.Mesh;
   type: TypeMonstre;
@@ -346,6 +393,7 @@ export class MonstresRendu {
   readonly dessus = new THREE.Group();
   private readonly corps = new Map<number, Corps>();
   private mourants: Mourant[] = [];
+  private alertes: { maillage: THREE.Mesh; debut: number }[] = [];
   private readonly eclats = new Eclats();
   private butins: Butin[] = [];
   private readonly position = new THREE.Vector3();
@@ -383,6 +431,7 @@ export class MonstresRendu {
       versMonde({ x: x + ecart, y: y - ecart }, ile, this.position);
       if (m.type === 'moucheron') this.position.y += Math.sin(instant / 120 + m.id) * 0.06;
       if (m.type === 'volant') this.position.y += Math.sin(instant / 300 + m.id) * 0.08;
+      if (m.altitude !== null) this.planer(corps, m.altitude, x, y, ile, instant);
       // Sauterelle : petits bonds rapides.
       if (m.type === 'sauterelle') this.position.y += Math.abs(Math.sin(instant / 110 + m.id)) * 0.14;
       // Sangsue : s'enfonce sous la surface des gués, ressort sur la terre (en glissant, pas d'un coup).
@@ -396,8 +445,12 @@ export class MonstresRendu {
         const etire = m.saut === null ? 0 : Math.sin(Math.PI * m.saut) * 0.25;
         corps.maillage.scale.set(1 + etire, 1 - etire * 0.6, 1);
       }
-      // La phalène bat des ailes (elles s'étendent le long de z).
+      // La phalène bat des ailes (elles s'étendent le long de z) ; le corbeau aussi, lentement, et les replie posé.
       if (m.type === 'volant') corps.maillage.scale.set(1, 1, 1 + Math.sin(instant / 70 + m.id) * 0.3);
+      if (m.type === 'corbeau') {
+        const vol = corps.vol ?? 1;
+        corps.maillage.scale.set(TAILLE_CORBEAU, TAILLE_CORBEAU, TAILLE_CORBEAU * (0.4 + 0.6 * Math.min(1, vol * 4) + Math.sin(instant / 160) * 0.18 * Math.min(1, vol * 4)));
+      }
       // Limace et amas ondulent en avançant (et s'arrêtent avec eux).
       if (m.type === 'limace' || m.type === 'amas' || m.type === 'petitAmas' || m.type === 'limaceMere') {
         const s = Math.sin((x + y) * 7 + m.id) * 0.07;
@@ -419,6 +472,7 @@ export class MonstresRendu {
     for (const [id, corps] of this.corps) {
       if (vus.has(id)) continue;
       this.dessus.remove(corps.fond, corps.jauge);
+      if (corps.ombre) this.groupe.remove(corps.ombre);
       this.corps.delete(id);
       const fin = actuel.evenements.find((e) => e.id === id && (e.type === 'mort' || e.type === 'morsure'));
       if (!fin) {
@@ -431,6 +485,42 @@ export class MonstresRendu {
     this.animerMourants(t);
     this.eclats.animer(t);
     this.animerButins(t, parPixel);
+    this.animerAlertes(t);
+  }
+
+  /** Grand Corbeau : en l'air selon son altitude (lissée), ombre au sol qui grandit quand il descend. */
+  private planer(corps: Corps, altitude: number, x: number, y: number, ile: Ile, instant: number): void {
+    corps.vol = (corps.vol ?? altitude) + (altitude - (corps.vol ?? altitude)) * 0.3;
+    this.position.y += corps.vol * HAUTEUR_VOL + (corps.vol > 0.05 ? Math.sin(instant / 400) * 0.06 : 0);
+    if (!corps.ombre) {
+      corps.ombre = new THREE.Mesh(OMBRE, new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25, depthWrite: false }));
+      this.groupe.add(corps.ombre);
+    }
+    versMonde({ x, y }, ile, corps.ombre.position).setY(0.03);
+    corps.ombre.scale.setScalar(1.2 - corps.vol * 0.5);
+    corps.ombre.visible = corps.vol > 0.02;
+  }
+
+  /** Le corbeau pique : un anneau rouge bat sur sa cible (fleur ou souche) pour prévenir. */
+  alerter(cible: { x: number; y: number }, ile: Ile, instant: number): void {
+    const maillage = new THREE.Mesh(ALERTE, new THREE.MeshBasicMaterial({ color: 0xff3a2a, transparent: true, opacity: 0.9, depthWrite: false }));
+    versMonde(cible, ile, maillage.position).setY(0.04);
+    this.groupe.add(maillage);
+    this.alertes.push({ maillage, debut: instant / 1000 });
+  }
+
+  private animerAlertes(t: number): void {
+    this.alertes = this.alertes.filter((a) => {
+      const d = t - a.debut;
+      if (d >= DUREE_ALERTE) {
+        this.groupe.remove(a.maillage);
+        (a.maillage.material as THREE.Material).dispose();
+        return false;
+      }
+      a.maillage.scale.setScalar(1 + Math.abs(Math.sin(d * 9)) * 0.35);
+      (a.maillage.material as THREE.MeshBasicMaterial).opacity = 0.9 * (1 - d / DUREE_ALERTE);
+      return true;
+    });
   }
 
   /** Barre de 10 × 2 pixels dans un cadre sombre, cachée tant que le monstre est intact. */

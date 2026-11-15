@@ -48,7 +48,8 @@ export type TypeMonstre =
   | 'crapaud'
   | 'crapaudRoi'
   | 'chenille'
-  | 'sauterelle';
+  | 'sauterelle'
+  | 'corbeau';
 
 export interface MonstreVu {
   id: number;
@@ -67,6 +68,8 @@ export interface MonstreVu {
   saut: number | null;
   /** Chenille en train de dévorer une fleur à spores. */
   mange: boolean;
+  /** Grand Corbeau : hauteur de vol, de 1 (il tourne au-dessus de l'île) à 0 (posé) ; `null` pour les autres. */
+  altitude: number | null;
 }
 
 export type TypeTour = 'ruche' | 'cristal' | 'mortier' | 'canon' | 'heron';
@@ -127,7 +130,9 @@ export type EvenementVu =
   | { type: 'ponte'; id: number; monstre: TypeMonstre; position: Position; petits: number[]; pas: number }
   /** Le Crapaud-roi plonge à un palier : il disparaît quelques secondes et ressortira plus loin avec son escorte. */
   | { type: 'plongee'; id: number; monstre: TypeMonstre; position: Position; pas: number }
-  /** La chenille `id` vient de finir de dévorer la fleur à spores `fleur`. */
+  /** Le Grand Corbeau `id` pique vers `cible` : une fleur à spores, ou la souche (`souche`). */
+  | { type: 'pique'; id: number; monstre: TypeMonstre; cible: Position; souche: boolean; pas: number }
+  /** La chenille ou le Grand Corbeau `id` vient de détruire la fleur à spores `fleur`. */
   | { type: 'devore'; id: number; monstre: TypeMonstre; fleur: number; case: Case; pas: number }
   /** La fleur à spores `id` vient de rapporter `gain` spores (fin de vague). */
   | { type: 'recolte'; id: number; case: Case; gain: number; pas: number };

@@ -89,6 +89,11 @@ export const MONSTRES_TEXTES: Record<TypeMonstre, { nom: string; description: st
     description: 'Une sauterelle sèche et rapide. Elle ne vient jamais seule : les essaims déboulent sur le sentier en un clin d’œil.',
     conseil: 'Un coup de canon ou de mortier en fauche plusieurs à la fois. Une seule cible par tir ne suffit pas.',
   },
+  corbeau: {
+    nom: 'Grand Corbeau rouillé',
+    description: 'Un corbeau immense aux ailes cerclées de fer rouillé. Il tourne au-dessus de l’île, pique sur les fleurs à spores pour les arracher, puis fond sur la souche. S’il l’atteint, tout est perdu.',
+    conseil: 'En vol, seules la ruche et le cristal l’atteignent. Quand il se pose sur une fleur, toutes tes tours peuvent tirer : place-en autour de tes fleurs.',
+  },
 };
 
 export const ILES_TEXTES: Record<Biome, string> = {

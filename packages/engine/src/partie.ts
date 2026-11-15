@@ -61,6 +61,21 @@ interface Monstre {
   fleur: number | null;
   repasFin: number;
   rassasiee: boolean;
+  /** Grand Corbeau : où il en est (voir `planer`) ; null pour les autres. */
+  rapace: Rapace | null;
+}
+
+interface Rapace {
+  etat: 'rejoindre' | 'vol' | 'pique' | 'sol' | 'assaut';
+  /** Angle sur son cercle autour de la souche. */
+  angle: number;
+  /** Pas où finit l'attente en vol ou la pause au sol. */
+  fin: number;
+  /** Fleur visée par le piqué. */
+  fleur: number | null;
+  plongees: number;
+  /** Distance au début du piqué ou de l'assaut (pour l'altitude). */
+  depart: number;
 }
 
 interface Tour {
@@ -260,7 +275,7 @@ export class Partie {
     const bloquees = new Set(this.ronces).add(k);
     if (this.sentier.plages.some((p) => !route(this.ile, p.depart, bloquees))) return false;
     for (const m of this.monstres) {
-      if (MONSTRES[m.type].volant || m.horsSentier) continue;
+      if (this.enLAir(m) || m.horsSentier) continue;
       const voisines = casesAutour(m);
       if (voisines.some((v) => cle(v) === k)) return false;
       if (voisines.length > 0 && !this.nouvelleTrace(m, bloquees)) return false;
@@ -333,6 +348,7 @@ export class Partie {
       immerge: this.immerge(m),
       saut: this.enSaut(m) ? (this.pas - m.sautDebut) / dureeSaut(m.type) : null,
       mange: m.horsSentier === 'repas',
+      altitude: this.altitude(m),
     }));
     const tours: TourVue[] = this.tours.map((t) => ({
       id: t.id,
@@ -367,6 +383,8 @@ export class Partie {
               ? { ...e, position: { ...e.position }, petits: [...e.petits] }
               : e.type === 'recolte' || e.type === 'devore'
                 ? { ...e, case: { ...e.case } }
+                : e.type === 'pique'
+                  ? { ...e, cible: { ...e.cible } }
                 : { ...e },
       ),
       flaques: this.flaques.map(
@@ -450,6 +468,13 @@ export class Partie {
 
   private lacher({ type, plage }: Lacher): void {
     const { depart } = this.sentier.plages[plage]!;
+    if (MONSTRES[type].rapace) {
+      const a = { x: depart.x + 0.5, y: depart.y + 0.5 };
+      const m = this.nouveauMonstre(type, [a, this.centreSouche()], 0);
+      m.rapace = { etat: 'rejoindre', angle: Math.atan2(a.y - this.centreSouche().y, a.x - this.centreSouche().x), fin: 0, fleur: null, plongees: 0, depart: 0 };
+      this.monstres.push(m);
+      return;
+    }
     if (MONSTRES[type].volant) {
       this.monstres.push(this.nouveauMonstre(type, enVol(this.ile, depart), 0));
       return;
@@ -481,6 +506,7 @@ export class Partie {
       fleur: null,
       repasFin: -1,
       rassasiee: false,
+      rapace: null,
       // Décalé selon l'id : une file de crapauds ne bondit pas d'un seul bloc.
       prochainSaut: this.pas + Math.round((MONSTRES[type].saut?.cadence ?? 0) * PAS_PAR_SECONDE) + (this.prochainId % 9),
     };
@@ -489,7 +515,7 @@ export class Partie {
   /** Après une ronce posée ou enlevée : chaque monstre repart par le plus court chemin encore ouvert. */
   private rerouter(): void {
     for (const m of this.monstres) {
-      if (MONSTRES[m.type].volant || m.horsSentier) continue;
+      if (this.enLAir(m) || m.horsSentier) continue;
       const trace = this.nouvelleTrace(m, this.ronces);
       if (!trace) continue;
       m.trace = trace;
@@ -553,7 +579,7 @@ export class Partie {
   /** Le plus fort des ralentis en cours (coup de mortier, flaque de glu), multiplié par celui du gué. */
   private facteurVitesse(m: Monstre): number {
     let facteur = this.pas < m.ralentiJusqua ? m.facteurRalenti : 1;
-    if (MONSTRES[m.type].volant) return facteur;
+    if (this.enLAir(m)) return facteur;
     for (const f of this.flaques) if (distance(m.position, f.position) <= f.rayon) facteur = Math.min(facteur, f.facteur);
     return terrainSous(this.ile, m.position) === 'gue' && !MONSTRES[m.type].nage ? facteur * FACTEUR_GUE : facteur;
   }
@@ -582,6 +608,17 @@ export class Partie {
   private deplacer(): void {
     const restants: Monstre[] = [];
     for (const m of this.monstres) {
+      if (m.rapace) {
+        if (!this.planer(m)) {
+          restants.push(m);
+          continue;
+        }
+        // Il atteint la souche : comme tout boss, la partie est perdue.
+        const degats = Math.max(this.pvSouche, MONSTRES[m.type].morsure);
+        this.pvSouche -= degats;
+        this.evenements.push({ type: 'morsure', id: m.id, monstre: m.type, degats, pas: this.pas });
+        continue;
+      }
       const saut = MONSTRES[m.type].saut;
       if (saut && !this.enSaut(m) && !this.plonge(m) && this.pas >= m.prochainSaut) {
         m.sautDebut = this.pas;
@@ -608,6 +645,117 @@ export class Partie {
       }
     }
     this.monstres = restants;
+  }
+
+  /** Volant, ou Grand Corbeau qui n'est pas posé : seules les tours `aerien` l'atteignent. */
+  private enLAir(m: Monstre): boolean {
+    return !!MONSTRES[m.type].volant || (!!m.rapace && m.rapace.etat !== 'sol');
+  }
+
+  private centreSouche(): Position {
+    const { souche, tailleSouche: t } = this.ile;
+    return { x: souche.x + t / 2, y: souche.y + t / 2 };
+  }
+
+  /**
+   * Un pas du Grand Corbeau : il rejoint son cercle, tourne, pique sur une fleur et s'y pose, puis fond sur la
+   * souche. Renvoie true quand il l'atteint.
+   */
+  private planer(m: Monstre): boolean {
+    const r = MONSTRES[m.type].rapace!;
+    const e = m.rapace!;
+    const centre = this.centreSouche();
+    const pas = 1 / PAS_PAR_SECONDE;
+    const orbite = (angle: number) => ({ x: centre.x + Math.cos(angle) * r.rayon, y: centre.y + Math.sin(angle) * r.rayon });
+    let atteint = false;
+    switch (e.etat) {
+      case 'rejoindre':
+        if (aller(m, orbite(e.angle), r.pique * pas)) {
+          e.etat = 'vol';
+          e.fin = this.pas + Math.round(r.attente * PAS_PAR_SECONDE);
+        }
+        break;
+      case 'vol':
+        e.angle += (MONSTRES[m.type].vitesse * pas) / r.rayon;
+        m.position = orbite(e.angle);
+        if (this.pas >= e.fin) this.choisirProie(m);
+        break;
+      case 'pique': {
+        const fleur = this.fleurs.find((f) => f.id === e.fleur);
+        // Fleur arrachée avant lui : il en cherche une autre, ou fond sur la souche.
+        if (!fleur) {
+          this.choisirProie(m);
+          break;
+        }
+        if (aller(m, { x: fleur.case.x + 0.5, y: fleur.case.y + 0.5 }, r.pique * pas)) {
+          this.fleurs = this.fleurs.filter((f) => f !== fleur);
+          this.evenements.push({ type: 'devore', id: m.id, monstre: m.type, fleur: fleur.id, case: { ...fleur.case }, pas: this.pas });
+          e.plongees++;
+          e.etat = 'sol';
+          e.fin = this.pas + Math.round(r.auSol * PAS_PAR_SECONDE);
+        }
+        break;
+      }
+      case 'sol':
+        if (this.pas >= e.fin) {
+          e.etat = 'rejoindre';
+          e.angle = Math.atan2(m.position.y - centre.y, m.position.x - centre.x);
+        }
+        break;
+      case 'assaut':
+        atteint = aller(m, this.bordSouche(m.position), r.assaut * this.facteurVitesse(m) * pas);
+        break;
+    }
+    // Pour les tours (viser le plus proche de la souche) : il lui reste la distance à la souche.
+    m.trace = [{ ...m.position }, centre];
+    m.longueur = distance(m.position, centre);
+    m.avancement = 0;
+    return atteint;
+  }
+
+  /** Le corbeau pique sur la fleur la plus proche, ou, après ses plongées (ou sans fleur), sur la souche. */
+  private choisirProie(m: Monstre): void {
+    const r = MONSTRES[m.type].rapace!;
+    const e = m.rapace!;
+    let proie: { id: number; case: Case } | null = null;
+    let d = Infinity;
+    if (e.plongees < r.plongees)
+      for (const f of this.fleurs) {
+        const df = distance(m.position, { x: f.case.x + 0.5, y: f.case.y + 0.5 });
+        if (df < d) [proie, d] = [f, df];
+      }
+    if (proie) {
+      e.etat = 'pique';
+      e.fleur = proie.id;
+      e.depart = Math.max(d, 0.01);
+      this.evenements.push({ type: 'pique', id: m.id, monstre: m.type, cible: { x: proie.case.x + 0.5, y: proie.case.y + 0.5 }, souche: false, pas: this.pas });
+      return;
+    }
+    const bord = this.bordSouche(m.position);
+    e.etat = 'assaut';
+    e.fleur = null;
+    e.depart = Math.max(distance(m.position, bord), 0.01);
+    this.evenements.push({ type: 'pique', id: m.id, monstre: m.type, cible: bord, souche: true, pas: this.pas });
+  }
+
+  /** Point du bord de la souche le plus proche de `p`. */
+  private bordSouche(p: Position): Position {
+    const { souche, tailleSouche: t } = this.ile;
+    return { x: Math.min(Math.max(p.x, souche.x), souche.x + t), y: Math.min(Math.max(p.y, souche.y), souche.y + t) };
+  }
+
+  /** Hauteur de vol du corbeau, de 1 (il tourne) à 0 (posé) ; il descend pendant le piqué. */
+  private altitude(m: Monstre): number | null {
+    const e = m.rapace;
+    if (!e) return null;
+    if (e.etat === 'sol') return 0;
+    if (e.etat === 'pique' || e.etat === 'assaut') {
+      const fleur = this.fleurs.find((f) => f.id === e.fleur);
+      const but = e.etat === 'assaut' ? this.bordSouche(m.position) : fleur ? { x: fleur.case.x + 0.5, y: fleur.case.y + 0.5 } : m.position;
+      const part = Math.min(1, distance(m.position, but) / e.depart);
+      return e.etat === 'assaut' ? 0.25 + 0.75 * part : part;
+    }
+    return 1;
   }
 
   /**
@@ -688,7 +836,7 @@ export class Partie {
     let meilleur: Monstre | null = null;
     for (const m of this.monstres) {
       if (m.pv <= 0 || exclus?.has(m) || distance(centre, m.position) > portee) continue;
-      if (!aerien && MONSTRES[m.type].volant) continue;
+      if (!aerien && this.enLAir(m)) continue;
       if (this.horsDAtteinte(m, sousEau)) continue;
       if (!meilleur || m.longueur - m.avancement < meilleur.longueur - meilleur.avancement) meilleur = m;
     }
@@ -825,7 +973,7 @@ export class Partie {
       }
       for (const m of this.monstres) {
         if (m.pv <= 0 || distance(m.position, p.but) > p.rayon) continue;
-        if (MONSTRES[m.type].volant && !TOURS[p.type].aerien) continue;
+        if (this.enLAir(m) && !TOURS[p.type].aerien) continue;
         if (this.horsDAtteinte(m, TOURS[p.type].sousEau)) continue;
         this.toucher(m, p);
       }
@@ -851,7 +999,7 @@ export class Partie {
       p.position.y += ((p.but.y - p.position.y) / reste) * avance;
     }
     for (const m of this.monstres) {
-      if (m.pv <= 0 || h.touches.has(m) || MONSTRES[m.type].volant || this.plonge(m)) continue;
+      if (m.pv <= 0 || h.touches.has(m) || this.enLAir(m) || this.plonge(m)) continue;
       if (distanceAuSegment(m.position, avant, p.position) > h.largeur) continue;
       h.touches.add(m);
       this.toucher(m, p);
@@ -966,6 +1114,17 @@ export function constructible(ile: Ile, c: Case, tour?: TypeTour): boolean {
   const surTerre = terrain === 'herbe' || terrain === 'fleurs';
   if (!tour) return surEau || surTerre;
   return TOURS[tour].surEau ? surEau : surTerre;
+}
+
+/** Avance `m` en ligne droite vers `but` d'au plus `pas` cases ; true s'il y est. */
+function aller(m: { position: Position }, but: Position, pas: number): boolean {
+  const d = distance(m.position, but);
+  if (d <= pas) {
+    m.position = { ...but };
+    return true;
+  }
+  m.position = { x: m.position.x + ((but.x - m.position.x) / d) * pas, y: m.position.y + ((but.y - m.position.y) / d) * pas };
+  return false;
 }
 
 /** Point à `longueur` de `depuis`, dans la direction de `vers`. */

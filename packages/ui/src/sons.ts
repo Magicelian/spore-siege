@@ -29,7 +29,8 @@ export type Effet =
   | 'planter'
   | 'arracher'
   | 'recolte'
-  | 'devore';
+  | 'devore'
+  | 'pique';
 
 const VOLUME = 0.22;
 /** Ambiance de fond, basse exprès (même niveau que Tiny Shrooms) ; le vent par-dessus en léger souffle. */
@@ -144,6 +145,11 @@ const EFFETS: Record<Effet, { notes: Note[]; souffles?: Souffle[] }> = {
   // Fleur à spores : petit « pop » montant quand on plante, descendant quand on arrache ; récolte = deux notes claires.
   planter: { notes: [{ f: 440, t: 0, d: 0.08, vers: 660, onde: 'triangle', v: 0.3 }, { f: 880, t: 0.07, d: 0.09, onde: 'sine', v: 0.18 }], souffles: [{ t: 0, d: 0.1, f: 2200, v: 0.2 }] },
   arracher: { notes: [{ f: 520, t: 0, d: 0.12, vers: 260, onde: 'triangle', v: 0.3 }], souffles: [{ t: 0, d: 0.12, f: 1600, v: 0.3 }] },
+  // Cri du Grand Corbeau qui pique : deux croassements rauques.
+  pique: {
+    notes: [{ f: 620, t: 0, d: 0.16, vers: 380, onde: 'sawtooth', v: 0.35 }, { f: 560, t: 0.22, d: 0.2, vers: 320, onde: 'sawtooth', v: 0.35 }],
+    souffles: [{ t: 0, d: 0.16, f: 1800, v: 0.25 }, { t: 0.22, d: 0.2, f: 1600, v: 0.25 }],
+  },
   // Chenille qui finit une fleur : trois croques sèches.
   devore: { notes: [{ f: 220, t: 0.18, d: 0.08, vers: 150, onde: 'square', v: 0.15 }], souffles: [{ t: 0, d: 0.05, f: 2600, v: 0.35 }, { t: 0.09, d: 0.05, f: 2300, v: 0.35 }, { t: 0.18, d: 0.07, f: 2000, v: 0.4 }] },
   recolte: { notes: [{ f: 1175, t: 0, d: 0.06, onde: 'sine', v: 0.16 }, { f: 1568, t: 0.06, d: 0.1, onde: 'sine', v: 0.14 }] },

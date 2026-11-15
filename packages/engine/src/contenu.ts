@@ -46,6 +46,12 @@ export interface FicheMonstre {
    * puis rejoint le sentier le plus proche. Une seule fleur par chenille.
    */
   gourmande?: { flair: number; duree: number };
+  /**
+   * Grand Corbeau : tourne à `rayon` cases autour de la souche (à `vitesse`), et toutes les `attente` secondes pique
+   * à `pique` cases/s sur la fleur à spores la plus proche ; il l'arrache et reste `auSol` secondes posé (toutes les
+   * tours l'atteignent alors). Après `plongees` fleurs, ou s'il n'y en a plus, il fond sur la souche à `assaut` cases/s.
+   */
+  rapace?: { rayon: number; attente: number; pique: number; auSol: number; plongees: number; assaut: number };
 }
 
 export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
@@ -97,6 +103,16 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
   chenille: { pv: 30, vitesse: 0.7, morsure: 1, butin: 4, armure: 0, gourmande: { flair: 3.5, duree: 2.5 } },
   // Prairie, niveau 3 : en grands essaims, très rapide et très fragile.
   sauterelle: { pv: 5, vitesse: 2.4, morsure: 1, butin: 1, armure: 0 },
+  // Boss de la prairie : vole au-dessus de l'île, arrache les fleurs, puis fond sur la souche. Chiffres provisoires (10d).
+  corbeau: {
+    pv: 450,
+    vitesse: 1.6,
+    morsure: 20,
+    butin: 70,
+    armure: 2,
+    boss: { paliers: [] },
+    rapace: { rayon: 6, attente: 5, pique: 3, auSol: 3, plongees: 3, assaut: 0.5 },
+  },
 };
 
 /** Spores au départ : de quoi poser les deux premières tours. */
