@@ -6,6 +6,7 @@ import {
   BONUS_VAGUE,
   CAPACITES,
   CAPACITES_DE,
+  FACTEUR_GUE,
   MONSTRES,
   PART_RONCE_RENDUE,
   PART_REVENTE,
@@ -452,12 +453,12 @@ export class Partie {
     return MONSTRES[m.type].vitesse * this.facteurVitesse(m);
   }
 
-  /** Le plus fort des ralentis en cours : coup de mortier, flaque de glu. */
+  /** Le plus fort des ralentis en cours (coup de mortier, flaque de glu), multiplié par celui du gué. */
   private facteurVitesse(m: Monstre): number {
     let facteur = this.pas < m.ralentiJusqua ? m.facteurRalenti : 1;
     if (MONSTRES[m.type].volant) return facteur;
     for (const f of this.flaques) if (distance(m.position, f.position) <= f.rayon) facteur = Math.min(facteur, f.facteur);
-    return facteur;
+    return terrainSous(this.ile, m.position) === 'gue' ? facteur * FACTEUR_GUE : facteur;
   }
 
   /** Chaque soigneur, à son rythme, rend de la vie aux autres monstres blessés autour de lui. */
@@ -707,13 +708,21 @@ export function etoiles(pvSouche: number): number {
   return 1;
 }
 
-/** Herbe ou fleurs, hors de la souche : là où une tour peut pousser. */
+/** Herbe, fleurs ou nénuphar, hors de la souche : là où une tour peut pousser. */
 export function constructible(ile: Ile, c: Case): boolean {
   if (c.x < 0 || c.y < 0 || c.x >= ile.largeur || c.y >= ile.profondeur) return false;
   const { souche, tailleSouche } = ile;
   if (c.x >= souche.x && c.x < souche.x + tailleSouche && c.y >= souche.y && c.y < souche.y + tailleSouche) return false;
   const terrain = ile.terrain[c.y * ile.largeur + c.x];
-  return terrain === 'herbe' || terrain === 'fleurs';
+  return terrain === 'herbe' || terrain === 'fleurs' || terrain === 'nenuphar';
+}
+
+/** Terrain sous un point (en cases). */
+function terrainSous(ile: Ile, p: Position) {
+  const x = Math.floor(p.x);
+  const y = Math.floor(p.y);
+  if (x < 0 || y < 0 || x >= ile.largeur || y >= ile.profondeur) return 'vide';
+  return ile.terrain[y * ile.largeur + x];
 }
 
 /**

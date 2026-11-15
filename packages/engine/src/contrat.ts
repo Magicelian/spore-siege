@@ -13,7 +13,9 @@ export interface Position {
 }
 
 /** `sentier` : là où marchent les monstres ; `sable` : plage de débarquement. */
-export type Terrain = 'vide' | 'herbe' | 'foret' | 'fleurs' | 'buisson' | 'rocher' | 'eau' | 'sable' | 'sentier';
+export type Terrain = 'vide' | 'herbe' | 'foret' | 'fleurs' | 'buisson' | 'rocher' | 'eau' | 'sable' | 'sentier' | 'gue' | 'nenuphar';
+/** Cases où marchent les monstres : le sentier et ses gués (sentier dans l'eau). */
+export const estSentier = (t: Terrain | undefined) => t === 'sentier' || t === 'gue';
 
 /** Une île par niveau, un biome par île (seule la forêt est prévue en V1). */
 export type Biome = 'foret' | 'marais' | 'prairie' | 'grotte' | 'futaie';

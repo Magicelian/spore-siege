@@ -11,6 +11,10 @@ const LETTRES: Record<string, Terrain> = {
   e: 'eau',
   s: 'sable',
   '=': 'sentier',
+  // Sentier dans l'eau : les monstres y passent ralentis.
+  g: 'gue',
+  // Feuille flottante : les tours de terre s'y posent aussi.
+  n: 'nenuphar',
   // La souche est posée sur de l'herbe.
   S: 'herbe',
 };
@@ -135,6 +139,33 @@ export const CARTE_COEUR = [
   '..fhhhhhhpbhhhhhhhf.',
   '...fhhhhhhhhhhhhhf..',
   '....ffhhhhhhhhfff...',
+  '......ffffffff......',
+] as const;
+
+/**
+ * Marais, niveau 1 (Roselière) : une plage au nord-est. Le long sentier descend, traverse l'étang sud à gué et
+ * remonte vers la souche ; un raccourci passe l'étang nord à gué, une ronce en (15, 5) le ferme.
+ */
+export const CARTE_ROSELIERE = [
+  '.....ffffff....sss..',
+  '...fffhhhhff..ss=s..',
+  '..ffhhhhhhhheeeh=hf.',
+  '.ffbhhhhpheeeene=hff',
+  '.fhhhhhhfhneeeee=hff',
+  'fheehhhhhhee=gg==hhf',
+  'feeehhhphheegeee=hhf',
+  'fenehhhhhhhhgnee=hhf',
+  'feeehhhhhhhh=hhh=hff',
+  '.heehhhhhSS==hhh=bf.',
+  'fhhhh====SShhhhh=hf.',
+  'fhhhh=hhhhhhhhhh=hff',
+  '.fhhh=heeeeeeehh=hf.',
+  '.fhhh=eeneeeeenh=hf.',
+  '.ffhh=ggggggggg==hf.',
+  '..fhhheeeeeeeeehhhf.',
+  '..ffhhheeeneehhhhff.',
+  '...ffhhhhhhhhhhfff..',
+  '....fffhhhhhhffff...',
   '......ffffffff......',
 ] as const;
 

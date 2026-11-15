@@ -102,7 +102,7 @@ export function reduire(carte: readonly string[]): string[] {
     let ligne = '';
     for (let x = 0; x < (carte[0]?.length ?? 0); x += 2) {
       const bloc = [carte[y]?.[x], carte[y]?.[x + 1], carte[y + 1]?.[x], carte[y + 1]?.[x + 1]].filter((l): l is string => !!l);
-      const prioritaire = ['S', '=', 's', 'e'].find((l) => bloc.includes(l));
+      const prioritaire = ['S', '=', 'g', 's', 'e'].find((l) => bloc.includes(l));
       if (prioritaire) ligne += prioritaire;
       else if (bloc.filter((l) => l === '.').length >= 2) ligne += '.';
       else {

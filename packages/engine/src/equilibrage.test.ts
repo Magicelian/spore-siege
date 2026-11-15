@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { ileForet } from './carte';
 import { VAGUES_FORET } from './contenu';
 import { jouer, type Bilan, type Style } from './joueur';
-import { ileDe, NIVEAUX_FORET } from './niveaux';
+import { ileDe, NIVEAUX_FORET, NIVEAUX_MARAIS } from './niveaux';
 
 const bilans = (['naif', 'simple', 'bon'] as Style[]).map((n) => jouer(n, ileForet(), VAGUES_FORET));
 
@@ -119,4 +119,31 @@ describe('équilibrage des niveaux 2 à 5 de la forêt', () => {
     const coeur = autres[3]!.meilleur.pv;
     for (const { meilleur } of autres.slice(0, 3)) expect(coeur).toBeLessThanOrEqual(meilleur.pv);
   });
+});
+
+// Marais (étape 9) : le niveau 1 vaut à peu près le niveau 3 de la forêt (cahier §3, « Le marais »).
+const marais = NIVEAUX_MARAIS.map((n) => {
+  const [naif, simple, bon] = (['naif', 'simple', 'bon'] as Style[]).map((st) => jouer(st, ileDe(n), n.vagues, n.regles)) as [Bilan, Bilan, Bilan];
+  const meilleur = [simple, bon].sort((a, b) => b.pv - a.pv || b.vague - a.vague)[0]!;
+  return { n, naif, simple, bon, meilleur };
+});
+
+describe('équilibrage du marais', () => {
+  it('rapport', () => {
+    for (const { n, naif, simple, bon } of marais)
+      for (const b of [naif, simple, bon])
+        process.stderr.write(
+          `${n.id} ${b.style.padEnd(7)} ${b.phase.padEnd(8)} vague ${b.vague}  PV ${b.pv}  ★${b.etoiles}  ${b.minutes} min  pertes ${b.pertes.join(' ')}\n`,
+        );
+  });
+
+  for (const { n, naif, meilleur } of marais) {
+    it(`${n.nom} : gagnable sans 3 étoiles, ruches seules battues, en 8 à 18 minutes`, () => {
+      expect(meilleur.phase).toBe('victoire');
+      expect(meilleur.etoiles).toBeLessThanOrEqual(2);
+      expect(naif.phase).toBe('defaite');
+      expect(meilleur.minutes).toBeGreaterThanOrEqual(8);
+      expect(meilleur.minutes).toBeLessThanOrEqual(18);
+    });
+  }
 });

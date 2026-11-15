@@ -8,6 +8,8 @@ export const PAS_PAR_SECONDE = 1000 / PAS_MS;
 export const PV_SOUCHE = 20;
 /** Pause avant chaque vague, pour construire ; un bouton l'écourte. */
 export const PAUSE_SECONDES = 25;
+/** Dans un gué, les monstres qui marchent vont à cette fraction de leur vitesse. */
+export const FACTEUR_GUE = 0.6;
 
 export interface FicheMonstre {
   /** Vole en ligne droite vers la souche : ignore sentier et ronces, seules les tours `aerien` l'atteignent. */

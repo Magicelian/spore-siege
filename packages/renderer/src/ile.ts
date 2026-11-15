@@ -1,6 +1,6 @@
 // Île en coupe : herbe, terre et roche empilées par colonne, décor posé sur les cases.
 import * as THREE from 'three';
-import type { Ile, Terrain } from '@spore-siege/engine';
+import { estSentier, type Ile, type Terrain } from '@spore-siege/engine';
 import { COULEURS, SURFACES_PAR_BIOME, materiau } from './palette';
 import { modelesDecor, type Decor } from './modeles';
 import { bruit, centreCase } from './repere';
@@ -45,7 +45,7 @@ export function construireIle(ile: Ile): THREE.Group {
       const b = bruit(x, y);
 
       // Colonne : surface, terre, puis roche plus profonde vers le centre.
-      const hautSurface = terrain === 'eau' ? -0.12 : 0;
+      const hautSurface = terrain === 'eau' || terrain === 'nenuphar' ? -0.12 : terrain === 'gue' ? -0.08 : 0;
       poser('cube', surfaces[terrain], 'recoit', centre.clone().setY(HAUT_TERRE), echelle.set(1, hautSurface - HAUT_TERRE, 1));
       poser('cube', COULEURS.terre, 'recoit', centre.clone().setY(HAUT_ROCHE), echelle.set(1, HAUT_TERRE - HAUT_ROCHE, 1));
       const profondeurRoche = Math.min(4, 0.5 + (bords[y * ile.largeur + x] ?? 0) * 0.8 + b * 0.5);
@@ -62,6 +62,16 @@ export function construireIle(ile: Ile): THREE.Group {
         poser('buisson', 0, 'porte', decalage, echelle.setScalar(0.85 + b * 0.25), quart(b));
       } else if (terrain === 'rocher') {
         poser('caillou', 0, 'porte', decalage, echelle.set(0.85, 0.75 + b * 0.3, 0.85), quart(b));
+      } else if (terrain === 'nenuphar') {
+        // Une grande feuille qui couvre la case : on y pose une tour. Pas de petits nénuphars de décor, pour ne
+        // pas les confondre avec ceux-là.
+        poser('nenuphar', 0, 'recoit', centre.clone().setY(hautSurface + 0.01), echelle.setScalar(1.7), quart(b));
+      } else if (terrain === 'gue') {
+        // Deux pierres plates de part et d'autre : le sentier continue sous l'eau.
+        for (const [i, cote] of [[0, -1], [1, 1]] as const) {
+          const pierre = centre.clone().add(new THREE.Vector3(cote * 0.28 + (bruit(x, y, 6 + i) - 0.5) * 0.15, hautSurface, (bruit(x, y, 8 + i) - 0.5) * 0.5));
+          poser('cube', COULEURS.roche, 'recoit', pierre, echelle.set(0.26, 0.05, 0.22), quart(b));
+        }
       }
     }
   }
@@ -81,7 +91,7 @@ function terrainVu(ile: Ile, x: number, y: number): Terrain {
     const nx = x + dx;
     const ny = y + dy;
     if (nx < 0 || ny < 0 || nx >= ile.largeur || ny >= ile.profondeur || dansSouche(nx, ny)) continue;
-    if (ile.terrain[ny * ile.largeur + nx] === 'sentier') return 'sentier';
+    if (estSentier(ile.terrain[ny * ile.largeur + nx])) return 'sentier';
   }
   return terrain;
 }

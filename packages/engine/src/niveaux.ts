@@ -1,6 +1,6 @@
 // Les niveaux : une carte, des vagues et des contraintes. Une île = 5 niveaux (4 + un boss), cahier §3.
 import type { Biome, Capacite, Ile, Regles } from './contrat';
-import { CARTE_COEUR, CARTE_FORET, CARTE_FOURRE, CARTE_SOUS_BOIS, CARTE_TROIS_SENTIERS, lireCarte } from './carte';
+import { CARTE_COEUR, CARTE_FORET, CARTE_FOURRE, CARTE_ROSELIERE, CARTE_SOUS_BOIS, CARTE_TROIS_SENTIERS, lireCarte } from './carte';
 import { VAGUES_FORET } from './contenu';
 import type { Vague } from './contenu';
 import { Partie } from './partie';
@@ -217,8 +217,13 @@ export const NIVEAUX_FORET: Niveau[] = [
   },
   { id: 'foret-5', nom: 'Cœur de la forêt', biome: 'foret', carte: CARTE_COEUR, vagues: VAGUES_COEUR, regles: {}, boss: true },
 ];
+/** Les niveaux du marais (cahier §3) : l'eau, ses gués qui ralentissent et ses nénuphars. */
+export const NIVEAUX_MARAIS: Niveau[] = [
+  { id: 'marais-1', nom: 'Roselière', biome: 'marais', carte: CARTE_ROSELIERE, vagues: renforcer(VAGUES_FORET, 1.8, 3.2), regles: {} },
+];
+
 /** Niveaux de chaque île, dans l'ordre du parcours ; une île sans niveaux n'est pas encore jouable. */
-export const NIVEAUX: Partial<Record<Biome, Niveau[]>> = { foret: NIVEAUX_FORET };
+export const NIVEAUX: Partial<Record<Biome, Niveau[]>> = { foret: NIVEAUX_FORET, marais: NIVEAUX_MARAIS };
 
 /** Étoiles à réunir sur les 4 niveaux d'une île pour ouvrir son boss. */
 export const SEUIL_BOSS = 8;

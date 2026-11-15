@@ -63,12 +63,24 @@ export function jouer(style: Style, ile: Ile, vagues: readonly Vague[], regles: 
 class Joueur {
   /** Ronces que le bon joueur compte poser, dans l'ordre. */
   private readonly plan: Case[];
+  /**
+   * Ronces avant les deux premières ruches quand le chemin qu'elles imposent a peu en commun avec le chemin libre :
+   * sinon les ruches, posées sur le chemin prévu, ne voient pas passer la première vague.
+   */
+  private readonly ronceDabord: boolean;
 
   constructor(
     private readonly style: Style,
     private readonly partie: Partie,
   ) {
     this.plan = style === 'bon' && partie.regles.ronces ? this.meilleuresRonces() : [];
+    const { ile, sentier } = partie;
+    const prevues = this.routes();
+    this.ronceDabord = sentier.plages.some((p, n) => {
+      const libre = new Set((route(ile, p.depart) ?? []).map(cle));
+      const prevue = prevues[n] ?? [];
+      return prevue.filter((c) => libre.has(cle(c))).length < prevue.length / 2;
+    });
   }
 
   /** Dépense ce qu'il peut, action après action, tant que la suivante est payable. */
@@ -120,7 +132,7 @@ class Joueur {
     // Bon joueur.
     const ronce = this.plan.find((c) => !i.ronces.some((r) => r.x === c.x && r.y === c.y));
     // Ouverture : deux ruches (elles touchent tout, phalènes comprises), puis les ronces, puis selon les monstres.
-    if (tours.length < 2) return poser('ruche');
+    if (tours.length < 2 && !(ronce && this.ronceDabord)) return poser('ruche');
     if (ronce) return () => this.partie.executer({ type: 'poserRonce', case: ronce });
     if (tours.length < 3) return poser(this.typeVoulu());
     if (tours.some((t) => t.stade < 2)) return ameliorer;

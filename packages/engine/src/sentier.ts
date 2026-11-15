@@ -1,5 +1,5 @@
 // Le sentier vu comme un graphe de cases : plages d'arrivée, carrefours, plus court chemin vers la souche.
-import type { Case, Ile } from './contrat';
+import { estSentier, type Case, type Ile } from './contrat';
 
 /** Une plage de débarquement : les monstres apparaissent sur le sable, puis prennent le sentier à son entrée. */
 export interface Plage {
@@ -27,7 +27,7 @@ function terrain(ile: Ile, x: number, y: number) {
 }
 
 function voisinsSentier(ile: Ile, c: Case): Case[] {
-  return VOISINS.map(([dx, dy]) => ({ x: c.x + dx, y: c.y + dy })).filter((v) => terrain(ile, v.x, v.y) === 'sentier');
+  return VOISINS.map(([dx, dy]) => ({ x: c.x + dx, y: c.y + dy })).filter((v) => estSentier(terrain(ile, v.x, v.y)));
 }
 
 /** La case touche-t-elle l'emprise de la souche ? */
@@ -38,13 +38,14 @@ export function bordeSouche(ile: Ile, c: Case): boolean {
   return (dedansX && (c.y === souche.y - 1 || c.y === souche.y + t)) || (dedansY && (c.x === souche.x - 1 || c.x === souche.x + t));
 }
 
-/** Où poser une ronce : les cases de sentier qui touchent un carrefour (l'entrée de chaque branche). */
+/** Où poser une ronce : les cases de sentier (hors gués) qui touchent un carrefour (l'entrée de chaque branche). */
 export function emplacementsRonces(ile: Ile, carrefours: readonly Case[]): Case[] {
   const vus = new Set(carrefours.map(cle));
   const cases: Case[] = [];
   for (const c of carrefours)
     for (const v of voisinsSentier(ile, c)) {
-      if (vus.has(cle(v))) continue;
+      // Pas de ronce dans l'eau.
+      if (vus.has(cle(v)) || terrain(ile, v.x, v.y) === 'gue') continue;
       vus.add(cle(v));
       cases.push(v);
     }
@@ -56,7 +57,7 @@ export function lireSentier(ile: Ile): Sentier {
   const carrefours: Case[] = [];
   for (let y = 0; y < ile.profondeur; y++) {
     for (let x = 0; x < ile.largeur; x++) {
-      if (terrain(ile, x, y) !== 'sentier') continue;
+      if (!estSentier(terrain(ile, x, y))) continue;
       const entree = { x, y };
       const suite = voisinsSentier(ile, entree);
       if (suite.length >= 3) carrefours.push(entree);
