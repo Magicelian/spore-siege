@@ -187,7 +187,7 @@ describe('équilibrage de la prairie', () => {
 });
 
 // Grotte (étape 11) : le niveau 1 vaut à peu près le niveau 3 de la prairie ; tous les scripts sauf le naïf posent
-// des champignons-lanternes là où leurs tours ne voient que du noir.
+// des champignons-lanternes là où leurs tours ne voient que du noir, et gardent la souche contre les chauves-souris.
 const grotte = NIVEAUX_GROTTE.map((n) => {
   const [naif, simple, bon, ruches, cristaux] = (['naif', 'simple', 'bon', 'seul:ruche', 'seul:cristal'] as Style[]).map((st) =>
     jouer(st, ileDe(n), n.vagues, n.regles),
@@ -205,7 +205,6 @@ describe('équilibrage de la grotte', () => {
         );
   });
 
-  // Provisoire (11a) : réglé pour de bon en 11d avec les niveaux 2 à 5.
   for (const { n, naif, ruches, cristaux, meilleur } of grotte) {
     it(`${n.nom} : gagnable sans 3 étoiles, ni pour le meilleur script ni pour une seule sorte de tour, en 8 à 19 minutes`, () => {
       expect(meilleur.phase).toBe('victoire');
@@ -215,4 +214,9 @@ describe('équilibrage de la grotte', () => {
       expect(meilleur.minutes).toBeLessThanOrEqual(19);
     });
   }
+
+  it('le Ver des profondeurs est le niveau le plus dur : le meilleur script y garde le moins de vie', () => {
+    const coeur = grotte[4]!.meilleur.pv;
+    for (const { meilleur } of grotte.slice(0, 4)) expect(coeur).toBeLessThanOrEqual(meilleur.pv);
+  });
 });

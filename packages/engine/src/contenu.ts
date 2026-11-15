@@ -124,14 +124,14 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
     rapace: { rayon: 6, attente: 5, pique: 3, auSol: 4, plongees: 3, assaut: 0.35 },
   },
   // Grotte, niveau 2 : vole tout droit comme la phalène et éteint les lanternes qu'elle survole.
-  chauveSouris: { pv: 12, vitesse: 1.1, morsure: 1, butin: 3, armure: 0, volant: true, souffle: { rayon: 1.2, duree: 6 } },
+  chauveSouris: { pv: 8, vitesse: 0.9, morsure: 1, butin: 3, armure: 0, volant: true, souffle: { rayon: 1.2, duree: 6 } },
   // Grotte, niveau 3 : se roule en boule quand on le touche (le cristal, qui perce l'armure, le blesse quand même).
   cloporte: { pv: 40, vitesse: 0.55, morsure: 2, butin: 5, armure: 1, boule: { duree: 2, armure: 12, recharge: 3, elan: 1.8, elanDuree: 2 } },
   // Boss de la grotte : énorme et lent ; à chaque palier il souffle toutes les lanternes (seuls les luisants de la
   // carte restent). Chiffres provisoires, à régler en 11d avec les joueurs scriptés.
   ver: {
     pv: 700,
-    vitesse: 0.22,
+    vitesse: 0.3,
     morsure: 20,
     butin: 70,
     armure: 3,

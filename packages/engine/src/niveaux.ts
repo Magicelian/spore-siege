@@ -4,7 +4,11 @@ import {
   CARTE_BRAS_MORTS,
   CARTE_COEUR,
   CARTE_COEUR_MARAIS,
+  CARTE_COEUR_GROTTE,
   CARTE_GALERIE,
+  CARTE_LAC,
+  CARTE_MINE,
+  CARTE_VOUTE,
   CARTE_FORET,
   CARTE_FOURRE,
   CARTE_GUES,
@@ -425,12 +429,80 @@ export const VAGUES_GALERIE: Vague[] = [
   [g('amas', 10, 2.6, 0, 0), g('scarabee', 10, 2.6, 0, 1), g('limace', 14, 1.4, 12), g('soigneur', 3, 5, 8)],
 ];
 
+/** La Voûte (grotte 2) : arrivée de la Chauve-souris. Plage 0 = nord-est, 1 = ouest. */
+export const VAGUES_VOUTE: Vague[] = [
+  [g('limace', 10, 2.5)],
+  [g('chauveSouris', 6, 2.5, 0, 0), g('limace', 10, 2, 4, 1)],
+  [g('scarabee', 4, 5), g('chauveSouris', 8, 2, 6)],
+  [g('moucheron', 20, 0.8), g('limace', 10, 2, 6)],
+  [g('crapaud', 8, 2.5, 0, 1), g('chauveSouris', 10, 1.6, 6, 0)],
+  [g('amas', 8, 3), g('soigneur', 2, 6, 6), g('chauveSouris', 8, 1.8, 10)],
+  [g('sauterelle', 30, 0.3), g('scarabee', 6, 3, 8)],
+  [g('chauveSouris', 16, 1.2), g('limace', 16, 1.4, 4)],
+  [g('scarabee', 10, 2.6), g('amas', 8, 2.8, 6), g('chauveSouris', 12, 1.4, 10)],
+  [g('amas', 10, 2.4, 0, 0), g('scarabee', 10, 2.4, 0, 1), g('chauveSouris', 16, 1.2, 8), g('soigneur', 3, 5, 8)],
+];
+
+/** Lac souterrain (grotte 3) : arrivée du Cloporte, sangsues dans les gués. Plage 0 = ouest, 1 = sud. */
+export const VAGUES_LAC: Vague[] = [
+  [g('limace', 12, 2.2)],
+  [g('cloporte', 4, 4, 0, 1), g('limace', 10, 2, 4, 0)],
+  [g('sangsue', 10, 1.8, 0, 0), g('chauveSouris', 6, 2, 6)],
+  [g('cloporte', 8, 3), g('moucheron', 16, 0.8, 6)],
+  [g('scarabee', 6, 4), g('sangsue', 12, 1.4, 4, 0)],
+  [g('cloporte', 10, 2.6), g('chauveSouris', 10, 1.6, 6)],
+  [g('amas', 10, 2.6), g('soigneur', 3, 5, 6), g('crapaud', 8, 2, 10)],
+  [g('sauterelle', 30, 0.3), g('cloporte', 10, 2.4, 6)],
+  [g('scarabee', 10, 2.6), g('sangsue', 16, 1.2, 4), g('chauveSouris', 12, 1.4, 10)],
+  [g('cloporte', 16, 1.8), g('amas', 10, 2.4, 6), g('chauveSouris', 14, 1.2, 10), g('soigneur', 3, 5, 8)],
+];
+
+/** Mine abandonnée (grotte 4) : 3 plages, presque aucun luisant. Plage 0 = nord-est, 1 = ouest, 2 = sud. */
+export const VAGUES_MINE: Vague[] = [
+  [g('limace', 12, 2)],
+  [g('cloporte', 6, 3), g('limace', 12, 1.8, 4)],
+  [g('chauveSouris', 6, 2.2), g('scarabee', 4, 5, 6)],
+  [g('moucheron', 24, 0.7), g('cloporte', 8, 2.6, 6)],
+  [g('amas', 8, 3), g('chauveSouris', 8, 1.8, 6)],
+  [g('scarabee', 8, 3), g('soigneur', 3, 5, 6), g('limace', 16, 1.2, 8)],
+  [g('sauterelle', 36, 0.25), g('cloporte', 10, 2.2, 8)],
+  [g('chauveSouris', 14, 1.2), g('amas', 10, 2.4, 6)],
+  [g('scarabee', 12, 2.4), g('cloporte', 12, 2, 6), g('chauveSouris', 12, 1.4, 12)],
+  [g('amas', 12, 2.2), g('scarabee', 10, 2.4, 4), g('cloporte', 14, 1.8, 8), g('chauveSouris', 16, 1.2, 12), g('soigneur', 3, 5, 10)],
+];
+
+/** Cœur de la grotte (grotte 5, boss) : le Ver des profondeurs en dernière vague, par l'ouest. Plage 0 = ouest, 1 = est. */
+export const VAGUES_COEUR_GROTTE: Vague[] = [
+  [g('limace', 14, 1.8)],
+  [g('chauveSouris', 10, 1.8), g('cloporte', 4, 4, 6)],
+  [g('moucheron', 22, 0.8), g('scarabee', 4, 4, 6)],
+  [g('cloporte', 10, 2.4), g('chauveSouris', 10, 1.6, 6)],
+  [g('amas', 10, 2.6), g('soigneur', 3, 5, 8)],
+  [g('scarabee', 10, 2.6), g('chauveSouris', 14, 1.4, 8)],
+  [g('sauterelle', 40, 0.25), g('cloporte', 12, 2, 6)],
+  [g('amas', 12, 2.4), g('scarabee', 10, 2.6, 8)],
+  [g('cloporte', 16, 1.6), g('chauveSouris', 18, 1.2, 6), g('soigneur', 3, 5, 10)],
+  [g('ver', 1, 1, 4, 0), g('scarabee', 10, 2.5), g('chauveSouris', 14, 1.4, 10), g('cloporte', 10, 2, 6)],
+];
+
 /**
  * La grotte : le noir (les tours ne visent que les monstres éclairés), les luisants de la carte et les
- * champignons-lanternes. Niveau 1 ≈ niveau 3 de la prairie. Les niveaux 2 à 5 viennent en 11d.
+ * champignons-lanternes. Niveau 1 ≈ niveau 3 de la prairie, puis ça monte jusqu'au Ver des profondeurs.
  */
 export const NIVEAUX_GROTTE: Niveau[] = [
   { id: 'grotte-1', nom: 'Galerie des luisants', biome: 'grotte', carte: CARTE_GALERIE, vagues: renforcer(VAGUES_GALERIE, 0.8, 1.2), regles: { noir: true, spores: 150 } },
+  { id: 'grotte-2', nom: 'La Voûte', biome: 'grotte', carte: CARTE_VOUTE, vagues: renforcer(VAGUES_VOUTE, 0.7, 1.1), regles: { noir: true, spores: 280 } },
+  { id: 'grotte-3', nom: 'Lac souterrain', biome: 'grotte', carte: CARTE_LAC, vagues: renforcer(VAGUES_LAC, 0.9, 1.4), regles: { noir: true, spores: 220, ronces: false } },
+  { id: 'grotte-4', nom: 'Mine abandonnée', biome: 'grotte', carte: CARTE_MINE, vagues: renforcer(VAGUES_MINE, 1, 1.4), regles: { noir: true, spores: 220 } },
+  {
+    id: 'grotte-5',
+    nom: 'Cœur de la grotte',
+    biome: 'grotte',
+    carte: CARTE_COEUR_GROTTE,
+    vagues: renforcer(VAGUES_COEUR_GROTTE, 1, 1.5),
+    regles: { noir: true, spores: 280 },
+    boss: true,
+  },
 ];
 
 /** Niveaux de chaque île, dans l'ordre du parcours ; une île sans niveaux n'est pas encore jouable. */

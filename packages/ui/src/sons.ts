@@ -1,6 +1,6 @@
 // Sons synthétisés avec Web Audio, aucun fichier (principe repris de Tiny Shrooms) : bruitages brefs façon 8-bit
 // pour les tirs, les explosions, les morts, la souche mordue et l'interface ; ambiance de fond comme Tiny Shrooms
-// (vent qui respire, oiseaux de temps en temps ; au marais, grenouilles et grillons ; à la prairie, alouettes, bourdons et grillons) ; musique de combat pendant les vagues (`musique.ts`).
+// (vent qui respire, oiseaux de temps en temps ; au marais, grenouilles et grillons ; à la prairie, alouettes, bourdons et grillons ; à la grotte, gouttes et grondements) ; musique de combat pendant les vagues (`musique.ts`).
 // Coupé par défaut ; le contexte audio n'est créé qu'une fois le son allumé.
 import type { Biome, TypeTour } from '@spore-siege/engine';
 import { MusiqueCombat } from './musique';
@@ -340,6 +340,10 @@ export class Sons {
           if (r < 0.45) this.alouette(ctx.currentTime);
           else if (r < 0.75) this.bourdon(ctx.currentTime);
           else this.grillon(ctx.currentTime);
+        } else if (this.biome === 'grotte') {
+          // Grotte : gouttes qui tombent et résonnent, parfois un grondement lointain dans la roche.
+          if (r < 0.8) this.goutte(ctx.currentTime);
+          else this.grondement(ctx.currentTime);
         } else this.oiseau(ctx.currentTime);
       }
       this.minuterie = setTimeout(suivant, 4000 + Math.random() * 6000);
@@ -402,6 +406,23 @@ export class Sons {
       this.note({ f: base, t, d: 0.12, vers: base * 1.35, onde: 'square', v: 0.22 }, debut, this.ambiance!);
       this.note({ f: base * 2, t, d: 0.08, vers: base * 2.4, onde: 'triangle', v: 0.12 }, debut, this.ambiance!);
     }
+  }
+
+  /** Goutte qui tombe dans une flaque : un « plic » qui descend, répété par l'écho de plus en plus bas. */
+  private goutte(debut: number): void {
+    const gouttes = Math.random() < 0.35 ? 2 : 1;
+    for (let g = 0; g < gouttes; g++) {
+      const f = 900 + Math.random() * 700;
+      const t = g * (0.5 + Math.random() * 0.6);
+      for (let e = 0; e < 3; e++)
+        this.note({ f, t: t + e * 0.22, d: 0.09, vers: f * 0.55, onde: 'sine', v: 0.3 * 0.4 ** e }, debut, this.ambiance!);
+    }
+  }
+
+  /** Grondement lointain : un souffle très grave qui enfle et retombe, comme la roche qui bouge. */
+  private grondement(debut: number): void {
+    this.note({ f: 55 + Math.random() * 15, t: 0, d: 1.4, vers: 40, onde: 'triangle', v: 0.28 }, debut, this.ambiance!);
+    this.note({ f: 90, t: 0.1, d: 0.9, vers: 60, onde: 'sine', v: 0.12 }, debut, this.ambiance!);
   }
 
   /** Grillon : une rafale de petits cris aigus. */

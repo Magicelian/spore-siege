@@ -403,6 +403,114 @@ export const CARTE_COEUR_PRAIRIE = [
   '......hfhfffhf......',
 ] as const;
 
+/**
+ * Grotte, niveau 2 (La Voûte) : plages ouest (0) et nord-est (1) réunies en (8, 4) ; raccourci vers la souche, une
+ * ronce en (8, 7) envoie tout le monde par la grande boucle sud-ouest. 5 luisants.
+ */
+export const CARTE_VOUTE = [
+  '.....hrhhrh....hss..',
+  '...rhrhhhhrh..hh=h..',
+  '..rrhhhhhhhhhrhh=lr.',
+  '.rrhhrhhhhhhhhhh=hrr',
+  's================hrh',
+  'hhhhlhhh=hhhlhhrhhhh',
+  'rhh======hhhhhhhhhrh',
+  'hhh=hhhh=hhhhhhhhhhr',
+  'hhr=hhhh=hhlhhhhhhrr',
+  '.hh=hhhl=SShhhhhhrh.',
+  'hhh=hhhhhSShhhhhhhr.',
+  'hhl=hhhhl=hlhhhhhhrr',
+  '.rh=hhhhh=lrhhhhhhr.',
+  '.hh=hhlhh=hhhhhhhhh.',
+  '.hr=======hhhhhhhhr.',
+  '..hrhhhhhhhhhhrhrhr.',
+  '..rhrhhhhhrhhhhhhhh.',
+  '...rhhhrhhhhhhhrhr..',
+  '....rrhhhhhhrhhrh...',
+  '......rhrhhhhh......',
+] as const;
+
+/**
+ * Grotte, niveau 3 (Lac souterrain) : plages ouest et sud réunies en (9, 15) ; le chemin de l'ouest passe à gué sous
+ * le lac, un étang borde le tronc à l'est (héron) ; ronces interdites. 4 luisants.
+ */
+export const CARTE_LAC = [
+  '.....hrhhrh....hhh..',
+  '...rhrhhhhrh..hhhh..',
+  '..rrhhhhhhhhhrhhhhr.',
+  '.rrhhrhhhhhhhhhhhhrr',
+  'hhhhhhhhrhhhhhhhhhrh',
+  'hhhhhhhhhhhhhhhrhhhh',
+  'rhhhhhhhhhhhhhhhhhrh',
+  'shlhhhhhhhhhhhhhhhhr',
+  's====hhhlhhlhhhhhhrr',
+  '.hhh=hhhhSShhhhhhrh.',
+  'heel=hhhhSS=hhhhhhr.',
+  'henh=hhhlhh====hhhrr',
+  '.eeh=heeneeeeh=hhhr.',
+  '.eeh=heeeeenel=eeee.',
+  '.hrh=eeeehhhhh=enee.',
+  '..hr=gggg======eeee.',
+  '..rhreeee=lhhhheeee.',
+  '...rhhhrh=hhhhhrhr..',
+  '....rrhhh=hhrhhrh...',
+  '......rhrshhhh......',
+] as const;
+
+/**
+ * Grotte, niveau 4 (Mine abandonnée) : 3 plages (ouest, sud, nord-est) réunies en (5, 12), tronc en lacets à l'est ;
+ * seulement 2 luisants : tout repose sur les champignons-lanternes.
+ */
+export const CARTE_MINE = [
+  '.....hrhhrh....hss..',
+  '...rhrhhhhrh..hh=h..',
+  '..rrhhhhhhhhhrhh=hr.',
+  '.rrhhrhhhhhhh====hrr',
+  'hhhhhhhhrhhhh=hhhhrh',
+  'hhhhhhhhhhhhh=hrhhhh',
+  'rhhhhhhhhhhhh=hhhhrh',
+  'hhhhh=========hhhhhr',
+  'hhrhh=hhlhhlhhhhhhrr',
+  '.hhhh=hlhSShhhhhhrh.',
+  'hhhhh=hhhSS======hr.',
+  'hhhhh=hhlhhlhhhh=hrr',
+  's============hhh=hr.',
+  '.hhhh=hhhhhh=hlh=hh.',
+  '.hrhh=hhhhhh=hhh=hr.',
+  '..hrh=hhhhhh=====hr.',
+  '..rhr=hhhhrhhhhhhhh.',
+  '...rh=hrhhhhhhhrhr..',
+  '....r=hhhhhhrhhrh...',
+  '.....srhrhhhhh......',
+] as const;
+
+/**
+ * Grotte, niveau 5 (Cœur de la grotte, boss) : plages ouest et est réunies en (12, 3), long tronc sans raccourci ;
+ * des luisants près de la souche, seules lumières que le Ver ne souffle pas.
+ */
+export const CARTE_COEUR_GROTTE = [
+  '.....hrhhrh....hhh..',
+  '...rhrhhhhrh..hhhh..',
+  '..rrhhhhhhhhhrhhlhr.',
+  's==================r',
+  'hhhhhhhlrhhh=hhhhh=h',
+  'hhhhhh=======hhrhh=h',
+  'rhhhhh=hhhhlhhhhhh=h',
+  'hhhhhh=hhhhhhhhhhh=s',
+  'hhrhhh=hlhhhhhhhhhrr',
+  '.hhhhl=hhSSlhhhhhrh.',
+  'hhhhhh=hhSShhhhhhhr.',
+  'hhhhhh=hl=hlhhhhhhrr',
+  '.rhhhh=hh=hrhhhhhhr.',
+  '.hhhhh====hhlhhhhhh.',
+  '.hrhhhhhlhhhhhhhhhr.',
+  '..hrhhhhhhhhhhrhrhr.',
+  '..rhrhhhhhrhhhhhhhh.',
+  '...rhhhrhhhhhhhrhr..',
+  '....rrhhhhhhrhhrh...',
+  '......rhrhhhhh......',
+] as const;
+
 export function lireCarte(lignes: readonly string[], biome: Biome): Ile {
   const profondeur = lignes.length;
   const largeur = lignes[0]?.length ?? 0;

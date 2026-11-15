@@ -134,6 +134,21 @@ class Joueur {
       if (c) return () => this.partie.executer({ type: 'poserLanterne', case: c });
     }
 
+    // Les chauves-souris volent tout droit vers la souche, dans le noir : simple et bon gardent deux ruches (le bon :
+    // plus un cristal) collées à elle, là où toutes finissent par passer.
+    if ((this.style === 'simple' || this.style === 'bon') && this.prochaines('chauveSouris') && tours.length >= 2) {
+      const centre = { x: this.partie.ile.souche.x + 1, y: this.partie.ile.souche.y + 1 };
+      const pres = (type: TypeTour) => tours.filter((t) => t.type === type && Math.hypot(t.case.x + 0.5 - centre.x, t.case.y + 0.5 - centre.y) <= 2.5).length;
+      const voulues: [TypeTour, number][] = this.style === 'bon' ? [['ruche', 2], ['cristal', 1]] : [['ruche', 2]];
+      for (const [type, nombre] of voulues) {
+        if (!permises.includes(type) || pres(type) >= nombre) continue;
+        // Autour de la souche, la case la plus éloignée des tours de garde déjà posées : un côté chacune.
+        const gardes = tours.filter((t) => Math.hypot(t.case.x + 0.5 - centre.x, t.case.y + 0.5 - centre.y) <= 2.5);
+        const c = this.caseProcheSouche(type, gardes.map((t) => t.case));
+        if (c) return () => this.partie.executer({ type: 'poserTour', tour: type, case: c });
+      }
+    }
+
     if (this.style.startsWith('seul:')) {
       const nom = this.style.slice('seul:'.length) as TypeTour | Capacite;
       const capacite = nom in CAPACITES ? (nom as Capacite) : null;
@@ -198,19 +213,30 @@ class Joueur {
     return this.partie.vagues.slice(i.vague - 1, i.vague + 1).some((v) => v.some((g) => g.type === 'corbeau'));
   }
 
-  /** Case libre la plus proche de la souche. */
-  private caseProcheSouche(type: TypeTour): Case | null {
+  /** Des monstres de cette sorte dans la vague en cours ou la suivante ? */
+  private prochaines(type: TypeMonstre): boolean {
+    const i = this.partie.instantane();
+    return this.partie.vagues.slice(i.vague - 1, i.vague + 1).some((v) => v.some((g) => g.type === type));
+  }
+
+  /**
+   * Case libre la plus proche de la souche ; avec `eviter`, parmi celles qui la bordent (à 2,5 cases au plus), la plus
+   * éloignée de ces cases-là.
+   */
+  private caseProcheSouche(type: TypeTour, eviter: readonly Case[] = []): Case | null {
     const { ile } = this.partie;
     const centre = { x: ile.souche.x + ile.tailleSouche / 2 - 0.5, y: ile.souche.y + ile.tailleSouche / 2 - 0.5 };
     let meilleure: Case | null = null;
-    let d = Infinity;
+    let score = Infinity;
     for (let y = 0; y < ile.profondeur; y++)
       for (let x = 0; x < ile.largeur; x++) {
         const c = { x, y };
         const dc = Math.hypot(x - centre.x, y - centre.y);
-        if (dc < d && this.partie.libre(c, type)) [meilleure, d] = [c, dc];
+        if (!this.partie.libre(c, type) || (eviter.length > 0 && dc > 2.5)) continue;
+        const s = eviter.length === 0 ? dc : -Math.min(...eviter.map((e) => Math.hypot(e.x - x, e.y - y)));
+        if (s < score) [meilleure, score] = [c, s];
       }
-    return meilleure;
+    return meilleure ?? (eviter.length > 0 ? this.caseProcheSouche(type) : null);
   }
 
   /** Bon joueur : la capacité contre les gros monstres si les deux prochaines vagues en ont, sinon contre les groupes. */
