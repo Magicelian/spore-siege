@@ -389,12 +389,20 @@
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
+/* Toutes les cartes d'une rangée à la même hauteur, même quand un nom passe sur deux lignes. */
+.catalogue > li {
+  display: flex;
+}
+.catalogue > li > .carte {
+  flex: 1;
+}
 .carte {
   width: 100%;
   box-sizing: border-box;
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);
-  grid-template-rows: auto auto;
+  /* Le nom au-dessus du prix, les deux collés en bas : les prix d'une même rangée restent alignés. */
+  grid-template-rows: 1fr auto;
   column-gap: 4px;
   align-items: center;
   text-align: left;
@@ -420,6 +428,7 @@
   height: 34px;
 }
 .carte .nom {
+  align-self: end;
   font-weight: 700;
   font-size: 12px;
   line-height: 1.05;
@@ -980,19 +989,26 @@ table.stades .icone {
   font-family: 'Chiffres', var(--police, sans-serif);
 }
 
-/* Atelier : 5 colonnes (une par tour), 2 capacités chacune, ouvertes avec les étoiles. */
+/*
+ * Atelier : 5 colonnes (une par tour), 2 capacités chacune, ouvertes avec les étoiles. Une seule grille remplie
+ * colonne par colonne (`.colonne` s'efface) : les en-têtes, puis chaque rangée de cartes, ont la même hauteur
+ * partout, même quand un nom passe sur deux lignes.
+ */
 .atelier .colonnes {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 4px;
+  grid-template-rows: auto auto auto;
+  grid-auto-flow: column;
+  gap: 5px 4px;
   padding: 2px;
 }
 .atelier .colonne {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+  display: contents;
 }
 .atelier .tete {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
   font-size: 10px;
   font-weight: 700;
   text-align: center;
@@ -1001,7 +1017,9 @@ table.stades .icone {
 }
 .atelier .carte {
   grid-template-columns: 1fr;
-  grid-template-rows: auto auto auto;
+  /* Vignette en haut, prix en bas : le nom prend la place qui reste, centré. */
+  grid-template-rows: auto 1fr auto;
+  align-items: center;
   justify-items: center;
   text-align: center;
   padding: 3px 2px 4px;
@@ -1010,6 +1028,7 @@ table.stades .icone {
   grid-row: auto;
 }
 .atelier .carte .nom {
+  align-self: center;
   font-size: 10px;
   line-height: 1.1;
 }
