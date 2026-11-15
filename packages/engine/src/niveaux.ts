@@ -7,6 +7,10 @@ import {
   CARTE_FORET,
   CARTE_FOURRE,
   CARTE_GUES,
+  CARTE_CHAMPS_MOULIN,
+  CARTE_COEUR_PRAIRIE,
+  CARTE_HAUTES_HERBES,
+  CARTE_LISIERE,
   CARTE_PRES_FLEURIS,
   CARTE_ROSELIERE,
   CARTE_SOUS_BOIS,
@@ -314,12 +318,94 @@ export const NIVEAUX_MARAIS: Niveau[] = [
   { id: 'marais-5', nom: 'Cœur du marais', biome: 'marais', carte: CARTE_COEUR_MARAIS, vagues: renforcer(VAGUES_COEUR_MARAIS, 0.8, 1.2), regles: {}, boss: true },
 ];
 
+/** Lisière (prairie, niveau 2) : la Chenille arrive. Plage 0 au nord-est, 1 au sud. */
+export const VAGUES_LISIERE: Vague[] = [
+  [g('limace', 12, 2)],
+  [g('chenille', 6, 3, 0, 1)],
+  [g('moucheron', 18, 1), g('chenille', 4, 3, 6)],
+  [g('scarabee', 5, 4), g('limace', 12, 1.6, 4)],
+  [g('chenille', 10, 2), g('volant', 6, 2, 8)],
+  [g('amas', 8, 3), g('chenille', 8, 2.2, 6)],
+  [g('scarabee', 8, 3), g('moucheron', 24, 0.8, 6)],
+  [g('chenille', 14, 1.6), g('soigneur', 3, 5, 8)],
+  [g('amas', 10, 2.5), g('scarabee', 8, 3, 5)],
+  [g('chenille', 16, 1.4), g('scarabee', 10, 2.5, 4), g('volant', 8, 1.6, 12)],
+];
+
+/** Hautes herbes (prairie, niveau 3) : les Sauterelles arrivent, en essaims. Plage 0 au nord-est, 1 à l'ouest. */
+export const VAGUES_HAUTES_HERBES: Vague[] = [
+  [g('limace', 14, 1.8)],
+  [g('sauterelle', 20, 0.35)],
+  [g('chenille', 8, 2.5), g('sauterelle', 16, 0.35, 8)],
+  [g('scarabee', 6, 3.5), g('limace', 12, 1.5, 4)],
+  [g('sauterelle', 30, 0.3), g('amas', 4, 3, 6)],
+  [g('chenille', 10, 2), g('soigneur', 3, 5, 6)],
+  [g('sauterelle', 40, 0.25), g('scarabee', 6, 3, 8)],
+  [g('volant', 10, 1.6), g('amas', 10, 2.5, 6)],
+  [g('sauterelle', 50, 0.2), g('chenille', 12, 1.6, 4)],
+  [g('scarabee', 14, 2.2), g('sauterelle', 40, 0.25, 8), g('amas', 8, 2.5, 14)],
+];
+
+/** Champs du moulin (prairie, niveau 4) : trois plages (0 nord-est, 1 ouest, 2 sud), peu de spores au départ. */
+export const VAGUES_CHAMPS_MOULIN: Vague[] = [
+  [g('limace', 12, 2, 0, 1)],
+  [g('chenille', 8, 2.5), g('sauterelle', 14, 0.4, 6)],
+  [g('moucheron', 20, 0.9), g('limace', 10, 1.8, 4)],
+  [g('scarabee', 6, 3.5), g('chenille', 8, 2, 6)],
+  [g('sauterelle', 30, 0.3), g('volant', 6, 2, 6)],
+  [g('amas', 10, 2.6), g('soigneur', 3, 5, 8)],
+  [g('chenille', 14, 1.6), g('scarabee', 6, 3, 8)],
+  [g('sauterelle', 40, 0.25), g('amas', 8, 2.5, 8)],
+  [g('scarabee', 12, 2.4), g('chenille', 12, 1.6, 6), g('volant', 8, 1.6, 12)],
+  [g('amas', 12, 2.2), g('sauterelle', 40, 0.25, 6), g('scarabee', 10, 2.5, 12)],
+];
+
+/** Cœur de la prairie (boss) : le Grand Corbeau en dernière vague. Plage 0 à l'est, 1 à l'ouest. */
+export const VAGUES_COEUR_PRAIRIE: Vague[] = [
+  [g('limace', 14, 1.8)],
+  [g('chenille', 8, 2.5), g('sauterelle', 16, 0.35, 6)],
+  [g('moucheron', 22, 0.8), g('scarabee', 4, 4, 6)],
+  [g('sauterelle', 30, 0.3), g('chenille', 8, 2, 6)],
+  [g('amas', 10, 2.6), g('volant', 4, 2.5, 8)],
+  [g('scarabee', 10, 2.6), g('soigneur', 3, 5, 8)],
+  [g('sauterelle', 45, 0.22), g('chenille', 12, 1.6, 6)],
+  [g('amas', 12, 2.4), g('scarabee', 10, 2.6, 8)],
+  [g('chenille', 16, 1.4), g('sauterelle', 40, 0.25, 6), g('volant', 5, 2.4, 12)],
+  [g('corbeau', 1, 1, 4, 0), g('scarabee', 10, 2.5), g('sauterelle', 30, 0.3, 10), g('chenille', 10, 2, 6)],
+];
+
 /**
  * Les niveaux de la prairie (cahier §3) : les fleurs à spores, qu'on plante à la place d'une tour et qui rapportent à
- * chaque fin de vague. Pour l'instant le seul niveau 1 (étape 10a) ; chiffres provisoires, à régler en 10d.
+ * chaque fin de vague. Facteurs de `renforcer` réglés en 10d avec les joueurs scriptés (`equilibrage.test.ts`).
  */
 export const NIVEAUX_PRAIRIE: Niveau[] = [
   { id: 'prairie-1', nom: 'Prés fleuris', biome: 'prairie', carte: CARTE_PRES_FLEURIS, vagues: renforcer(VAGUES_FORET, 0.8, 1.4), regles: { fleurs: true } },
+  { id: 'prairie-2', nom: 'Lisière', biome: 'prairie', carte: CARTE_LISIERE, vagues: renforcer(VAGUES_LISIERE, 0.6, 1), regles: { fleurs: true } },
+  {
+    id: 'prairie-3',
+    nom: 'Hautes herbes',
+    biome: 'prairie',
+    carte: CARTE_HAUTES_HERBES,
+    vagues: renforcer(VAGUES_HAUTES_HERBES, 1, 1.5),
+    regles: { fleurs: true, ronces: false },
+  },
+  {
+    id: 'prairie-4',
+    nom: 'Champs du moulin',
+    biome: 'prairie',
+    carte: CARTE_CHAMPS_MOULIN,
+    vagues: renforcer(VAGUES_CHAMPS_MOULIN, 0.6, 1),
+    regles: { fleurs: true, spores: 100 },
+  },
+  {
+    id: 'prairie-5',
+    nom: 'Cœur de la prairie',
+    biome: 'prairie',
+    carte: CARTE_COEUR_PRAIRIE,
+    vagues: renforcer(VAGUES_COEUR_PRAIRIE, 0.8, 1.2),
+    regles: { fleurs: true },
+    boss: true,
+  },
 ];
 
 /** Niveaux de chaque île, dans l'ordre du parcours ; une île sans niveaux n'est pas encore jouable. */

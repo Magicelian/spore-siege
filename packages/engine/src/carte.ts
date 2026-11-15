@@ -295,6 +295,112 @@ export const CARTE_PRES_FLEURIS = [
   '......fhfhphhh......',
 ] as const;
 
+/**
+ * Prairie, niveau 2 (Lisière) : forêt à l'ouest, plages nord-est et sud réunies en (10, 14). Le nord-est a un raccourci par
+ * (11, 6) ; une ronce en (12, 6) l'envoie par la grande boucle, une en (10, 13) y envoie le sud.
+ */
+export const CARTE_LISIERE = [
+  '.....ffffff....sss..',
+  '...fhhhphhff..ss=s..',
+  '..ffhhhhhhhhhffh=hf.',
+  '.fffhhhphhhhhhhh=hff',
+  '.fffhphhfhhhhhhh=hff',
+  'fffhhhhhhhhhhhhh=hhf',
+  'fffhhhhhhhh======hpf',
+  'ffffhhhhhhh=h=hhphhh',
+  'ffffhhhhhhp=h=hphhff',
+  '.hhfhhhhhSS=h=hhhhf.',
+  'fffhhhhhhSShh=hphhf.',
+  'hfffhphhhh=hh=hhhhff',
+  '.ffhhhhhhh=hh=hhhhf.',
+  '.ffhhhphph=hh=hhphf.',
+  '.pffhh========hhhhf.',
+  '..ffhh=hhhhhhhhhhhf.',
+  '..ffhh=hhhfhhhhhhff.',
+  '...fhh=hphhhhhhhff..',
+  '....fssshhhhhffff...',
+  '......ffffffff......',
+] as const;
+
+/**
+ * Prairie, niveau 3 (Hautes herbes) : plages ouest et nord-est réunies en (12, 4), tronc en lacets ; ronces interdites.
+ */
+export const CARTE_HAUTES_HERBES = [
+  '.....fffhhh....sss..',
+  '...pfhhhphff..ss=s..',
+  '..hfhphhhhhhhhpp=hf.',
+  '.fhhhhhhphhhhhhh=hfh',
+  '.hhh=============hpf',
+  'hfhh=hhhhhhh=hhhhhhf',
+  'fhph=hh======hhhhphf',
+  'hhhh=hp=hhhhhhhphhhf',
+  'fhhh=hh========phhff',
+  '.php=hhhhSShph=hphh.',
+  'ss===hhhhSShph=hhhf.',
+  'sshpphhhhh=hhh=hhhff',
+  '.fphhhphhh=====hhhh.',
+  '.hhhhhhhhhhhhhhphhp.',
+  '.hfhhhhhhphhhpphphh.',
+  '..fhhhhhhhhhhhhphhf.',
+  '..hfhphhphphhhhhhff.',
+  '...ffhhhphhhphpfhf..',
+  '....fffhphhhhfhhf...',
+  '......ffhfpfff......',
+] as const;
+
+/**
+ * Prairie, niveau 4 (Champs du moulin) : trois plages (nord-est, ouest, sud) réunies en (8, 14), tronc court ; une ronce
+ * en (9, 12) envoie tout le monde par la boucle nord (+13 cases).
+ */
+export const CARTE_CHAMPS_MOULIN = [
+  '.....fhffff....sss..',
+  '...ffhhhhhfp..ss=s..',
+  '..ffhphhhphhpfhh=hf.',
+  '.hfhhhhhhhhphhph=hpf',
+  '.hhhhhhhhhhhhphh=hhh',
+  'hfhhhhhphhhhhp===hhh',
+  'fhhhh=====hhhp=phphf',
+  'fphhh=hhh=phhh=phhpf',
+  'hhphh=hhp=hhhh=hhhhh',
+  '.hhhh=hhhSShhh=hhhh.',
+  'ss==h=hhhSShph=hhhf.',
+  'ssp=h=hhh=hhhh=phphf',
+  '.fh=p=====hhhh=hphh.',
+  '.fh=hhhh=hhhhh=hphf.',
+  '.ff============hhhf.',
+  '..hhhhhh=hhhhhhhhhf.',
+  '..hhhhhh====hphphhf.',
+  '...hfhhhhhh=hhhhff..',
+  '....fhhhhhh=hfhhf...',
+  '......fhfpsssh......',
+] as const;
+
+/**
+ * Prairie, niveau 5 (Cœur de la prairie, boss) : plages est et ouest réunies en (12, 3), long tronc sans raccourci.
+ */
+export const CARTE_COEUR_PRAIRIE = [
+  '.....hhhfhf....hhh..',
+  '...hhfphhhhh..hhhh..',
+  '..hfhhhhhhhhhhhhhhf.',
+  '.hf==============hhh',
+  '.fh=hhhhfphh=hhh=hhh',
+  'hfp=hh=======hph=hhf',
+  'hhh=hh=hhhhphhhh=hhs',
+  'fhp=ph=hhhhhhhph===s',
+  'fhh=hh=hhhhhhhhhphhs',
+  '.hh=hh=hhSShphhhhhh.',
+  'ss==pp=hhSShhhhhhhf.',
+  'ssphhh=hp=phhhhhhhff',
+  '.fhhhp=hh=====hhhhh.',
+  '.fhhhh=hphhhh=hhhhf.',
+  '.ffhhh=hhhphh=hhhhh.',
+  '..hhhh========hhhhh.',
+  '..hfhhhhphhhhhhhhff.',
+  '...hfpphhhhhhhhfff..',
+  '....fffhhhhhhpfff...',
+  '......hfhfffhf......',
+] as const;
+
 export function lireCarte(lignes: readonly string[], biome: Biome): Ile {
   const profondeur = lignes.length;
   const largeur = lignes[0]?.length ?? 0;

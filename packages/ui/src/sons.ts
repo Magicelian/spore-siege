@@ -1,6 +1,6 @@
 // Sons synthétisés avec Web Audio, aucun fichier (principe repris de Tiny Shrooms) : bruitages brefs façon 8-bit
 // pour les tirs, les explosions, les morts, la souche mordue et l'interface ; ambiance de fond comme Tiny Shrooms
-// (vent qui respire, oiseaux de temps en temps ; au marais, grenouilles et grillons) ; musique de combat pendant les vagues (`musique.ts`).
+// (vent qui respire, oiseaux de temps en temps ; au marais, grenouilles et grillons ; à la prairie, alouettes, bourdons et grillons) ; musique de combat pendant les vagues (`musique.ts`).
 // Coupé par défaut ; le contexte audio n'est créé qu'une fois le son allumé.
 import type { Biome, TypeTour } from '@spore-siege/engine';
 import { MusiqueCombat } from './musique';
@@ -172,7 +172,7 @@ export class Sons {
   private effets: GainNode | null = null;
   private bruit: AudioBuffer | null = null;
   private ambiance: GainNode | null = null;
-  /** Île jouée : au marais, grenouilles et grillons au lieu des oiseaux. */
+  /** Île jouée : au marais, grenouilles et grillons au lieu des oiseaux ; à la prairie, alouettes, bourdons et grillons. */
   private biome: Biome = 'foret';
   private minuterie: ReturnType<typeof setTimeout> | null = null;
   private allume = false;
@@ -322,9 +322,16 @@ export class Sons {
     addEventListener('pointerdown', () => void ctx.resume(), { once: true });
     const suivant = () => {
       if (this.allume && ctx.state === 'running') {
-        if (this.biome !== 'marais') this.oiseau(ctx.currentTime);
-        else if (Math.random() < 0.7) this.grenouille(ctx.currentTime);
-        else this.grillon(ctx.currentTime);
+        const r = Math.random();
+        if (this.biome === 'marais') {
+          if (r < 0.7) this.grenouille(ctx.currentTime);
+          else this.grillon(ctx.currentTime);
+        } else if (this.biome === 'prairie') {
+          // Prairie : alouette, bourdon qui passe, stridulation dans l'herbe.
+          if (r < 0.45) this.alouette(ctx.currentTime);
+          else if (r < 0.75) this.bourdon(ctx.currentTime);
+          else this.grillon(ctx.currentTime);
+        } else this.oiseau(ctx.currentTime);
       }
       this.minuterie = setTimeout(suivant, 4000 + Math.random() * 6000);
     };
@@ -339,6 +346,42 @@ export class Sons {
       const t = i * (0.11 + Math.random() * 0.05);
       this.note({ f: base, t, d: 0.07, vers: base * (1.2 + Math.random() * 0.3), onde: 'sine', v: 0.35 }, debut, this.ambiance!);
     }
+  }
+
+  /** Alouette : un long gazouillis aigu de notes très rapides, qui sautent de haut en bas. */
+  private alouette(debut: number): void {
+    const base = 2600 + Math.random() * 800;
+    const n = 10 + Math.floor(Math.random() * 8);
+    for (let i = 0; i < n; i++) {
+      const f = base * (0.85 + Math.random() * 0.45);
+      this.note({ f, t: i * 0.06, d: 0.045, vers: f * (0.9 + Math.random() * 0.3), onde: 'sine', v: 0.22 }, debut, this.ambiance!);
+    }
+  }
+
+  /** Bourdon qui passe : un vrombissement grave qui enfle puis s'éloigne, en tremblant un peu. */
+  private bourdon(debut: number): void {
+    const ctx = this.contexte!;
+    const duree = 1.2 + Math.random() * 0.8;
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(170 + Math.random() * 40, debut);
+    const vibrato = ctx.createOscillator();
+    vibrato.frequency.value = 18;
+    const ampleur = ctx.createGain();
+    ampleur.gain.value = 6;
+    vibrato.connect(ampleur).connect(osc.frequency);
+    const filtre = ctx.createBiquadFilter();
+    filtre.type = 'lowpass';
+    filtre.frequency.value = 700;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, debut);
+    gain.gain.linearRampToValueAtTime(0.12, debut + duree * 0.45);
+    gain.gain.linearRampToValueAtTime(0, debut + duree);
+    osc.connect(filtre).connect(gain).connect(this.ambiance!);
+    osc.start(debut);
+    vibrato.start(debut);
+    osc.stop(debut + duree + 0.05);
+    vibrato.stop(debut + duree + 0.05);
   }
 
   /** Coassement : deux ou trois « crôa » graves, rauques, qui montent un peu. */

@@ -103,15 +103,16 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
   chenille: { pv: 30, vitesse: 0.7, morsure: 1, butin: 4, armure: 0, gourmande: { flair: 3.5, duree: 2.5 } },
   // Prairie, niveau 3 : en grands essaims, très rapide et très fragile.
   sauterelle: { pv: 5, vitesse: 2.4, morsure: 1, butin: 1, armure: 0 },
-  // Boss de la prairie : vole au-dessus de l'île, arrache les fleurs, puis fond sur la souche. Chiffres provisoires (10d).
+  // Boss de la prairie : vole au-dessus de l'île, arrache les fleurs, puis fond sur la souche. Réglé en 10d : seules
+  // la ruche et le cristal le touchent en vol, à 300 PV aucun script ne le battait, à 220 le bon gagnait à 1 PV.
   corbeau: {
-    pv: 450,
+    pv: 200,
     vitesse: 1.6,
     morsure: 20,
     butin: 70,
-    armure: 2,
+    armure: 1,
     boss: { paliers: [] },
-    rapace: { rayon: 6, attente: 5, pique: 3, auSol: 3, plongees: 3, assaut: 0.5 },
+    rapace: { rayon: 6, attente: 5, pique: 3, auSol: 4, plongees: 3, assaut: 0.35 },
   },
 };
 

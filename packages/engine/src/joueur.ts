@@ -6,9 +6,10 @@
 //    améliore ses meilleures tours avant d'en poser d'autres ;
 //  - seul:<tour ou capacité> : une seule sorte de tour, six au meilleur endroit, puis améliore la plus faible, puis
 //    (si une capacité est donnée) passe chacune au stade 4 avec cette capacité. Aucune tour ne doit suffire seule.
-// Les joueurs simple et bon prennent aussi le stade 4 quand ils ont une tour au stade 3.
+// Les joueurs simple et bon prennent aussi le stade 4 quand ils ont une tour au stade 3, et plantent des fleurs à
+// spores là où le niveau le permet (prairie), loin du sentier, tant qu'il reste assez de vagues pour les rentabiliser.
 import type { Capacite, Case, Ile, Instantane, Phase, Regles, TourVue, TypeMonstre, TypeTour } from './contrat';
-import { CAPACITES, CAPACITES_DE, PAS_PAR_SECONDE, TOURS, type Vague } from './contenu';
+import { CAPACITES, CAPACITES_DE, FLEUR, MONSTRES, PAS_PAR_SECONDE, TOURS, type Vague } from './contenu';
 import { Partie } from './partie';
 import { cle, route } from './sentier';
 
@@ -135,6 +136,21 @@ class Joueur {
       return capacite && auStade3 ? specialiser(() => capacite) : poser(type);
     }
 
+    // Fleurs à spores : une fleur rapporte son prix en un peu plus de trois vagues.
+    const restantes = i.vagues - i.vague + (i.phase === 'pause' ? 1 : 0);
+    const voulues =
+      !this.partie.regles.fleurs || restantes < Math.ceil(FLEUR.prix / FLEUR.rapport) + 1
+        ? 0
+        : this.style === 'simple'
+          ? Math.min(3, Math.floor((tours.length - 2) / 2))
+          : this.style === 'bon'
+            ? Math.min(5, tours.length - 3)
+            : 0;
+    if (i.fleurs.length < voulues) {
+      const c = this.caseFleur();
+      if (c) return () => this.partie.executer({ type: 'planterFleur', case: c });
+    }
+
     if (this.style === 'simple') {
       const ameliorees = tours.reduce((n, t) => n + t.stade - 1, 0);
       if (tours.length >= 4 && ameliorees < tours.length - 3) {
@@ -153,11 +169,41 @@ class Joueur {
     if (tours.length < 2 && !(ronce && this.ronceDabord)) return poser('ruche');
     if (ronce) return () => this.partie.executer({ type: 'poserRonce', case: ronce });
     if (tours.length < 3) return poser(this.typeVoulu());
+    // Le Grand Corbeau arrive : deux cristaux près de la souche, là où il finira par fondre.
+    if (this.corbeauProche() && permises.includes('cristal')) {
+      const s = this.partie.ile.souche;
+      const pres = tours.filter((t) => t.type === 'cristal' && Math.hypot(t.case.x - s.x, t.case.y - s.y) <= 3).length;
+      if (pres < 2) {
+        const c = this.caseProcheSouche('cristal');
+        if (c) return () => this.partie.executer({ type: 'poserTour', tour: 'cristal', case: c });
+      }
+    }
     if (tours.some((t) => t.stade < 2)) return ameliorer;
     if (tours.length < 7) return poser(this.typeVoulu());
     if (plusFaible) return ameliorer;
     if (auStade3) return specialiser((t) => this.capaciteVoulue(t.type));
     return poser(this.typeVoulu());
+  }
+
+  /** Le Grand Corbeau est-il dans la vague en cours ou la suivante ? */
+  private corbeauProche(): boolean {
+    const i = this.partie.instantane();
+    return this.partie.vagues.slice(i.vague - 1, i.vague + 1).some((v) => v.some((g) => g.type === 'corbeau'));
+  }
+
+  /** Case libre la plus proche de la souche. */
+  private caseProcheSouche(type: TypeTour): Case | null {
+    const { ile } = this.partie;
+    const centre = { x: ile.souche.x + ile.tailleSouche / 2 - 0.5, y: ile.souche.y + ile.tailleSouche / 2 - 0.5 };
+    let meilleure: Case | null = null;
+    let d = Infinity;
+    for (let y = 0; y < ile.profondeur; y++)
+      for (let x = 0; x < ile.largeur; x++) {
+        const c = { x, y };
+        const dc = Math.hypot(x - centre.x, y - centre.y);
+        if (dc < d && this.partie.libre(c, type)) [meilleure, d] = [c, dc];
+      }
+    return meilleure;
   }
 
   /** Bon joueur : la capacité contre les gros monstres si les deux prochaines vagues en ont, sinon contre les groupes. */
@@ -183,6 +229,10 @@ class Joueur {
     // Crapaud : il bondit, mieux vaut des tours qui couvrent large ou ralentissent.
     if (proches.has('crapaud')) besoins.push('mortier', 'cristal');
     if (proches.has('limaceMere')) besoins.push('cristal', 'canon');
+    // Prairie : les essaims de sauterelles appellent les tours de zone ; le corbeau, celles qui touchent en l'air.
+    if (proches.has('sauterelle')) besoins.push('canon', 'mortier');
+    if (proches.has('chenille')) besoins.push('cristal');
+    if (proches.has('corbeau')) besoins.push('cristal', 'ruche', 'cristal');
     // Héron : contre les files de marcheurs, s'il a une case d'eau qui voit assez de chemin.
     if (this.eauUtile && (proches.has('limace') || proches.has('amas') || proches.has('scarabee'))) besoins.push('heron');
     const compte = (t: TypeTour) => i.tours.filter((x) => x.type === t).length;
@@ -221,6 +271,31 @@ class Joueur {
         }
       }
     }
+    return meilleure;
+  }
+
+  /**
+   * Où planter une fleur : hors de portée des chenilles (au-delà de leur flair, avec une marge) si possible.
+   * Le simple prend la case la plus éloignée des chemins ; le bon, parmi les cases sûres, la plus proche de ses tours
+   * (le Grand Corbeau qui s'y pose sera à portée).
+   */
+  private caseFleur(): Case | null {
+    const { ile } = this.partie;
+    const chemins = this.routes().flat();
+    const tours = this.partie.instantane().tours;
+    const sur = MONSTRES.chenille.gourmande!.flair + 0.7;
+    let meilleure: Case | null = null;
+    let score = -Infinity;
+    for (let y = 0; y < ile.profondeur; y++)
+      for (let x = 0; x < ile.largeur; x++) {
+        const c = { x, y };
+        if (!this.partie.fleurLibre(c)) continue;
+        const loin = Math.min(...chemins.map((p) => Math.hypot(p.x - x, p.y - y)));
+        let s: number;
+        if (this.style === 'bon' && loin >= sur) s = 100 - Math.min(...tours.map((t) => Math.hypot(t.case.x - x, t.case.y - y)));
+        else s = Math.min(loin, sur) - (loin >= sur ? 0 : 50);
+        if (s > score) [meilleure, score] = [c, s];
+      }
     return meilleure;
   }
 

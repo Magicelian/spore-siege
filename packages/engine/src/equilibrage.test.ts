@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { ileForet } from './carte';
 import { VAGUES_FORET } from './contenu';
 import { jouer, type Bilan, type Style } from './joueur';
-import { ileDe, NIVEAUX_FORET, NIVEAUX_MARAIS } from './niveaux';
+import { ileDe, NIVEAUX_FORET, NIVEAUX_MARAIS, NIVEAUX_PRAIRIE } from './niveaux';
 
 const bilans = (['naif', 'simple', 'bon'] as Style[]).map((n) => jouer(n, ileForet(), VAGUES_FORET));
 
@@ -150,5 +150,38 @@ describe('équilibrage du marais', () => {
   it('le Crapaud-roi est le niveau le plus dur : le meilleur script y garde le moins de vie', () => {
     const coeur = marais[4]!.meilleur.pv;
     for (const { meilleur } of marais.slice(0, 4)) expect(coeur).toBeLessThanOrEqual(meilleur.pv);
+  });
+});
+
+// Prairie (étape 10) : le niveau 1 vaut à peu près le niveau 3 du marais ; les scripts simple et bon plantent des
+// fleurs à spores loin du sentier. Le Cœur (Grand Corbeau, 10 vagues sur un long tronc) dure un peu plus longtemps.
+const prairie = NIVEAUX_PRAIRIE.map((n) => {
+  const [naif, simple, bon] = (['naif', 'simple', 'bon'] as Style[]).map((st) => jouer(st, ileDe(n), n.vagues, n.regles)) as [Bilan, Bilan, Bilan];
+  const meilleur = [simple, bon].sort((a, b) => b.pv - a.pv || b.vague - a.vague)[0]!;
+  return { n, naif, simple, bon, meilleur };
+});
+
+describe('équilibrage de la prairie', () => {
+  it('rapport', () => {
+    for (const { n, naif, simple, bon } of prairie)
+      for (const b of [naif, simple, bon])
+        process.stderr.write(
+          `${n.id} ${b.style.padEnd(7)} ${b.phase.padEnd(8)} vague ${b.vague}  PV ${b.pv}  ★${b.etoiles}  ${b.minutes} min  pertes ${b.pertes.join(' ')}\n`,
+        );
+  });
+
+  for (const { n, naif, meilleur } of prairie) {
+    it(`${n.nom} : gagnable sans 3 étoiles, ni pour le meilleur script ni pour les ruches seules, en 8 à 19 minutes`, () => {
+      expect(meilleur.phase).toBe('victoire');
+      expect(meilleur.etoiles).toBeLessThanOrEqual(2);
+      expect(naif.etoiles).toBeLessThanOrEqual(2);
+      expect(meilleur.minutes).toBeGreaterThanOrEqual(8);
+      expect(meilleur.minutes).toBeLessThanOrEqual(19);
+    });
+  }
+
+  it('le Grand Corbeau est le niveau le plus dur : le meilleur script y garde le moins de vie', () => {
+    const coeur = prairie[4]!.meilleur.pv;
+    for (const { meilleur } of prairie.slice(0, 4)) expect(coeur).toBeLessThanOrEqual(meilleur.pv);
   });
 });
