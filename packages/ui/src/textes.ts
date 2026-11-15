@@ -109,6 +109,16 @@ export const MONSTRES_TEXTES: Record<TypeMonstre, { nom: string; description: st
     description: 'Un ver pâle et gigantesque, monté des entrailles de la grotte. Blessé, il souffle d’un coup toutes les lanternes et lâche sa vermine dans le noir. S’il touche la souche, tout est perdu.',
     conseil: 'Garde des tours près des luisants de la carte : ce sont les seules lumières qu’il ne peut pas éteindre.',
   },
+  araignee: {
+    nom: 'Araignée',
+    description: 'Elle ne débarque pas sur une plage : elle se laisse tomber des grands arbres, au bout d’un fil, en plein milieu du sentier. Tant qu’elle pend, rien ne l’atteint.',
+    conseil: 'Ne mets pas toutes tes tours à l’entrée de l’île : garde-en le long du chemin, jusqu’à la souche.',
+  },
+  ecureuil: {
+    nom: 'Écureuil rouillé',
+    description: 'Rapide et effronté. Quand il passe près d’une plateforme, il grimpe sur la tour du haut et s’y installe : elle ne tire plus tant qu’il y reste.',
+    conseil: 'Une tour au sol à côté de tes plateformes le décroche vite. Il ne s’en prend jamais aux tours au sol.',
+  },
 };
 
 export const ILES_TEXTES: Record<Biome, string> = {

@@ -62,6 +62,10 @@ interface Monstre {
    */
   horsSentier: 'aller' | 'repas' | 'retour' | null;
   fleur: number | null;
+  /** Écureuil : tour visée, puis sur laquelle il est perché (`repas`). */
+  tour: number | null;
+  /** Araignée : pas où elle touche le sentier, au bout de son fil (-1 : posée). */
+  descenteFin: number;
   repasFin: number;
   rassasiee: boolean;
   /** Grand Corbeau : où il en est (voir `planer`) ; null pour les autres. */
@@ -422,6 +426,8 @@ export class Partie {
       altitude: this.altitude(m),
       dansLeNoir: !this.eclaire(m.position),
       enBoule: this.enBoule(m),
+      descente: this.descend(m) ? (m.descenteFin - this.pas) / (MONSTRES[m.type].fil!.duree * PAS_PAR_SECONDE) : null,
+      perche: !!MONSTRES[m.type].grimpeur && m.horsSentier === 'repas',
     }));
     const tours: TourVue[] = this.tours.map((t) => ({
       id: t.id,
@@ -430,6 +436,7 @@ export class Partie {
       capacite: t.capacite,
       case: { ...t.case },
       haute: t.haute,
+      bloquee: this.bloquee(t),
       portee: porteeDe(t),
       cible: t.cible,
       mode: t.mode,
@@ -531,6 +538,7 @@ export class Partie {
     if (this.phase !== 'pause' && this.phase !== 'vague') return [];
     const parPlage = new Map<number, Set<TypeMonstre>>();
     for (const { plage, type } of this.lachersDe(this.vague)) {
+      if (MONSTRES[type].fil) continue;
       if (!parPlage.has(plage)) parPlage.set(plage, new Set());
       parPlage.get(plage)!.add(type);
     }
@@ -560,7 +568,28 @@ export class Partie {
     }
     const chemin = route(this.ile, depart, this.ronces);
     if (!chemin) return;
+    const fil = MONSTRES[type].fil;
+    if (fil) {
+      // L'araignée se pose au centre d'une case de la route, quelque part au milieu.
+      const trace = tracer(this.ile, chemin);
+      const rang = Math.min(trace.length - 2, Math.round((chemin.length - 1) * (fil.de + this.hasard() * (fil.a - fil.de))));
+      const m = this.nouveauMonstre(type, trace, longueur(trace.slice(0, Math.max(1, rang) + 1)));
+      m.descenteFin = this.pas + Math.round(fil.duree * PAS_PAR_SECONDE);
+      this.monstres.push(m);
+      this.evenements.push({ type: 'fil', id: m.id, monstre: type, position: { ...m.position }, pas: this.pas });
+      return;
+    }
     this.monstres.push(this.nouveauMonstre(type, tracer(this.ile, chemin), 0));
+  }
+
+  /** Araignée encore au bout de son fil : hors d'atteinte, immobile. */
+  private descend(m: Monstre): boolean {
+    return m.descenteFin >= 0 && this.pas < m.descenteFin;
+  }
+
+  /** Tour sur laquelle un écureuil est perché : elle ne tire pas. */
+  private bloquee(t: Tour): boolean {
+    return this.monstres.some((m) => m.tour === t.id && m.horsSentier === 'repas' && m.pv > 0);
   }
 
   /** Vie pleine d'un monstre, selon la difficulté de la partie. */
@@ -588,6 +617,8 @@ export class Partie {
       escorte: [],
       horsSentier: null,
       fleur: null,
+      tour: null,
+      descenteFin: -1,
       repasFin: -1,
       rassasiee: false,
       rapace: null,
@@ -661,7 +692,7 @@ export class Partie {
 
   /** Hors d'atteinte d'une tour : boss en plongée, ou nageur sous l'eau pour une tour sans `sousEau`. */
   private horsDAtteinte(m: Monstre, sousEau = false): boolean {
-    return this.plonge(m) || (!sousEau && this.nageSous(m));
+    return this.plonge(m) || this.descend(m) || (!sousEau && this.nageSous(m));
   }
 
   /** Le plus fort des ralentis en cours (coup de mortier, flaque de glu), multiplié par celui du gué. */
@@ -712,7 +743,12 @@ export class Partie {
         m.sautDebut = this.pas;
         m.prochainSaut = this.pas + Math.round((saut.cadence + saut.duree) * PAS_PAR_SECONDE);
       }
-      if ((MONSTRES[m.type].gourmande && !this.gourmandise(m)) || this.enBoule(m)) {
+      if (
+        (MONSTRES[m.type].gourmande && !this.gourmandise(m)) ||
+        (MONSTRES[m.type].grimpeur && !this.grimper(m)) ||
+        this.enBoule(m) ||
+        this.descend(m)
+      ) {
         restants.push(m);
         continue;
       }
@@ -882,11 +918,48 @@ export class Partie {
     return true;
   }
 
-  /** Chenille au bout de sa trace hors du sentier : elle commence son repas, ou reprend la route de la souche. */
+  /**
+   * Écureuil, avant d'avancer : repère une tour en hauteur libre, ou reste perché. Renvoie false s'il reste sur place
+   * (perché).
+   */
+  private grimper(m: Monstre): boolean {
+    const fiche = MONSTRES[m.type].grimpeur!;
+    if (m.horsSentier === 'repas') {
+      if (this.pas < m.repasFin && this.tours.some((t) => t.id === m.tour)) return false;
+      m.rassasiee = true;
+      this.rentrer(m);
+      return true;
+    }
+    // Sa tour a été vendue en chemin : il rejoint le sentier.
+    if (m.horsSentier === 'aller' && !this.tours.some((t) => t.id === m.tour)) {
+      this.rentrer(m);
+      return true;
+    }
+    if (m.horsSentier || m.rassasiee) return true;
+    let proche: Tour | null = null;
+    let d = fiche.flair;
+    for (const t of this.tours) {
+      if (!t.haute || this.monstres.some((o) => o !== m && o.tour === t.id)) continue;
+      const dt = distance(m.position, t.centre);
+      if (dt <= d) [proche, d] = [t, dt];
+    }
+    if (!proche) return true;
+    m.horsSentier = 'aller';
+    m.tour = proche.id;
+    this.suivre(m, [{ ...m.position }, { ...proche.centre }]);
+    return true;
+  }
+
+  /**
+   * Chenille ou écureuil au bout de sa trace hors du sentier : repas (ou perchée sur sa tour), ou retour sur la route
+   * de la souche.
+   */
   private arriver(m: Monstre): void {
     if (m.horsSentier === 'aller') {
+      const fiche = MONSTRES[m.type];
       m.horsSentier = 'repas';
-      m.repasFin = this.pas + Math.round(MONSTRES[m.type].gourmande!.duree * PAS_PAR_SECONDE);
+      m.repasFin = this.pas + Math.round((fiche.gourmande ?? fiche.grimpeur)!.duree * PAS_PAR_SECONDE);
+      if (fiche.grimpeur && m.tour !== null) this.evenements.push({ type: 'grimpe', id: m.id, monstre: m.type, tour: m.tour, pas: this.pas });
       return;
     }
     // Retour : la voilà sur le sentier.
@@ -910,6 +983,7 @@ export class Partie {
       }
     m.horsSentier = 'retour';
     m.fleur = null;
+    m.tour = null;
     this.suivre(m, meilleure ? [{ ...m.position }, { x: meilleure.x + 0.5, y: meilleure.y + 0.5 }] : [{ ...m.position }, { ...m.position }]);
   }
 
@@ -960,6 +1034,10 @@ export class Partie {
   private tirer(): void {
     for (const t of this.tours) {
       if (t.recharge > 0) t.recharge--;
+      if (this.bloquee(t)) {
+        t.cible = null;
+        continue;
+      }
       const stade = stadeDe(t);
       const cible = this.viser(t.centre, porteeDe(t), TOURS[t.type].aerien ?? false, undefined, TOURS[t.type].sousEau, t.mode);
       t.cible = cible?.id ?? null;

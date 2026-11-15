@@ -3,7 +3,7 @@
 // à la mort, le monstre s'écrase puis éclate en cubes, et ses spores montent en « +N ».
 import * as THREE from 'three';
 import { MONSTRES, type Ile, type Instantane, type TypeMonstre } from '@spore-siege/engine';
-import { versMonde } from './repere';
+import { HAUTEUR_PLATEFORME, hauteurCase, versMonde } from './repere';
 import { lumineuse } from './palette';
 import { Eclats } from './effets';
 import { hachage, Voxels, type Modele } from './voxels';
@@ -41,6 +41,11 @@ const M = {
   ver: 0xd8cdbd,
   verSombre: 0xa89a88,
   dent: 0xf2ecd8,
+  araignee: 0x3b3530,
+  araigneeSombre: 0x241f1c,
+  ecureuil: 0x9a5a34,
+  ecureuilClair: 0xc9a27a,
+  queue: 0xb0703f,
 };
 lumineuse(M.oeil, M.soin);
 const C = -0.5;
@@ -303,6 +308,48 @@ function cloporte(): Voxels {
   return v;
 }
 
+/**
+ * Araignée moisie : gros abdomen sombre marqué d'un sablier rouille, petite tête, huit pattes coudées (avant = +x),
+ * quatre yeux qui luisent.
+ */
+function araignee(): Voxels {
+  const v = new Voxels().boule(C - 1.5, 3, C, 2.6, 2.1, 2.3, M.araignee);
+  v.boule(C + 1.5, 2.4, C, 1.4, 1.2, 1.3, M.araigneeSombre);
+  // Sablier rouille sur le dos, duvet de moisissure.
+  v.peindre((x, y, z, c) => c === M.araignee && y >= 4 && (z === -1 || z === 0) && x >= -4 && x <= -1, M.rouille);
+  duvet(v, M.araignee, 0.2);
+  // Pattes : montent puis redescendent loin du corps, deux par deux de chaque côté.
+  for (const [x, dx] of [[2, 1], [1, 0], [-1, 0], [-2, -1]] as const) {
+    for (const s of [-1, 1]) {
+      const z0 = s < 0 ? -2 : 1;
+      v.poser(x, 3, z0 + s, M.araigneeSombre).poser(x + dx, 4, z0 + 2 * s, M.araigneeSombre).poser(x + dx, 3, z0 + 3 * s, M.araigneeSombre);
+      v.poser(x + 2 * dx, 2, z0 + 4 * s, M.araigneeSombre).poser(x + 2 * dx, 1, z0 + 4 * s, M.araigneeSombre).poser(x + 2 * dx, 0, z0 + 4 * s, M.araigneeSombre);
+    }
+  }
+  return v.poser(3, 3, -1, M.oeil).poser(3, 3, 0, M.oeil).poser(3, 2, -2, M.oeil).poser(3, 2, 1, M.oeil);
+}
+
+/**
+ * Écureuil rouillé : corps roux mité de taches sombres, ventre clair, grosse queue en panache relevée (arrière = -x),
+ * oreilles pointues, yeux qui luisent.
+ */
+function ecureuil(): Voxels {
+  const v = new Voxels().boule(C, 2.4, C, 1.9, 2, 1.5, M.ecureuil);
+  v.boule(C + 1.8, 4.2, C, 1.3, 1.2, 1.2, M.ecureuil);
+  v.peindre((x, y, _z, c) => c === M.ecureuil && x >= 1 && y <= 3, M.ecureuilClair);
+  taches(v, M.ecureuil, 0.15, M.rouilleSombre);
+  // Panache : monte derrière le dos puis se recourbe vers l'avant.
+  v.boule(C - 2.5, 3, C, 1.3, 1.6, 1.2, M.queue);
+  v.boule(C - 3, 5.5, C, 1.5, 1.8, 1.3, M.queue);
+  v.boule(C - 2, 7.3, C, 1.4, 1.2, 1.2, M.queue);
+  duvet(v, M.queue, 0.35);
+  // Oreilles, yeux, pattes.
+  v.poser(1, 6, -1, M.ecureuil).poser(1, 6, 0, M.ecureuil).poser(1, 7, -1, M.rouilleSombre).poser(1, 7, 0, M.rouilleSombre);
+  v.poser(3, 5, -1, M.oeil).poser(3, 5, 0, M.oeil).poser(4, 4, -1, M.sombre).poser(4, 4, 0, M.sombre);
+  for (const z of [-2, 1]) v.poser(1, 0, z, M.sombre).poser(-1, 0, z, M.sombre);
+  return v;
+}
+
 /** Cloporte roulé en boule : une sphère cerclée de plaques, seulement deux yeux qui dépassent. */
 function cloporteBoule(): Voxels {
   const v = new Voxels().boule(C, 2.5, C, 2.6, 2.6, 2.6, M.cloporte);
@@ -361,6 +408,8 @@ export const ECLATS: Record<TypeMonstre, number[]> = {
   chauveSouris: [M.chauve, M.membrane, M.rouille],
   cloporte: [M.cloporte, M.cloporteSombre, M.rouille],
   ver: [M.ver, M.verSombre, M.rouille],
+  araignee: [M.araignee, M.rouille, M.araigneeSombre],
+  ecureuil: [M.ecureuil, M.queue, M.rouille],
 };
 
 let modeles: Record<TypeMonstre, Modele> | null = null;
@@ -383,6 +432,8 @@ export function modelesMonstres(): Record<TypeMonstre, Modele> {
     chauveSouris: chauveSouris().modele(false),
     cloporte: cloporte().modele(false),
     ver: ver().modele(false),
+    araignee: araignee().modele(false),
+    ecureuil: ecureuil().modele(false),
   };
   return modeles;
 }
@@ -449,7 +500,15 @@ interface Corps {
   /** Grand Corbeau : son ombre au sol, et sa hauteur affichée (lissée). */
   ombre?: THREE.Mesh;
   vol?: number;
+  /** Araignée : son fil de soie, tendu tant qu'elle descend. */
+  fil?: THREE.Line;
+  /** Écureuil : 0 au sol, 1 perché sur sa tour (lissé). */
+  grimpe?: number;
 }
+
+/** Araignée : hauteur d'où elle se laisse tomber, en cases. */
+const HAUTEUR_FIL = 2.6;
+const SOIE = new THREE.LineBasicMaterial({ color: 0xe8e2d0 });
 
 /** Hauteur du Grand Corbeau quand il tourne au-dessus de l'île, en cases. */
 const HAUTEUR_VOL = 2.4;
@@ -528,7 +587,32 @@ export class MonstresRendu {
       this.position.y -= corps.plonge * Math.max(PROFONDEUR_PLONGEE, corps.hauteur + 0.1);
       // Crapaud : bond en cloche (le roi bondit plus haut).
       if (m.saut !== null) this.position.y += Math.sin(Math.PI * m.saut) * HAUTEUR_SAUT * (m.type === 'crapaudRoi' ? 1.6 : 1);
+      // Araignée : pendue sous son fil, qui monte jusqu'aux branches.
+      if (m.type === 'araignee') {
+        const haut = (m.descente ?? 0) * HAUTEUR_FIL;
+        this.position.y += haut;
+        if (!corps.fil) {
+          corps.fil = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), SOIE);
+          this.groupe.add(corps.fil);
+        }
+        corps.fil.visible = m.descente !== null;
+        const p = corps.fil.geometry.getAttribute('position') as THREE.BufferAttribute;
+        p.setXYZ(0, this.position.x, this.position.y + 0.3, this.position.z);
+        p.setXYZ(1, this.position.x, HAUTEUR_FIL + 0.6, this.position.z);
+        p.needsUpdate = true;
+      }
+      // Écureuil : grimpe sur le toit de la tour qu'il bloque, et y remue la queue ; sinon il sautille.
+      if (m.type === 'ecureuil') {
+        corps.grimpe = (corps.grimpe ?? 0) + ((m.perche ? 1 : 0) - (corps.grimpe ?? 0)) * 0.2;
+        const cx = Math.floor(m.position.x);
+        const cy = Math.floor(m.position.y);
+        const tour = actuel.tours.find((t) => t.case.x === cx && t.case.y === cy);
+        const toit = hauteurCase(ile, cx, cy) + (tour ? 0.45 + 0.4 * Math.min(3, tour.stade) : HAUTEUR_PLATEFORME);
+        this.position.y += corps.grimpe * toit + (m.perche ? 0 : Math.abs(Math.sin(instant / 90 + m.id)) * 0.08);
+      }
       corps.maillage.position.copy(this.position);
+      if (m.type === 'ecureuil' && m.perche) corps.maillage.scale.set(1, 1 + Math.sin(instant / 120) * 0.06, 1);
+      else if (m.type === 'ecureuil') corps.maillage.scale.set(1, 1, 1);
       if (m.type === 'crapaud' || m.type === 'crapaudRoi') {
         const etire = m.saut === null ? 0 : Math.sin(Math.PI * m.saut) * 0.25;
         corps.maillage.scale.set(1 + etire, 1 - etire * 0.6, 1);
@@ -570,6 +654,7 @@ export class MonstresRendu {
       if (vus.has(id)) continue;
       this.dessus.remove(corps.fond, corps.jauge);
       if (corps.ombre) this.groupe.remove(corps.ombre);
+      if (corps.fil) this.groupe.remove(corps.fil);
       this.corps.delete(id);
       const fin = actuel.evenements.find((e) => e.id === id && (e.type === 'mort' || e.type === 'morsure'));
       if (!fin) {

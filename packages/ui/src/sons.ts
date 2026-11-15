@@ -32,7 +32,9 @@ export type Effet =
   | 'devore'
   | 'pique'
   | 'extinction'
-  | 'souffle';
+  | 'souffle'
+  | 'fil'
+  | 'grimpe';
 
 const VOLUME = 0.22;
 /** Ambiance de fond, basse exprès (même niveau que Tiny Shrooms) ; le vent par-dessus en léger souffle. */
@@ -154,6 +156,10 @@ const EFFETS: Record<Effet, { notes: Note[]; souffles?: Souffle[] }> = {
   },
   // Chenille qui finit une fleur : trois croques sèches.
   // Lanterne soufflée par une chauve-souris : un « pff » et une note qui retombe.
+  // Fil de soie qui se déroule (sifflement qui descend), puis la chute légère de l'araignée.
+  fil: { notes: [{ f: 1400, t: 0, d: 0.35, vers: 500, onde: 'sine', v: 0.06 }, { f: 160, t: 0.34, d: 0.06, vers: 110, onde: 'triangle', v: 0.12 }], souffles: [{ t: 0, d: 0.3, f: 4200, v: 0.12 }] },
+  // Griffes qui grattent l'écorce en montant, petit cri aigu en haut.
+  grimpe: { notes: [{ f: 1800, t: 0.24, d: 0.07, vers: 2400, onde: 'square', v: 0.05 }], souffles: [{ t: 0, d: 0.04, f: 3000, v: 0.3 }, { t: 0.07, d: 0.04, f: 3300, v: 0.3 }, { t: 0.14, d: 0.04, f: 3600, v: 0.3 }] },
   extinction: { notes: [{ f: 520, t: 0.02, d: 0.22, vers: 180, onde: 'triangle', v: 0.14 }], souffles: [{ t: 0, d: 0.16, f: 900, v: 0.4 }] },
   devore: { notes: [{ f: 220, t: 0.18, d: 0.08, vers: 150, onde: 'square', v: 0.15 }], souffles: [{ t: 0, d: 0.05, f: 2600, v: 0.35 }, { t: 0.09, d: 0.05, f: 2300, v: 0.35 }, { t: 0.18, d: 0.07, f: 2000, v: 0.4 }] },
   recolte: { notes: [{ f: 1175, t: 0, d: 0.06, onde: 'sine', v: 0.16 }, { f: 1568, t: 0.06, d: 0.1, onde: 'sine', v: 0.14 }] },

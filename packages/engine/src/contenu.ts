@@ -61,6 +61,16 @@ export interface FicheMonstre {
    * plus vite pendant `elanDuree` secondes ; il ne peut pas se rouler à nouveau avant `recharge` secondes.
    */
   boule?: { duree: number; armure: number; recharge: number; elan: number; elanDuree: number };
+  /**
+   * Araignée : ne part pas d'une plage, elle descend d'un arbre au bout d'un fil (hors d'atteinte pendant `duree`
+   * secondes) et se pose sur la route de sa plage, entre `de` et `a` de sa longueur, d'où elle file vers la souche.
+   */
+  fil?: { duree: number; de: number; a: number };
+  /**
+   * Écureuil : passant à moins de `flair` cases d'une tour en hauteur (plateforme) libre, il quitte le sentier, y
+   * grimpe et la bloque (elle ne tire plus) `duree` secondes, puis rejoint le sentier. Une seule tour par écureuil.
+   */
+  grimpeur?: { flair: number; duree: number };
 }
 
 export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
@@ -144,6 +154,10 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
       ],
     },
   },
+  // Futaie, niveau 2 : tombe d'un arbre au milieu du sentier (les défenses massées à l'entrée ne la voient pas).
+  araignee: { pv: 26, vitesse: 0.85, morsure: 1, butin: 4, armure: 0, fil: { duree: 1.5, de: 0.3, a: 0.65 } },
+  // Futaie, niveau 3 : grimpe sur une tour en hauteur et la bloque quelques secondes.
+  ecureuil: { pv: 20, vitesse: 1.4, morsure: 1, butin: 3, armure: 0, grimpeur: { flair: 1.8, duree: 3 } },
 };
 
 /** Spores au départ : de quoi poser les deux premières tours. */

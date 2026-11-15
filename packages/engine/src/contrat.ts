@@ -52,7 +52,9 @@ export type TypeMonstre =
   | 'corbeau'
   | 'chauveSouris'
   | 'cloporte'
-  | 'ver';
+  | 'ver'
+  | 'araignee'
+  | 'ecureuil';
 
 export interface MonstreVu {
   id: number;
@@ -77,6 +79,10 @@ export interface MonstreVu {
   dansLeNoir: boolean;
   /** Cloporte roulé en boule : presque invulnérable, immobile. */
   enBoule: boolean;
+  /** Araignée qui descend au bout de son fil : ce qu'il reste de la descente, de 1 (en haut) à 0 ; `null` sinon. */
+  descente: number | null;
+  /** Écureuil perché sur une tour en hauteur, qu'il bloque. */
+  perche: boolean;
 }
 
 export type TypeTour = 'ruche' | 'cristal' | 'mortier' | 'canon' | 'heron';
@@ -101,6 +107,8 @@ export interface TourVue {
   case: Case;
   /** Posée sur une plateforme de la futaie (plus haut, plus loin, plus cher). */
   haute: boolean;
+  /** Un écureuil est perché dessus : elle ne tire pas. */
+  bloquee: boolean;
   portee: number;
   /** Monstre visé, s'il y en a un à portée. */
   cible: number | null;
@@ -157,7 +165,11 @@ export type EvenementVu =
   /** La chauve-souris ou le Ver des profondeurs `par` vient d'éteindre le champignon-lanterne `id`. */
   | { type: 'extinction'; id: number; par: number; case: Case; pas: number }
   /** Le Ver des profondeurs `id` souffle toutes les lanternes (palier de vie). */
-  | { type: 'souffle'; id: number; monstre: TypeMonstre; position: Position; pas: number };
+  | { type: 'souffle'; id: number; monstre: TypeMonstre; position: Position; pas: number }
+  /** L'araignée `id` se laisse tomber d'un arbre au bout de son fil, au-dessus de `position`. */
+  | { type: 'fil'; id: number; monstre: TypeMonstre; position: Position; pas: number }
+  /** L'écureuil `id` grimpe sur la tour `tour` : elle ne tire plus tant qu'il y reste. */
+  | { type: 'grimpe'; id: number; monstre: TypeMonstre; tour: number; pas: number };
 
 /** Fleur à spores plantée par le joueur (prairie) : elle rapporte des spores à chaque fin de vague. */
 export interface FleurVue {
