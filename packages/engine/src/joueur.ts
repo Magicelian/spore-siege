@@ -68,6 +68,8 @@ class Joueur {
    * sinon les ruches, posées sur le chemin prévu, ne voient pas passer la première vague.
    */
   private readonly ronceDabord: boolean;
+  /** Une case d'eau libre voit au moins 6 cases des chemins prévus : le héron y vaut la peine. */
+  private readonly eauUtile: boolean;
 
   constructor(
     private readonly style: Style,
@@ -81,6 +83,16 @@ class Joueur {
       const prevue = prevues[n] ?? [];
       return prevue.filter((c) => libre.has(cle(c))).length < prevue.length / 2;
     });
+    const portee = TOURS.heron.stades[0].portee;
+    const chemins = prevues.flat();
+    this.eauUtile =
+      style === 'bon' &&
+      partie.regles.tours.includes('heron') &&
+      ile.terrain.some((_, k) => {
+        const c = { x: k % ile.largeur, y: Math.floor(k / ile.largeur) };
+        if (!partie.libre(c, 'heron')) return false;
+        return chemins.filter((p) => (p.x - c.x) ** 2 + (p.y - c.y) ** 2 <= portee * portee).length >= 6;
+      });
   }
 
   /** Dépense ce qu'il peut, action après action, tant que la suivante est payable. */
@@ -161,6 +173,8 @@ class Joueur {
     if (proches.has('volant')) besoins.push('ruche', 'cristal');
     if (proches.has('soigneur')) besoins.push('cristal');
     if (proches.has('limaceMere')) besoins.push('cristal', 'canon');
+    // Héron : contre les files de marcheurs, s'il a une case d'eau qui voit assez de chemin.
+    if (this.eauUtile && (proches.has('limace') || proches.has('amas') || proches.has('scarabee'))) besoins.push('heron');
     const compte = (t: TypeTour) => i.tours.filter((x) => x.type === t).length;
     return [...besoins].sort((a, b) => compte(a) - compte(b))[0]!;
   }
@@ -186,7 +200,7 @@ class Joueur {
     for (let y = 0; y < ile.profondeur; y++) {
       for (let x = 0; x < ile.largeur; x++) {
         const c = { x, y };
-        if (!this.partie.libre(c)) continue;
+        if (!this.partie.libre(c, type)) continue;
         let s = 0;
         routes.forEach((r, i) => {
           for (const p of r) if (dedans(p, x, y, portee)) s += poids[i]!;

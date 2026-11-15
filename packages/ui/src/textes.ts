@@ -6,6 +6,7 @@ export const TOURS_TEXTES: Record<TypeTour, { nom: string; role: string }> = {
   cristal: { nom: 'Obélisque', role: 'Un éclair qui saute de monstre en monstre et perce les carapaces.' },
   mortier: { nom: 'Mortier à tourbe', role: 'Un obus lent qui éclabousse et englue toute une zone.' },
   canon: { nom: 'Canon à spores', role: 'Gros dégâts en zone, mais il recharge lentement.' },
+  heron: { nom: 'Nid de héron', role: 'Sur l’eau seulement. Son harpon transperce tous les monstres alignés.' },
 };
 
 /** Capacités du stade 4 (`CAPACITES_DE` : d'abord contre les groupes, puis contre les gros monstres). */
@@ -18,6 +19,8 @@ export const CAPACITES_TEXTES: Record<Capacite, { nom: string; role: string }> =
   salve: { nom: 'Salve', role: 'Trois obus d’un coup, serrés sur la même cible.' },
   mitraille: { nom: 'Mitraille', role: 'Trois petits obus rapides, sur trois monstres.' },
   grosCalibre: { nom: 'Gros calibre', role: 'Un obus énorme, une grosse zone, très lent.' },
+  harponChaine: { nom: 'Harpon chaîne', role: 'Au bout de sa course, le harpon repart deux fois vers d’autres monstres.' },
+  grandHarpon: { nom: 'Grand harpon', role: 'Un harpon énorme qui perce l’armure, lent à recharger.' },
 };
 
 export const MONSTRES_TEXTES: Record<TypeMonstre, { nom: string; description: string; conseil: string }> = {

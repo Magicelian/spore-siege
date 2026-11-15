@@ -1,5 +1,5 @@
-// Les quatre tours de guerre, 3 stades chacune : bois brûlé, métal rouillé, et l'élément de Tiny Shrooms au
-// sommet (ruche, cristal, tourbe, champignon). Chaque stade monte plus haut et se hérisse davantage.
+// Les cinq tours de guerre, 3 stades chacune : bois brûlé, métal rouillé, et l'élément de Tiny Shrooms au
+// sommet (ruche, cristal, tourbe, champignon ; le héron, sur pilotis dans l'eau, garde son nid). Chaque stade monte plus haut et se hérisse davantage.
 // Repère : 12 voxels par case, x et z de -6 à 5 ; la caméra regarde depuis +x +z (faces avant).
 import type { Capacite, TypeTour } from '@spore-siege/engine';
 import { lumineuse } from './palette';
@@ -36,6 +36,10 @@ const PRISME_VIF = 0xf1e6ff;
 const GLU = 0xc6cf3e;
 const GLU_SOMBRE = 0x8f9a2a;
 const LAITON = 0xc9a24a;
+const PLUME = 0xd5dadf;
+const PLUME_SOMBRE = 0x8a96a0;
+const BEC = 0xe0b040;
+const BRINDILLE = 0x7a5a36;
 lumineuse(CRISTAL, CRISTAL_VIF, POISON, PRISME, PRISME_VIF);
 
 const COINS = [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const;
@@ -308,13 +312,83 @@ function grosCalibre(v: Voxels): void {
   v.peindre((x, y, z, c) => c === CHAPEAU && y === 15 && hachage(x, y, z) < 0.2, POIS);
 }
 
-const CAPACITES_VOXELS: Record<Capacite, (v: Voxels) => void> = { essaim, dard, tempete, prisme, salve, glu, mitraille, grosCalibre };
+/** Pilotis : quatre pieux plantés dans l'eau sous un plancher de demi-côté `a`, à la hauteur `y`. */
+function pilotis(v: Voxels, a: number, y: number): void {
+  for (const [sx, sz] of COINS) {
+    const x = sx < 0 ? -a : a - 1;
+    const z = sz < 0 ? -a : a - 1;
+    v.boite(x, 0, z, x, y - 1, z, BOIS_SOMBRE);
+  }
+  v.boite(-a, y, -a, a - 1, y, a - 1, BOIS);
+  v.peindre((x, yy, z, c) => yy === y && c === BOIS && (x & 1) === 0, BOIS_SOMBRE);
+}
+
+/** Héron moisi debout dans son nid de brindilles, à l'arrière du plancher, bec pointé vers l'avant (+z). */
+function nidHeron(v: Voxels, y: number, cou: number): void {
+  v.cylindre(-2, -2, y, y + 1, 2.8, BRINDILLE);
+  v.cylindre(-2, -2, y + 1, y + 1, 1.6, null);
+  v.peindre((x, yy, z, c) => c === BRINDILLE && hachage(x, yy, z) < 0.35, BOIS_BRULE);
+  v.boule(-2, y + 3, -2.5, 2.2, 1.8, 2.8, PLUME);
+  v.peindre((x, yy, z, c) => c === PLUME && (z <= -5 || yy <= y + 2), PLUME_SOMBRE);
+  v.boite(-3, y + 4, -1, -2, y + 4 + cou, 0, PLUME);
+  v.boite(-3, y + 4 + cou, -1, -1, y + 6 + cou, 1, PLUME);
+  v.boite(-4, y + 6 + cou, -2, -4, y + 7 + cou, -2, PLUME_SOMBRE);
+  v.boite(-2, y + 5 + cou, 2, -2, y + 5 + cou, 5, BEC);
+  v.poser(-1, y + 6 + cou, 1, TROU).poser(-3, y + 6 + cou, 1, TROU);
+  // Quelques taches de rouille : la guerre l'a marqué.
+  v.peindre((x, yy, z, c) => c === PLUME && hachage(z, x, yy) < 0.06, ROUILLE);
+}
+
+/** Baliste à l'avant du plancher : arc de métal, harpon barbelé pointé vers +z. */
+function baliste(v: Voxels, y: number, demiArc: number, longueur: number, epais = false): void {
+  v.boite(1, y, 0, 2, y, 2, METAL_SOMBRE);
+  v.boite(1.5 - demiArc, y + 1, 2, 1.5 + demiArc, y + 1, 2, METAL);
+  v.poser(1.5 - demiArc, y + 1, 2, ROUILLE).poser(1.5 + demiArc, y + 1, 2, ROUILLE);
+  const x1 = epais ? 2 : 1;
+  v.boite(1, y + 1, 0, x1, y + 1 + (epais ? 1 : 0), longueur, BOIS);
+  v.boite(1, y + 1, longueur + 1, x1, y + 1 + (epais ? 1 : 0), longueur + 1, epais ? LAITON : METAL_CLAIR);
+  v.poser(0, y + 1, longueur, METAL_CLAIR).poser(x1 + 1, y + 1, longueur, METAL_CLAIR);
+}
+
+/** Nid de héron : plancher sur pilotis dans l'eau, le héron dans son nid, baliste à harpon devant. */
+function heron(v: Voxels, stade: number): void {
+  const pont = [2, 4, 6][stade - 1]!;
+  pilotis(v, 5, pont);
+  if (stade >= 2) creneaux(v, 5, pont + 1);
+  nidHeron(v, pont + 1, 1 + stade);
+  baliste(v, pont + 1, 1 + stade, 3 + stade);
+  if (stade >= 3) {
+    piques(v, 5, pont - 2);
+    drapeau(v, 4, -5, pont + 1, 7);
+  }
+}
+
+/** Harpon chaîne : la baliste traîne une chaîne enroulée sur un treuil. */
+function harponChaine(v: Voxels): void {
+  heron(v, 3);
+  const y = 7;
+  v.cylindre(3.5, -1, y, y + 2, 1.4, METAL_SOMBRE);
+  for (let z = 0; z <= 6; z++) v.poser(z % 2 === 0 ? 3 : 2, y + 1, z, z % 2 === 0 ? METAL_CLAIR : RIVET);
+  v.boite(-5, y, 3, -4, y, 5, METAL_CLAIR);
+  v.peindre((x, yy, z, c) => c === METAL_CLAIR && yy === y && hachage(x, yy, z) < 0.5, RIVET);
+}
+
+/** Grand harpon : une baliste énorme au harpon épais à pointe de laiton. */
+function grandHarpon(v: Voxels): void {
+  heron(v, 3);
+  baliste(v, 8, 5, 8, true);
+  v.boite(0, 7, -1, 3, 8, 1, METAL);
+  v.peindre((x, y, z, c) => c === METAL && y === 7 && hachage(x, y, z) < 0.3, ROUILLE);
+}
+
+const CAPACITES_VOXELS: Record<Capacite, (v: Voxels) => void> = { essaim, dard, tempete, prisme, salve, glu, mitraille, grosCalibre, harponChaine, grandHarpon };
 
 /** `stade` de 1 à 3 ; au stade 4, le modèle de la capacité. */
 export function fortin(type: TypeTour, stade: number, capacite: Capacite | null = null): Voxels {
   const v = new Voxels();
-  socle(v);
+  // Le héron est sur pilotis dans l'eau : pas de dalle de pierre.
+  if (type !== 'heron') socle(v);
   if (stade >= 4 && capacite) CAPACITES_VOXELS[capacite](v);
-  else ({ ruche, cristal, mortier, canon })[type](v, Math.min(3, stade));
+  else ({ ruche, cristal, mortier, canon, heron })[type](v, Math.min(3, stade));
   return v;
 }

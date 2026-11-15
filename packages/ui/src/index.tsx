@@ -15,7 +15,8 @@ import { CAPACITES_TEXTES, ILES_TEXTES, MONSTRES_TEXTES, nombre, TEXTES, TOURS_T
 export interface Jeu {
   executer(commande: Commande): boolean;
   instantane(): Instantane;
-  libre(c: Case): boolean;
+  /** Une tour (de cette sorte, ou de n'importe laquelle) peut-elle être posée sur la case ? */
+  libre(c: Case, tour?: TypeTour): boolean;
   ronceLibre(c: Case): boolean;
   readonly emplacementsRonces: readonly Case[];
   readonly ile: Ile;
@@ -826,6 +827,7 @@ export class ControleurInterface {
       return (
         <BulleConstruire
           i={i}
+          types={TYPES.filter((t) => this.jeu.libre(b.case, t))}
           enHaut={b.enHaut}
           survol={this.survol}
           vignette={(t) => this.options.vignette(t, 1)}
@@ -1140,6 +1142,8 @@ function Entete({ titre, vignette, fermer, sous }: { titre: string; vignette?: s
 
 function BulleConstruire(p: {
   i: Instantane;
+  /** Tours qui vont sur cette case : celles de terre, le héron sur l'eau, les cinq sur un nénuphar. */
+  types: TypeTour[];
   enHaut: boolean;
   survol: TypeTour | null;
   vignette: (t: TypeTour) => string;
@@ -1148,13 +1152,13 @@ function BulleConstruire(p: {
   poser: (t: TypeTour) => void;
 }) {
   const permises = p.i.regles.tours;
-  const detail = p.survol ?? permises[0] ?? TYPES[0]!;
+  const detail = p.survol ?? p.types.find((t) => permises.includes(t)) ?? p.types[0] ?? TYPES[0]!;
   return (
     <section class={`bulle ${p.enHaut ? 'haut' : 'bas'}`}>
       <Entete titre={TEXTES.construire} fermer={p.fermer} />
       <div class="corps">
         <ul class="catalogue" onMouseLeave={() => p.survoler(null)}>
-          {TYPES.map((t) => {
+          {p.types.map((t) => {
             const prix = TOURS[t].stades[0].prix;
             const interdite = !permises.includes(t);
             const manque = interdite || p.i.spores < prix;

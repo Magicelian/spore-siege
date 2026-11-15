@@ -58,7 +58,15 @@ const PROJECTILES: Record<TypeTour | Capacite, { couleur: number; cote: number; 
   glu: { couleur: 0xc6cf3e, cote: 4, arc: 1.6 },
   mitraille: { couleur: 0xffe08a, cote: 2, arc: 0.25 },
   grosCalibre: { couleur: 0xf3e6c8, cote: 6, arc: 1 },
+  // Héron : pointe de harpon claire au bout d'une hampe (voir `HAMPE`).
+  heron: { couleur: 0xd8dde2, cote: 2, arc: 0 },
+  harponChaine: { couleur: 0xe8ecef, cote: 2, arc: 0 },
+  grandHarpon: { couleur: 0xe0b040, cote: 4, arc: 0 },
 };
+/** Hampe du harpon : une ligne de bois derrière la pointe, dans le sens de la course ; en cases. */
+const HAMPE = new THREE.LineBasicMaterial({ color: 0x8a5a2e, depthTest: false, depthWrite: false });
+const CHAINE = new THREE.LineBasicMaterial({ color: 0xc9c4bc, depthTest: false, depthWrite: false });
+const LONGUEUR_HAMPE = 0.7;
 /** Allure d'un projectile : celle de sa capacité s'il en a une, sinon celle de sa tour. */
 const allure = (p: { type: TypeTour; capacite: Capacite | null }) => p.capacite ?? p.type;
 const sansProfondeur = { depthTest: false, depthWrite: false } as const;
@@ -84,6 +92,7 @@ const GERBE_IMPACT: Record<TypeTour, number[]> = {
   cristal: [0xb7f2ff],
   mortier: [0x4a3826, 0x7c8f3c, 0x8fa04a],
   canon: [0xf3e6c8, 0xc8403a, 0xe8d9b8],
+  heron: [0x9aa6ae, 0x4a9a8e],
 };
 const FUMEE = [0xd8d2c8, 0xb8b2a8];
 const DEBRIS = [0x6b4a2f, 0x33241a, 0x5b5550, 0x7d776b];
@@ -130,7 +139,7 @@ export class ToursRendu {
   /** Projectiles et éclairs : dessinés par-dessus l'île, sans contour (superposition). */
   readonly dessus = new THREE.Group();
   private readonly tours = new Map<number, CorpsTour>();
-  private readonly projectiles = new Map<number, { cadre: THREE.Sprite; coeur: THREE.Sprite; trainee: THREE.Sprite }>();
+  private readonly projectiles = new Map<number, { cadre: THREE.Sprite; coeur: THREE.Sprite; trainee: THREE.Sprite; hampe?: THREE.Line }>();
   private readonly impacts: THREE.Mesh[] = [];
   private impactsVus = new Set<string>();
   private readonly eclats = new Eclats();
@@ -271,6 +280,11 @@ export class ToursRendu {
         s.coeur.renderOrder = 2;
         this.projectiles.set(p.id, s);
         this.dessus.add(s.trainee, s.cadre, s.coeur);
+        if (p.type === 'heron') {
+          s.hampe = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), p.capacite === 'harponChaine' ? CHAINE : HAMPE);
+          s.hampe.renderOrder = 1;
+          this.dessus.add(s.hampe);
+        }
       }
       const a = anciens.get(p.id) ?? p.position;
       const ici = { x: a.x + (p.position.x - a.x) * alpha, y: a.y + (p.position.y - a.y) * alpha };
@@ -282,10 +296,26 @@ export class ToursRendu {
       s.coeur.scale.set(cote * parPixel, cote * parPixel, 1);
       s.cadre.scale.set((cote + 2) * parPixel, (cote + 2) * parPixel, 1);
       s.trainee.scale.set(Math.max(1, cote - 1) * parPixel, Math.max(1, cote - 1) * parPixel, 1);
-      s.trainee.visible = arc > 0 || p.type !== 'ruche';
+      s.trainee.visible = (arc > 0 || p.type !== 'ruche') && !s.hampe;
+      if (s.hampe) {
+        // La hampe suit la course : de la pointe vers le point de départ du harpon (ou de son dernier rebond).
+        const d = Math.hypot(p.but.x - p.depart.x, p.but.y - p.depart.y) || 1;
+        const l = LONGUEUR_HAMPE * (p.capacite === 'grandHarpon' ? 1.5 : 1);
+        const queue = { x: ici.x - ((p.but.x - p.depart.x) / d) * l, y: ici.y - ((p.but.y - p.depart.y) / d) * l };
+        const position = s.hampe.geometry.getAttribute('position') as THREE.BufferAttribute;
+        position.setXYZ(0, s.coeur.position.x, s.coeur.position.y, s.coeur.position.z);
+        const q = versMonde(queue, ile, new THREE.Vector3()).setY(s.coeur.position.y);
+        position.setXYZ(1, q.x, q.y, q.z);
+        position.needsUpdate = true;
+        s.hampe.geometry.computeBoundingSphere();
+      }
     }
     for (const [id, s] of this.projectiles) {
       if (vus.has(id)) continue;
+      if (s.hampe) {
+        this.dessus.remove(s.hampe);
+        s.hampe.geometry.dispose();
+      }
       this.dessus.remove(s.cadre, s.coeur, s.trainee);
       this.projectiles.delete(id);
     }
@@ -294,6 +324,8 @@ export class ToursRendu {
   /** Obus en cloche entre la tour et le point visé ; abeille qui volette à hauteur fixe. */
   private hauteurTir(p: ProjectileVu, ici: { x: number; y: number }, instant: number): number {
     const { arc } = PROJECTILES[allure(p)];
+    // Le harpon file droit, au ras de l'eau.
+    if (p.type === 'heron') return 0.45;
     if (arc === 0) return 0.6 + Math.sin(instant / 45 + p.id) * 0.05;
     const total = Math.hypot(p.but.x - p.depart.x, p.but.y - p.depart.y);
     const fait = Math.hypot(ici.x - p.depart.x, ici.y - p.depart.y);

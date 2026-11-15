@@ -95,6 +95,13 @@ export interface FicheTour {
   ralenti?: { facteur: number; duree: number };
   /** Atteint les monstres volants (ruche et cristal) ; les obus du mortier et du canon passent dessous. */
   aerien?: boolean;
+  /** Se pose sur l'eau (eau libre ou nénuphar), nulle part ailleurs. */
+  surEau?: boolean;
+  /**
+   * Héron : le harpon file en ligne droite vers la cible et continue `allonge` cases au-delà de la portée ; il blesse
+   * une fois chaque monstre qu'il frôle à moins de `largeur` case.
+   */
+  harpon?: { largeur: number; allonge: number };
 }
 
 export const TOURS: Record<TypeTour, FicheTour> = {
@@ -134,9 +141,19 @@ export const TOURS: Record<TypeTour, FicheTour> = {
     ],
     projectile: { vitesse: 5, guide: false, rayon: 1.2 },
   },
+  heron: {
+    surEau: true,
+    stades: [
+      { prix: 70, degats: 6, portee: 3, cadence: 1.5 },
+      { prix: 55, degats: 9, portee: 3.3, cadence: 1.4 },
+      { prix: 90, degats: 13, portee: 3.6, cadence: 1.3 },
+    ],
+    projectile: { vitesse: 9, guide: false, rayon: 0 },
+    harpon: { largeur: 0.45, allonge: 1 },
+  },
 };
 
-/** Les quatre tours, dans l'ordre de la bulle « Construire ». */
+/** Les cinq tours, dans l'ordre de la bulle « Construire » (le héron, qui va sur l'eau, en dernier). */
 export const TYPES_TOURS = Object.keys(TOURS) as TypeTour[];
 
 /**
@@ -158,6 +175,8 @@ export interface FicheCapacite extends StadeTour {
   eclair?: { distance: number; attenuation: number };
   /** Glu : flaque laissée à l'impact ; les monstres dedans avancent à `facteur` de leur vitesse. */
   flaque?: { rayon: number; duree: number; facteur: number };
+  /** Harpon chaîne : au bout de sa course, le harpon repart vers un monstre qu'il n'a pas touché, à moins de `saut` cases. */
+  saut?: number;
 }
 
 /** Les deux capacités de chaque tour : d'abord celle contre les groupes, puis celle contre les gros monstres. */
@@ -166,6 +185,7 @@ export const CAPACITES_DE: Record<TypeTour, readonly [Capacite, Capacite]> = {
   cristal: ['tempete', 'prisme'],
   mortier: ['glu', 'salve'],
   canon: ['mitraille', 'grosCalibre'],
+  heron: ['harponChaine', 'grandHarpon'],
 };
 
 /** Toutes les capacités, tour par tour, dans l'ordre de `CAPACITES_DE`. */
@@ -199,6 +219,9 @@ export const CAPACITES: Record<Capacite, FicheCapacite> = {
   glu: { tour: 'mortier', prix: 140, degats: 12, portee: 4.4, cadence: 1.8, rayon: 1.1, flaque: { rayon: 1.2, duree: 4, facteur: 0.35 } },
   mitraille: { tour: 'canon', prix: 170, degats: 16, portee: 3.6, cadence: 0.9, tirs: 3, rayon: 0.7, vitesse: 7 },
   grosCalibre: { tour: 'canon', prix: 170, degats: 85, portee: 4, cadence: 3, rayon: 1.2, vitesse: 4 },
+  // Harpon chaîne : `rebonds` = nouveaux départs du harpon.
+  harponChaine: { tour: 'heron', prix: 140, degats: 13, portee: 3.8, cadence: 1.2, rebonds: 2, saut: 2.5 },
+  grandHarpon: { tour: 'heron', prix: 150, degats: 50, portee: 4.2, cadence: 2.4, percant: true, vitesse: 7 },
 };
 
 /** Un groupe de monstres identiques, lâchés un par un sur une plage. */

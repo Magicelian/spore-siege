@@ -4,14 +4,14 @@ import { Partie } from './partie';
 import { ileDe, NIVEAUX_FORET } from './niveaux';
 
 describe('Atelier', () => {
-  it('coûte 1 étoile pour la 1re capacité d\'une tour, 2 pour la seconde, 12 pour tout', () => {
+  it('coûte 1 étoile pour la 1re capacité d\'une tour, 2 pour la seconde, 15 pour tout (5 tours)', () => {
     expect(etoilesPour('essaim', [])).toBe(1);
     expect(etoilesPour('dard', ['essaim'])).toBe(2);
     expect(etoilesPour('dard', ['tempete'])).toBe(1);
     expect(etoilesPour('essaim', ['essaim'])).toBe(0);
-    expect(etoilesDepensees(TOUTES_CAPACITES)).toBe(12);
+    expect(etoilesDepensees(TOUTES_CAPACITES)).toBe(15);
     expect(etoilesDepensees(['essaim', 'tempete', 'prisme'])).toBe(4);
-    expect(TOUTES_CAPACITES).toHaveLength(8);
+    expect(TOUTES_CAPACITES).toHaveLength(10);
   });
 
   it('refuse une capacité fermée et accepte une ouverte', () => {

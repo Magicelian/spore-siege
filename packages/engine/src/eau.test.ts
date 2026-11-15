@@ -31,10 +31,10 @@ describe('eau du marais', () => {
     expect(avec).toBeGreaterThan(sans * 1.1);
   });
 
-  it('on construit sur l’herbe et les nénuphars, pas sur l’eau ni les gués', () => {
-    expect(constructible(roseliere, { x: 10, y: 4 })).toBe(true); // nénuphar
-    expect(constructible(roseliere, { x: 11, y: 4 })).toBe(false); // eau
-    expect(constructible(roseliere, { x: 13, y: 5 })).toBe(false); // gué
+  it('les tours de terre vont sur l’herbe et les nénuphars, pas sur l’eau ni les gués', () => {
+    expect(constructible(roseliere, { x: 10, y: 4 }, 'ruche')).toBe(true); // nénuphar
+    expect(constructible(roseliere, { x: 11, y: 4 }, 'ruche')).toBe(false); // eau
+    expect(constructible(roseliere, { x: 13, y: 5 })).toBe(false); // gué, pour aucune tour
   });
 
   it('pas de ronce dans un gué ; celle de (15, 5) ferme le raccourci', () => {

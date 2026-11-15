@@ -92,7 +92,7 @@ function jeuDe(p: Partie): Jeu {
       return fait;
     },
     instantane: () => actuel,
-    libre: (c) => p.libre(c),
+    libre: (c, tour) => p.libre(c, tour),
     ronceLibre: (c) => p.ronceLibre(c),
     emplacementsRonces: p.emplacementsRonces,
     ile: p.ile,

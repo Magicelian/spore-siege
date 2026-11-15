@@ -2,14 +2,16 @@
 // monstres, puis à une file de scarabées. Les monstres ont 4 fois leur vie pour qu'une tour ne vienne pas à bout de
 // tout (le total ne dirait plus rien), sans rendre gratuits les gros coups sur les petits. On mesure les dégâts faits.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { ileForet } from './carte';
-import { CAPACITES_DE, MONSTRES, type Vague } from './contenu';
+import { CARTE_ROSELIERE, ileForet, lireCarte } from './carte';
+import { CAPACITES_DE, MONSTRES, TOURS, type Vague } from './contenu';
 import type { Capacite, TypeTour } from './contrat';
 import { Partie } from './partie';
 
 declare const process: { stderr: { write(t: string): void } };
 
 const PRES = { x: 6, y: 6 };
+/** Le héron va sur l'eau : Roselière, au bord des gués du raccourci que prennent les monstres. */
+const PRES_EAU = { x: 14, y: 6 };
 const GROUPE: Vague = [
   { type: 'moucheron', nombre: 30, intervalle: 0.5, plage: 1 },
   { type: 'limace', nombre: 15, intervalle: 1, plage: 1 },
@@ -17,9 +19,10 @@ const GROUPE: Vague = [
 const GROS: Vague = [{ type: 'scarabee', nombre: 10, intervalle: 2, plage: 1 }];
 
 function degatsFaits(type: TypeTour, capacite: Capacite | null, vague: Vague): number {
-  const p = new Partie(ileForet(), [vague], 1);
+  const surEau = TOURS[type].surEau ?? false;
+  const p = new Partie(surEau ? lireCarte(CARTE_ROSELIERE, 'marais') : ileForet(), [vague], 1);
   (p as unknown as { spores: number }).spores = 9999;
-  p.executer({ type: 'poserTour', tour: type, case: PRES });
+  p.executer({ type: 'poserTour', tour: type, case: surEau ? PRES_EAU : PRES });
   const id = p.instantane().tours[0]!.id;
   p.executer({ type: 'ameliorerTour', id });
   p.executer({ type: 'ameliorerTour', id });

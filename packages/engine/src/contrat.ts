@@ -50,10 +50,10 @@ export interface MonstreVu {
   empoisonne: boolean;
 }
 
-export type TypeTour = 'ruche' | 'cristal' | 'mortier' | 'canon';
+export type TypeTour = 'ruche' | 'cristal' | 'mortier' | 'canon' | 'heron';
 
 /** Capacité spéciale choisie au stade 4 ; deux par tour (`CAPACITES_DE`). */
-export type Capacite = 'essaim' | 'dard' | 'tempete' | 'prisme' | 'salve' | 'glu' | 'mitraille' | 'grosCalibre';
+export type Capacite = 'essaim' | 'dard' | 'tempete' | 'prisme' | 'salve' | 'glu' | 'mitraille' | 'grosCalibre' | 'harponChaine' | 'grandHarpon';
 
 export interface TourVue {
   id: number;

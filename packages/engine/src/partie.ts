@@ -75,6 +75,8 @@ interface Projectile {
   ralenti: { facteur: number; duree: number } | null;
   poison: { degatsParSeconde: number; duree: number } | null;
   flaque: { rayon: number; duree: number; facteur: number } | null;
+  /** Harpon du héron : file en ligne droite et blesse une fois chaque monstre frôlé ; `rebonds` = départs restants. */
+  harpon: { largeur: number; rebonds: number; saut: number; touches: Set<Monstre> } | null;
   position: Position;
   /** Centre de la tour qui l'a tiré (pour l'arc des obus). */
   depart: Position;
@@ -120,7 +122,7 @@ export class Partie {
   private lachers: Lacher[] = [];
   private spores: number;
   /** Dégâts infligés depuis le début, par sorte de tour (tours vendues comprises). */
-  private degats: Record<TypeTour, number> = { ruche: 0, cristal: 0, mortier: 0, canon: 0 };
+  private degats: Record<TypeTour, number> = { ruche: 0, cristal: 0, mortier: 0, canon: 0, heron: 0 };
   readonly regles: Regles;
   private tours: Tour[] = [];
   private projectiles: Projectile[] = [];
@@ -156,7 +158,7 @@ export class Partie {
       case 'poserTour': {
         const prix = TOURS[commande.tour].stades[0].prix;
         const c = commande.case;
-        if (!this.regles.tours.includes(commande.tour) || !this.libre(c) || this.spores < prix) return false;
+        if (!this.regles.tours.includes(commande.tour) || !this.libre(c, commande.tour) || this.spores < prix) return false;
         this.spores -= prix;
         this.tours.push({
           id: this.prochainId++,
@@ -235,9 +237,9 @@ export class Partie {
     return true;
   }
 
-  /** Une tour peut-elle être posée sur cette case ? */
-  libre(c: Case): boolean {
-    return constructible(this.ile, c) && !this.tours.some((t) => t.case.x === c.x && t.case.y === c.y);
+  /** Une tour (de cette sorte, ou de n'importe laquelle) peut-elle être posée sur cette case ? */
+  libre(c: Case, tour?: TypeTour): boolean {
+    return constructible(this.ile, c, tour) && !this.tours.some((t) => t.case.x === c.x && t.case.y === c.y);
   }
 
   /** Un pas de simulation. */
@@ -538,7 +540,15 @@ export class Partie {
         ralenti: fiche.ralenti ?? null,
         poison: capacite?.poison ?? null,
         flaque: capacite?.flaque ?? null,
+        harpon: null,
       };
+      if (fiche.harpon) {
+        const vise = this.ouSera(cible, t.centre, base.vitesse);
+        const but = prolonger(t.centre, vise, stade.portee + fiche.harpon.allonge);
+        const harpon = { largeur: fiche.harpon.largeur, rebonds: capacite?.rebonds ?? 0, saut: capacite?.saut ?? 0, touches: new Set<Monstre>() };
+        this.projectiles.push({ ...base, id: this.prochainId++, position: { ...t.centre }, but, cible: cible.id, harpon });
+        continue;
+      }
       const lancer = (m: Monstre, but: Position) => this.projectiles.push({ ...base, id: this.prochainId++, position: { ...t.centre }, but, cible: m.id });
       const viserMonstre = (m: Monstre) => (base.guide ? { ...m.position } : this.ouSera(m, t.centre, base.vitesse));
       const tirs = capacite?.tirs ?? 1;
@@ -606,6 +616,10 @@ export class Partie {
     const parId = new Map(this.monstres.map((m) => [m.id, m]));
     const restants: Projectile[] = [];
     for (const p of this.projectiles) {
+      if (p.harpon) {
+        if (this.filer(p, p.harpon)) restants.push(p);
+        continue;
+      }
       if (p.guide) {
         const cible = parId.get(p.cible);
         // Sa cible morte, l'abeille s'en va.
@@ -636,6 +650,34 @@ export class Partie {
       this.impacts.push({ type: p.type, capacite: p.capacite, position: { ...p.but }, rayon: p.rayon, pas: this.pas });
     }
     this.projectiles = restants;
+  }
+
+  /**
+   * Un pas du harpon : il avance, blesse les monstres frôlés en chemin, puis repart vers un monstre voisin s'il lui
+   * reste des rebonds. Renvoie faux quand il a fini sa course.
+   */
+  private filer(p: Projectile, h: NonNullable<Projectile['harpon']>): boolean {
+    const avant = { ...p.position };
+    const reste = distance(p.position, p.but);
+    const avance = Math.min(p.vitesse / PAS_PAR_SECONDE, reste);
+    if (reste > 0) {
+      p.position.x += ((p.but.x - p.position.x) / reste) * avance;
+      p.position.y += ((p.but.y - p.position.y) / reste) * avance;
+    }
+    for (const m of this.monstres) {
+      if (m.pv <= 0 || h.touches.has(m) || MONSTRES[m.type].volant) continue;
+      if (distanceAuSegment(m.position, avant, p.position) > h.largeur) continue;
+      h.touches.add(m);
+      this.toucher(m, p);
+    }
+    if (avance < reste) return true;
+    if (h.rebonds <= 0) return false;
+    const suivant = this.viser(p.position, h.saut, false, h.touches);
+    if (!suivant) return false;
+    h.rebonds--;
+    p.depart = { ...p.position };
+    p.but = prolonger(p.position, suivant.position, distance(p.position, suivant.position) + 1);
+    return true;
   }
 
   /** Un projectile atteint un monstre : dégâts, puis ralenti ou poison selon la tour. */
@@ -708,13 +750,35 @@ export function etoiles(pvSouche: number): number {
   return 1;
 }
 
-/** Herbe, fleurs ou nénuphar, hors de la souche : là où une tour peut pousser. */
-export function constructible(ile: Ile, c: Case): boolean {
+/**
+ * Là où `tour` peut pousser, hors de la souche : herbe, fleurs ou nénuphar pour les tours de terre, eau libre ou
+ * nénuphar pour le héron. Sans `tour` : là où au moins une tour peut pousser.
+ */
+export function constructible(ile: Ile, c: Case, tour?: TypeTour): boolean {
   if (c.x < 0 || c.y < 0 || c.x >= ile.largeur || c.y >= ile.profondeur) return false;
   const { souche, tailleSouche } = ile;
   if (c.x >= souche.x && c.x < souche.x + tailleSouche && c.y >= souche.y && c.y < souche.y + tailleSouche) return false;
   const terrain = ile.terrain[c.y * ile.largeur + c.x];
-  return terrain === 'herbe' || terrain === 'fleurs' || terrain === 'nenuphar';
+  if (terrain === 'nenuphar') return true;
+  const surEau = terrain === 'eau';
+  const surTerre = terrain === 'herbe' || terrain === 'fleurs';
+  if (!tour) return surEau || surTerre;
+  return TOURS[tour].surEau ? surEau : surTerre;
+}
+
+/** Point à `longueur` de `depuis`, dans la direction de `vers`. */
+function prolonger(depuis: Position, vers: Position, longueur: number): Position {
+  const d = distance(depuis, vers);
+  if (d === 0) return { ...vers };
+  return { x: depuis.x + ((vers.x - depuis.x) / d) * longueur, y: depuis.y + ((vers.y - depuis.y) / d) * longueur };
+}
+
+/** Distance d'un point au segment [a, b]. */
+function distanceAuSegment(p: Position, a: Position, b: Position): number {
+  const l2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
+  if (l2 === 0) return distance(p, a);
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / l2));
+  return distance(p, { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) });
 }
 
 /** Terrain sous un point (en cases). */

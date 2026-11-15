@@ -125,6 +125,8 @@ const EFFETS: Record<Effet, { notes: Note[]; souffles?: Souffle[] }> = {
   },
   'tir-mortier': { notes: [{ f: 140, t: 0, d: 0.12, vers: 60, onde: 'triangle', v: 0.6 }], souffles: [{ t: 0, d: 0.1, f: 500, v: 0.4 }] },
   'tir-canon': { notes: [{ f: 320, t: 0, d: 0.07, vers: 120, onde: 'square', v: 0.22 }], souffles: [{ t: 0, d: 0.08, f: 1500, v: 0.35 }] },
+  // Héron : corde de baliste qui claque, puis le sifflement du harpon.
+  'tir-heron': { notes: [{ f: 520, t: 0, d: 0.1, vers: 240, onde: 'triangle', v: 0.35 }], souffles: [{ t: 0.02, d: 0.14, f: 2600, v: 0.25 }] },
   explosion: { notes: [{ f: 90, t: 0, d: 0.2, vers: 40, onde: 'triangle', v: 0.6 }], souffles: [{ t: 0, d: 0.25, f: 700, v: 0.55 }] },
   // Floc : une note qui tombe, puis un petit plop.
   mort: { notes: [{ f: 620, t: 0, d: 0.08, vers: 160, onde: 'sine', v: 0.45 }, { f: 900, t: 0.05, d: 0.04, onde: 'square', v: 0.15 }] },
