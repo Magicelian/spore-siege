@@ -27,6 +27,10 @@ const M = {
   sangsueVentre: 0x6b6a4a,
   crapaud: 0x6f7a5a,
   crapaudVentre: 0xa8a48a,
+  chenille: 0x7f8c56,
+  chenilleVentre: 0xa9ad86,
+  sauterelle: 0x9a9462,
+  sauterelleSombre: 0x5e5a38,
 };
 lumineuse(M.oeil, M.soin);
 const C = -0.5;
@@ -195,6 +199,36 @@ function crapaudRoi(): Voxels {
   return v.boite(6, 3, -4, 6, 3, 3, M.sombre);
 }
 
+/** Chenille : six anneaux dodus vert-de-gris cerclés de rouille, poils de moisissure, tête sombre et mandibules. */
+function chenille(): Voxels {
+  const v = new Voxels();
+  for (const [x, r] of [[-6, 1.3], [-4.2, 1.7], [-2.2, 1.9], [-0.2, 1.9], [1.8, 1.7]] as const) v.boule(C + x, 1.9, C, 1.1, r, r, M.chenille);
+  v.peindre((_x, y, _z, c) => c === M.chenille && y === 0, M.chenilleVentre);
+  // Un anneau sur deux cerclé de rouille.
+  v.peindre((x, _y, _z, c) => c === M.chenille && (x === -5 || x === -1 || x === 3), M.rouille);
+  duvet(v, M.chenille, 0.3);
+  // Pattes courtes sous chaque anneau.
+  for (const x of [-6, -4, -2, 0]) for (const z of [-2, 1]) v.poser(x, 0, z, M.sombre);
+  // Tête, mandibules, yeux.
+  v.boule(C + 3.8, 2.4, C, 1.5, 1.6, 1.6, M.sombre);
+  v.poser(5, 1, -1, M.rouilleSombre).poser(5, 1, 0, M.rouilleSombre);
+  return v.poser(5, 3, -2, M.oeil).poser(5, 3, 1, M.oeil);
+}
+
+/** Sauterelle : corps fin et sec, longues pattes arrière repliées, antennes, yeux luisants. */
+function sauterelle(): Voxels {
+  const v = new Voxels().boule(C - 0.5, 2, C, 2.6, 1, 0.9, M.sauterelle);
+  v.boule(C + 2.3, 2.4, C, 1.1, 1.2, 1, M.sauterelle);
+  taches(v, M.sauterelle, 0.2);
+  // Ailes repliées sur le dos, plus sombres.
+  v.boite(-3, 3, -1, 1, 3, 0, M.sauterelleSombre);
+  // Pattes arrière : cuisse qui monte, tibia qui redescend.
+  for (const z of [-2, 1]) v.boite(-1, 2, z, 0, 4, z, M.sauterelle).boite(-3, 0, z, -2, 3, z, M.sauterelleSombre).poser(1, 0, z, M.sombre);
+  // Antennes et yeux.
+  for (const z of [-1, 0]) v.poser(3, 4, z, M.sauterelleSombre).poser(4, 5, z, M.sauterelleSombre).poser(5, 6, z, M.sauterelleSombre);
+  return v.poser(3, 3, -1, M.oeil).poser(3, 3, 0, M.oeil);
+}
+
 /** Couleurs des éclats quand le monstre meurt. */
 export const ECLATS: Record<TypeMonstre, number[]> = {
   limace: [M.gris, M.rouille, M.grisClair],
@@ -208,6 +242,8 @@ export const ECLATS: Record<TypeMonstre, number[]> = {
   sangsue: [M.sangsue, M.rouille, M.sangsueVentre],
   crapaud: [M.crapaud, M.rouille, M.crapaudVentre],
   crapaudRoi: [M.crapaud, M.rouille, M.crapaudVentre],
+  chenille: [M.chenille, M.rouille, M.chenilleVentre],
+  sauterelle: [M.sauterelle, M.sauterelleSombre, M.rouille],
 };
 
 let modeles: Record<TypeMonstre, Modele> | null = null;
@@ -224,6 +260,8 @@ export function modelesMonstres(): Record<TypeMonstre, Modele> {
     sangsue: sangsue().modele(false),
     crapaud: crapaud().modele(false),
     crapaudRoi: crapaudRoi().modele(false),
+    chenille: chenille().modele(false),
+    sauterelle: sauterelle().modele(false),
   };
   return modeles;
 }
@@ -345,6 +383,8 @@ export class MonstresRendu {
       versMonde({ x: x + ecart, y: y - ecart }, ile, this.position);
       if (m.type === 'moucheron') this.position.y += Math.sin(instant / 120 + m.id) * 0.06;
       if (m.type === 'volant') this.position.y += Math.sin(instant / 300 + m.id) * 0.08;
+      // Sauterelle : petits bonds rapides.
+      if (m.type === 'sauterelle') this.position.y += Math.abs(Math.sin(instant / 110 + m.id)) * 0.14;
       // Sangsue : s'enfonce sous la surface des gués, ressort sur la terre (en glissant, pas d'un coup).
       corps.plonge = (corps.plonge ?? 0) + ((m.immerge ? 1 : 0) - (corps.plonge ?? 0)) * 0.25;
       // Le boss s'enfonce tout entier.
@@ -363,6 +403,11 @@ export class MonstresRendu {
         const s = Math.sin((x + y) * 7 + m.id) * 0.07;
         corps.maillage.scale.set(1 + s, 1 - s, 1 + s);
       }
+      // Chenille : ondule en avançant (en long), mâche quand elle mange.
+      if (m.type === 'chenille') {
+        const s = m.mange ? Math.abs(Math.sin(instant / 90 + m.id)) * 0.12 : Math.sin((x + y) * 6 + m.id) * 0.1;
+        corps.maillage.scale.set(1 + s, 1 - s * 0.5, 1);
+      }
       // Regard vers la direction de marche (+x du modèle).
       versMonde(m.position, ile, this.avant);
       versMonde(ancienne, ile, this.position);
@@ -375,7 +420,7 @@ export class MonstresRendu {
       if (vus.has(id)) continue;
       this.dessus.remove(corps.fond, corps.jauge);
       this.corps.delete(id);
-      const fin = actuel.evenements.find((e) => e.id === id);
+      const fin = actuel.evenements.find((e) => e.id === id && (e.type === 'mort' || e.type === 'morsure'));
       if (!fin) {
         this.groupe.remove(corps.maillage);
         continue;

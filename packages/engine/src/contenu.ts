@@ -41,6 +41,11 @@ export interface FicheMonstre {
   nage?: boolean;
   /** Toutes les `cadence` secondes, bondit de `distance` cases le long du chemin en `duree` secondes. */
   saut?: { cadence: number; distance: number; duree: number };
+  /**
+   * Chenille : quitte le sentier pour une fleur à spores à moins de `flair` cases, la dévore en `duree` secondes,
+   * puis rejoint le sentier le plus proche. Une seule fleur par chenille.
+   */
+  gourmande?: { flair: number; duree: number };
 }
 
 export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
@@ -88,7 +93,10 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
         { part: 0.25, escorte: [{ type: 'scarabee', nombre: 2 }, { type: 'crapaud', nombre: 4 }] },
       ],
     },
-  },
+  },  // Prairie, niveau 2 : va dévorer une fleur à spores proche du sentier, puis repart vers la souche.
+  chenille: { pv: 30, vitesse: 0.7, morsure: 1, butin: 4, armure: 0, gourmande: { flair: 3.5, duree: 2.5 } },
+  // Prairie, niveau 3 : en grands essaims, très rapide et très fragile.
+  sauterelle: { pv: 5, vitesse: 2.4, morsure: 1, butin: 1, armure: 0 },
 };
 
 /** Spores au départ : de quoi poser les deux premières tours. */

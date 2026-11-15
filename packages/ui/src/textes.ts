@@ -79,6 +79,16 @@ export const MONSTRES_TEXTES: Record<TypeMonstre, { nom: string; description: st
     description: 'La reine de la Rouille, grosse comme une souche, le dos couvert d’œufs. Blessée, elle pond une nouvelle escorte. Si elle touche la souche, tout est perdu.',
     conseil: 'Allonge son chemin avec les ronces et garde des tours pour ses petits : elle pond trois fois.',
   },
+  chenille: {
+    nom: 'Chenille rouillée',
+    description: 'Une grosse chenille tachée de rouille, toujours affamée. Si une fleur à spores pousse près du sentier, elle quitte le chemin pour la dévorer, puis repart vers la souche.',
+    conseil: 'Plante tes fleurs loin du sentier, ou garde une tour à côté : elle reste immobile le temps de manger.',
+  },
+  sauterelle: {
+    nom: 'Sauterelle rouillée',
+    description: 'Une sauterelle sèche et rapide. Elle ne vient jamais seule : les essaims déboulent sur le sentier en un clin d’œil.',
+    conseil: 'Un coup de canon ou de mortier en fauche plusieurs à la fois. Une seule cible par tir ne suffit pas.',
+  },
 };
 
 export const ILES_TEXTES: Record<Biome, string> = {

@@ -1,6 +1,7 @@
 // Une partie sur une île : vagues, monstres qui suivent le sentier, tours qui tirent, spores, vie de la souche.
 // Pur et déterministe : mêmes île, vagues, graine et commandes → même partie, pas pour pas.
 import type { Arrivee, Capacite, Case, Commande, Regles, EvenementVu, FlaqueVu, FleurVue, ImpactVu, Ile, Instantane, MonstreVu, Phase, Position, TourVue, TypeMonstre, TypeTour } from './contrat';
+import { estSentier } from './contrat';
 import {
   BONUS_PAR_SECONDE_GAGNEE,
   BONUS_VAGUE,
@@ -52,6 +53,14 @@ interface Monstre {
   /** Crapaud-roi : pas où il ressort de sa plongée (-1 : il n'est pas sous l'eau) et l'escorte qu'il pondra alors. */
   plongeeFin: number;
   escorte: TypeMonstre[];
+  /**
+   * Chenille hors du sentier : `aller` vers la fleur `fleur`, `repas` (jusqu'au pas `repasFin`), `retour` vers le
+   * sentier le plus proche ; null sur le sentier. `rassasiee` : elle a déjà mangé.
+   */
+  horsSentier: 'aller' | 'repas' | 'retour' | null;
+  fleur: number | null;
+  repasFin: number;
+  rassasiee: boolean;
 }
 
 interface Tour {
@@ -251,7 +260,7 @@ export class Partie {
     const bloquees = new Set(this.ronces).add(k);
     if (this.sentier.plages.some((p) => !route(this.ile, p.depart, bloquees))) return false;
     for (const m of this.monstres) {
-      if (MONSTRES[m.type].volant) continue;
+      if (MONSTRES[m.type].volant || m.horsSentier) continue;
       const voisines = casesAutour(m);
       if (voisines.some((v) => cle(v) === k)) return false;
       if (voisines.length > 0 && !this.nouvelleTrace(m, bloquees)) return false;
@@ -323,6 +332,7 @@ export class Partie {
       empoisonne: this.pas < m.poisonJusqua,
       immerge: this.immerge(m),
       saut: this.enSaut(m) ? (this.pas - m.sautDebut) / dureeSaut(m.type) : null,
+      mange: m.horsSentier === 'repas',
     }));
     const tours: TourVue[] = this.tours.map((t) => ({
       id: t.id,
@@ -355,7 +365,7 @@ export class Partie {
             ? { ...e, position: { ...e.position }, soignes: [...e.soignes] }
             : e.type === 'ponte'
               ? { ...e, position: { ...e.position }, petits: [...e.petits] }
-              : e.type === 'recolte'
+              : e.type === 'recolte' || e.type === 'devore'
                 ? { ...e, case: { ...e.case } }
                 : { ...e },
       ),
@@ -467,6 +477,10 @@ export class Partie {
       sautDebut: -1,
       plongeeFin: -1,
       escorte: [],
+      horsSentier: null,
+      fleur: null,
+      repasFin: -1,
+      rassasiee: false,
       // Décalé selon l'id : une file de crapauds ne bondit pas d'un seul bloc.
       prochainSaut: this.pas + Math.round((MONSTRES[type].saut?.cadence ?? 0) * PAS_PAR_SECONDE) + (this.prochainId % 9),
     };
@@ -475,7 +489,7 @@ export class Partie {
   /** Après une ronce posée ou enlevée : chaque monstre repart par le plus court chemin encore ouvert. */
   private rerouter(): void {
     for (const m of this.monstres) {
-      if (MONSTRES[m.type].volant) continue;
+      if (MONSTRES[m.type].volant || m.horsSentier) continue;
       const trace = this.nouvelleTrace(m, this.ronces);
       if (!trace) continue;
       m.trace = trace;
@@ -573,7 +587,16 @@ export class Partie {
         m.sautDebut = this.pas;
         m.prochainSaut = this.pas + Math.round((saut.cadence + saut.duree) * PAS_PAR_SECONDE);
       }
+      if (MONSTRES[m.type].gourmande && !this.gourmandise(m)) {
+        restants.push(m);
+        continue;
+      }
       m.avancement += this.vitesse(m) / PAS_PAR_SECONDE;
+      if (m.horsSentier && m.avancement >= m.longueur) {
+        this.arriver(m);
+        restants.push(m);
+        continue;
+      }
       if (m.avancement >= m.longueur) {
         // Le boss qui touche la souche l'emporte : la partie est perdue.
         const degats = MONSTRES[m.type].boss ? Math.max(this.pvSouche, MONSTRES[m.type].morsure) : MONSTRES[m.type].morsure;
@@ -585,6 +608,79 @@ export class Partie {
       }
     }
     this.monstres = restants;
+  }
+
+  /**
+   * Chenille, avant d'avancer : flaire une fleur proche, ou finit son repas. Renvoie false si elle reste sur place
+   * (elle mange).
+   */
+  private gourmandise(m: Monstre): boolean {
+    const fiche = MONSTRES[m.type].gourmande!;
+    if (m.horsSentier === 'repas') {
+      if (this.pas < m.repasFin) return false;
+      const fleur = this.fleurs.find((f) => f.id === m.fleur);
+      if (fleur) {
+        this.fleurs = this.fleurs.filter((f) => f !== fleur);
+        this.evenements.push({ type: 'devore', id: m.id, monstre: m.type, fleur: fleur.id, case: { ...fleur.case }, pas: this.pas });
+      }
+      m.rassasiee = true;
+      this.rentrer(m);
+      return true;
+    }
+    // Sa fleur a disparu (arrachée, mangée par une autre) : elle rejoint le sentier.
+    if (m.horsSentier === 'aller' && !this.fleurs.some((f) => f.id === m.fleur)) {
+      this.rentrer(m);
+      return true;
+    }
+    if (m.horsSentier || m.rassasiee || this.fleurs.length === 0) return true;
+    let proche: { id: number; case: Case } | null = null;
+    let d = fiche.flair;
+    for (const f of this.fleurs) {
+      const df = distance(m.position, { x: f.case.x + 0.5, y: f.case.y + 0.5 });
+      if (df <= d) [proche, d] = [f, df];
+    }
+    if (!proche) return true;
+    m.horsSentier = 'aller';
+    m.fleur = proche.id;
+    this.suivre(m, [{ ...m.position }, { x: proche.case.x + 0.5, y: proche.case.y + 0.5 }]);
+    return true;
+  }
+
+  /** Chenille au bout de sa trace hors du sentier : elle commence son repas, ou reprend la route de la souche. */
+  private arriver(m: Monstre): void {
+    if (m.horsSentier === 'aller') {
+      m.horsSentier = 'repas';
+      m.repasFin = this.pas + Math.round(MONSTRES[m.type].gourmande!.duree * PAS_PAR_SECONDE);
+      return;
+    }
+    // Retour : la voilà sur le sentier.
+    const c = versCase(m.position);
+    const chemin = route(this.ile, c, this.ronces);
+    m.horsSentier = null;
+    m.fleur = null;
+    if (chemin) this.suivre(m, tracer(this.ile, chemin));
+  }
+
+  /** La chenille repart vers la case de sentier ouverte la plus proche (d'où la souche reste accessible). */
+  private rentrer(m: Monstre): void {
+    let meilleure: Case | null = null;
+    let d = Infinity;
+    for (let y = 0; y < this.ile.profondeur; y++)
+      for (let x = 0; x < this.ile.largeur; x++) {
+        const c = { x, y };
+        if (!estSentier(terrainSous(this.ile, { x: x + 0.5, y: y + 0.5 })) || this.ronces.has(cle(c))) continue;
+        const dc = distance(m.position, { x: x + 0.5, y: y + 0.5 });
+        if (dc < d && route(this.ile, c, this.ronces)) [meilleure, d] = [c, dc];
+      }
+    m.horsSentier = 'retour';
+    m.fleur = null;
+    this.suivre(m, meilleure ? [{ ...m.position }, { x: meilleure.x + 0.5, y: meilleure.y + 0.5 }] : [{ ...m.position }, { ...m.position }]);
+  }
+
+  private suivre(m: Monstre, trace: Position[]): void {
+    m.trace = trace;
+    m.longueur = longueur(trace);
+    m.avancement = 0;
   }
 
   /** Le monstre vivant le plus proche de la souche, à portée de `centre` (les nageurs sous l'eau : avec `sousEau`). */

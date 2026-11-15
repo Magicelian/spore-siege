@@ -46,7 +46,9 @@ export type TypeMonstre =
   | 'limaceMere'
   | 'sangsue'
   | 'crapaud'
-  | 'crapaudRoi';
+  | 'crapaudRoi'
+  | 'chenille'
+  | 'sauterelle';
 
 export interface MonstreVu {
   id: number;
@@ -63,6 +65,8 @@ export interface MonstreVu {
   immerge: boolean;
   /** Crapaud en plein bond : avancée du saut, de 0 à 1 ; `null` au sol. */
   saut: number | null;
+  /** Chenille en train de dévorer une fleur à spores. */
+  mange: boolean;
 }
 
 export type TypeTour = 'ruche' | 'cristal' | 'mortier' | 'canon' | 'heron';
@@ -123,6 +127,8 @@ export type EvenementVu =
   | { type: 'ponte'; id: number; monstre: TypeMonstre; position: Position; petits: number[]; pas: number }
   /** Le Crapaud-roi plonge à un palier : il disparaît quelques secondes et ressortira plus loin avec son escorte. */
   | { type: 'plongee'; id: number; monstre: TypeMonstre; position: Position; pas: number }
+  /** La chenille `id` vient de finir de dévorer la fleur à spores `fleur`. */
+  | { type: 'devore'; id: number; monstre: TypeMonstre; fleur: number; case: Case; pas: number }
   /** La fleur à spores `id` vient de rapporter `gain` spores (fin de vague). */
   | { type: 'recolte'; id: number; case: Case; gain: number; pas: number };
 
