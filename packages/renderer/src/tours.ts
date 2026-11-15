@@ -46,9 +46,11 @@ function fleur(): Voxels {
 /** Champignon-lanterne (grotte) : pied pâle, grand chapeau ambre qui luit, taches claires, lucioles autour. */
 const LANTERNE = { pied: 0xd8d0b8, ombre: 0xa89c84, chapeau: 0xffa83a, tache: 0xffe6a0, coeur: 0xfff4c8, terre: 0x3e3a5a };
 lumineuse(LANTERNE.chapeau, LANTERNE.tache, LANTERNE.coeur);
-function lanterne(): Voxels {
+/** Lanterne soufflée (chauve-souris) : mêmes formes, chapeau terne qui ne luit plus. */
+const LANTERNE_ETEINTE = { ...LANTERNE, chapeau: 0x6b4a36, tache: 0x8a6a4a, coeur: 0x5a4c44 };
+function lanterne(allumee: boolean): Voxels {
   const v = new Voxels();
-  const l = LANTERNE;
+  const l = allumee ? LANTERNE : LANTERNE_ETEINTE;
   v.dome(0, 0, 0, 3, 1, l.terre);
   v.cylindre(0, 0, 1, 10, 1.3, l.pied, 1);
   v.peindre((x, _y, z, c) => c === l.pied && x + z > 0, l.ombre);
@@ -67,7 +69,7 @@ const modeles = new Map<string, Modele>();
 export function modeleTour(type: Objet, stade: number, capacite: Capacite | null = null): Modele {
   const cle = `${type}${stade}${capacite ?? ''}`;
   let m = modeles.get(cle);
-  if (!m) modeles.set(cle, (m = (type === 'ronce' ? ronce() : type === 'fleur' ? fleur() : type === 'lanterne' ? lanterne() : fortin(type, stade, capacite)).modele(false)));
+  if (!m) modeles.set(cle, (m = (type === 'ronce' ? ronce() : type === 'fleur' ? fleur() : type === 'lanterne' ? lanterne(stade > 0) : fortin(type, stade, capacite)).modele(false)));
   return m;
 }
 
@@ -324,7 +326,7 @@ export class ToursRendu {
    */
   private afficherPlantes(
     ile: Ile,
-    liste: readonly { id: number; case: Case }[],
+    liste: readonly { id: number; case: Case; allumee?: boolean }[],
     corpsDe: Map<number, { maillage: THREE.Mesh; poseA: number; phase: number }>,
     objet: 'fleur' | 'lanterne',
     hauteur: number,
@@ -343,6 +345,14 @@ export class ToursRendu {
         corps = { maillage, poseA: t, phase: f.id * 1.7 };
         corpsDe.set(f.id, corps);
         this.groupe.add(maillage);
+      }
+      // Lanterne soufflée ou rallumée : on échange son maillage, avec une petite gerbe.
+      const modele = modeleTour(objet, f.allumee === false ? 0 : 1);
+      if (corps.maillage.geometry !== modele.geometrie) {
+        corps.maillage.geometry = modele.geometrie;
+        corps.maillage.material = modele.materiaux;
+        const p = corps.maillage.position;
+        this.eclats.lancer(new THREE.Vector3(p.x, p.y + hauteur, p.z), t, { couleurs: [LANTERNE.chapeau, LANTERNE.tache], nombre: 5, taille: 0.06, force: 0.5 });
       }
       const r = Math.min(1, (t - corps.poseA) / DUREE_REBOND);
       const sy = r < 1 ? 1 - 0.5 * (1 - r) ** 2 * Math.cos(r * Math.PI * 2.5) : 1;

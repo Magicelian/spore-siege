@@ -19,7 +19,7 @@ import {
   CARTE_TROIS_SENTIERS,
   lireCarte,
 } from './carte';
-import { MONSTRES, VAGUES_FORET } from './contenu';
+import { MONSTRES, TOURS_DE_BASE, VAGUES_FORET } from './contenu';
 import type { Vague } from './contenu';
 import { Partie } from './partie';
 
@@ -222,9 +222,9 @@ export const VAGUES_COEUR: Vague[] = [
  * (`equilibrage.test.ts`) : relancer ces tests après tout changement de chiffres.
  */
 export const NIVEAUX_FORET: Niveau[] = [
-  { id: 'foret-1', nom: 'Clairière', biome: 'foret', carte: CARTE_FORET, vagues: VAGUES_CLAIRIERE, regles: { spores: 140 } },
-  { id: 'foret-2', nom: 'Sous-bois', biome: 'foret', carte: CARTE_SOUS_BOIS, vagues: renforcer(VAGUES_SOUS_BOIS, 0.3), regles: { spores: 80 } },
-  { id: 'foret-3', nom: 'Trois sentiers', biome: 'foret', carte: CARTE_TROIS_SENTIERS, vagues: renforcer(VAGUES_FORET, 1.2, 2), regles: { ronces: false } },
+  { id: 'foret-1', nom: 'Clairière', biome: 'foret', carte: CARTE_FORET, vagues: VAGUES_CLAIRIERE, regles: { spores: 140, tours: TOURS_DE_BASE } },
+  { id: 'foret-2', nom: 'Sous-bois', biome: 'foret', carte: CARTE_SOUS_BOIS, vagues: renforcer(VAGUES_SOUS_BOIS, 0.3), regles: { spores: 80, tours: TOURS_DE_BASE } },
+  { id: 'foret-3', nom: 'Trois sentiers', biome: 'foret', carte: CARTE_TROIS_SENTIERS, vagues: renforcer(VAGUES_FORET, 1.2, 2), regles: { ronces: false, tours: TOURS_DE_BASE } },
   {
     id: 'foret-4',
     nom: 'Fourré',
@@ -233,7 +233,7 @@ export const NIVEAUX_FORET: Niveau[] = [
     vagues: renforcer(VAGUES_FOURRE, 0.8, 2),
     regles: { tours: ['cristal', 'canon'] },
   },
-  { id: 'foret-5', nom: 'Cœur de la forêt', biome: 'foret', carte: CARTE_COEUR, vagues: VAGUES_COEUR, regles: {}, boss: true },
+  { id: 'foret-5', nom: 'Cœur de la forêt', biome: 'foret', carte: CARTE_COEUR, vagues: VAGUES_COEUR, regles: { tours: TOURS_DE_BASE }, boss: true },
 ];
 type G = Vague[number];
 const g = (type: G['type'], nombre: number, intervalle: number, debut?: number, plage?: number): G => ({

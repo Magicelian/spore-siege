@@ -229,7 +229,8 @@ class Joueur {
     if (proches.has('scarabee')) besoins.push('cristal', 'cristal');
     if (proches.has('amas')) besoins.push('canon', 'mortier');
     if (proches.has('moucheron')) besoins.push('ruche', 'mortier');
-    if (proches.has('volant')) besoins.push('ruche', 'cristal');
+    if (proches.has('volant') || proches.has('chauveSouris')) besoins.push('ruche', 'cristal');
+    if (proches.has('cloporte')) besoins.push('cristal');
     if (proches.has('soigneur')) besoins.push('cristal');
     // Sangsue : le héron la touche sous l'eau ; sans eau utile, les tours de terre l'attendent sur le sentier sec.
     if (proches.has('sangsue')) besoins.push(this.eauUtile ? 'heron' : 'ruche', this.eauUtile ? 'heron' : 'cristal');

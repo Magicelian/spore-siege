@@ -5,7 +5,7 @@ import { render } from 'preact';
 import type { Biome, Capacite, Case, Commande, FleurVue, Ile, Instantane, LanterneVue, Niveau, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
 import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, FLEUR, LANTERNE, MONSTRES, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, PRIX_RONCE, SEUIL_BOSS, TOURS, TOUTES_CAPACITES } from '@spore-siege/engine';
 import { icone, type Icone } from './icones';
-import { ecrireAtelier, ecrireDecouverts, ecrireEtoiles, ecrireMusique, ecrireSons, lireAtelier, lireDecouverts, lireEtoiles, lireMusique, lireSons } from './sauvegarde';
+import { ecrireAtelier, ecrireDecouverts, ecrireEtoiles, ecrireMusique, ecrireSons, ecrireToursVues, lireAtelier, lireDecouverts, lireEtoiles, lireMusique, lireSons, lireToursVues } from './sauvegarde';
 import { Sons } from './sons';
 
 export type { Effet } from './sons';
@@ -108,6 +108,8 @@ export class ControleurInterface {
   private caseSurvolee: Case | null = null;
   /** Monstres déjà rencontrés (fiche lue ou vague jouée), gardés d'une partie à l'autre. */
   private readonly decouverts = lireDecouverts();
+  /** Tours découvertes (grimoire, Atelier) : celles de base et celles qu'on a déjà pu construire. */
+  private readonly toursVues = lireToursVues();
   /** Fiche d'un nouveau monstre, ouverte depuis son médaillon. */
   private fiche: TypeMonstre | null = null;
   private pauseMenu = false;
@@ -407,8 +409,21 @@ export class ControleurInterface {
     if (this.fleurDe(c)) return 'fleur';
     if (this.lanterneDe(c)) return 'lanterne';
     if (this.instantane?.regles.ronces !== false && this.jeu.emplacementsRonces.some((e) => memeCase(e, c))) return 'ronce';
-    if (this.jeu.libre(c)) return 'construire';
+    if (this.typesVisibles(c).length > 0 || this.jeu.fleurLibre(c) || this.jeu.lanterneLibre(c)) return 'construire';
     return null;
+  }
+
+  /** Tours à montrer dans la bulle de cette case : celles qui y vont, permises ici ou déjà découvertes. */
+  private typesVisibles(c: Case): TypeTour[] {
+    const permises = this.instantane?.regles.tours ?? [];
+    return TYPES.filter((t) => this.jeu.libre(c, t) && (permises.includes(t) || this.toursVues.has(t)));
+  }
+
+  /** Une tour qu'on peut construire pour la première fois entre dans le grimoire et l'Atelier. */
+  private decouvrirTours(types: readonly TypeTour[]): void {
+    const avant = this.toursVues.size;
+    for (const t of types) this.toursVues.add(t);
+    if (this.toursVues.size !== avant) ecrireToursVues(this.toursVues);
   }
 
   private executer(commande: Commande): boolean {
@@ -688,24 +703,37 @@ export class ControleurInterface {
         <Entete titre={TEXTES.atelier} sous={TEXTES.solde(solde)} fermer={() => this.fermer()} />
         <div class="corps">
           <div class="colonnes">
-            {TYPES.map((t) => (
-              <div class="colonne">
-                <span class="tete">{TOURS_TEXTES[t].nom}</span>
-                {CAPACITES_DE[t].map((c) => {
-                  const ouverte = this.atelier.includes(c);
-                  const prix = etoilesPour(c, this.atelier);
-                  return (
-                    <button class={`carte${ouverte ? ' ouverte' : prix > solde ? ' manque' : ''}${vue === c ? ' choisie' : ''}`} onClick={() => choisir(c)}>
-                      <img class={`vignette${ouverte ? '' : ' fermee'}`} src={this.options.vignette(t, 4, c)} alt="" />
-                      <span class="nom">{CAPACITES_TEXTES[c].nom}</span>
-                      <span class={`qte${!ouverte && prix > solde ? ' manque' : ''}`}>
-                        {ouverte ? '✓' : <>{prix}<Ico nom="etoile" /></>}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
+            {TYPES.map((t) => {
+              const tourVue = this.toursVues.has(t);
+              return (
+                <div class="colonne">
+                  <span class="tete">{tourVue ? TOURS_TEXTES[t].nom : TEXTES.inconnu}</span>
+                  {CAPACITES_DE[t].map((c) => {
+                    const ouverte = this.atelier.includes(c);
+                    const prix = etoilesPour(c, this.atelier);
+                    if (!tourVue)
+                      return (
+                        <button class="carte manque" disabled>
+                          <img class="vignette silhouette" src={this.options.vignette(t, 4, c)} alt="" />
+                          <span class="nom">{TEXTES.inconnu}</span>
+                          <span class="qte manque">
+                            <Ico nom="cadenas" />
+                          </span>
+                        </button>
+                      );
+                    return (
+                      <button class={`carte${ouverte ? ' ouverte' : prix > solde ? ' manque' : ''}${vue === c ? ' choisie' : ''}`} onClick={() => choisir(c)}>
+                        <img class={`vignette${ouverte ? '' : ' fermee'}`} src={this.options.vignette(t, 4, c)} alt="" />
+                        <span class="nom">{CAPACITES_TEXTES[c].nom}</span>
+                        <span class={`qte${!ouverte && prix > solde ? ' manque' : ''}`}>
+                          {ouverte ? '✓' : <>{prix}<Ico nom="etoile" /></>}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
           <div class="detail">
             <h3>{CAPACITES_TEXTES[vue].nom}</h3>
@@ -749,7 +777,7 @@ export class ControleurInterface {
               {TEXTES.ongletMonstres(vus, TYPES_MONSTRES.length)}
             </button>
             <button class={`bouton${livre.onglet === 'tours' ? ' actif' : ''}`} onClick={() => choisir({ onglet: 'tours', choix: TYPES[0]! })}>
-              {TEXTES.ongletTours}
+              {TEXTES.ongletTours(TYPES.filter((t) => this.toursVues.has(t)).length, TYPES.length)}
             </button>
           </div>
           {livre.onglet === 'monstres' ? (
@@ -784,19 +812,31 @@ export class ControleurInterface {
           ) : (
             <>
               <ul class="catalogue">
-                {TYPES.map((t) => (
-                  <li>
-                    <button class={`carte${livre.choix === t ? ' choisie' : ''}`} onClick={() => choisir({ onglet: 'tours', choix: t })}>
-                      <img class="vignette" src={this.options.vignette(t, 3)} alt="" />
-                      <span class="nom">{TOURS_TEXTES[t].nom}</span>
-                    </button>
-                  </li>
-                ))}
+                {TYPES.map((t) => {
+                  const vue = this.toursVues.has(t);
+                  return (
+                    <li>
+                      <button class={`carte${livre.choix === t ? ' choisie' : ''}`} onClick={() => choisir({ onglet: 'tours', choix: t })}>
+                        <img class={`vignette${vue ? '' : ' silhouette'}`} src={this.options.vignette(t, 3)} alt="" />
+                        <span class="nom">{vue ? TOURS_TEXTES[t].nom : TEXTES.inconnu}</span>
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
               <div class="detail">
-                <h3>{TOURS_TEXTES[livre.choix].nom}</h3>
-                <p>{TOURS_TEXTES[livre.choix].role}</p>
-                <TableTour type={livre.choix} />
+                {this.toursVues.has(livre.choix) ? (
+                  <>
+                    <h3>{TOURS_TEXTES[livre.choix].nom}</h3>
+                    <p>{TOURS_TEXTES[livre.choix].role}</p>
+                    <TableTour type={livre.choix} />
+                  </>
+                ) : (
+                  <>
+                    <h3>{TEXTES.inconnu}</h3>
+                    <p class="discret">{TEXTES.inconnuTour}</p>
+                  </>
+                )}
               </div>
             </>
           )}
@@ -875,11 +915,13 @@ export class ControleurInterface {
         />
       );
     }
-    if (nature === 'construire')
+    if (nature === 'construire') {
+      const types = this.typesVisibles(b.case);
+      this.decouvrirTours(types.filter((t) => i.regles.tours.includes(t)));
       return (
         <BulleConstruire
           i={i}
-          types={TYPES.filter((t) => this.jeu.libre(b.case, t))}
+          types={types}
           plante={this.jeu.fleurLibre(b.case) ? 'fleur' : this.jeu.lanterneLibre(b.case) ? 'lanterne' : null}
           enHaut={b.enHaut}
           survol={this.survol}
@@ -900,6 +942,7 @@ export class ControleurInterface {
           }
         />
       );
+    }
     return null;
   }
 

@@ -1,8 +1,9 @@
 // Ce qui reste d'une partie à l'autre, dans le stockage local de la fenêtre : monstres déjà rencontrés et
 // meilleures étoiles de chaque niveau.
-import { TOUTES_CAPACITES, type Capacite, type TypeMonstre } from '@spore-siege/engine';
+import { TOURS_DE_BASE, TOUTES_CAPACITES, type Capacite, type TypeMonstre, type TypeTour } from '@spore-siege/engine';
 
 const CLE_DECOUVERTS = 'spore-siege:decouverts';
+const CLE_TOURS_VUES = 'spore-siege:tours';
 const CLE_ETOILES = 'spore-siege:etoiles';
 
 /** Meilleures étoiles, par id de niveau (`foret-1`…). */
@@ -103,5 +104,23 @@ export function ecrireAtelier(ouvertes: readonly Capacite[]): void {
     localStorage.setItem(CLE_ATELIER, JSON.stringify(ouvertes));
   } catch {
     // Stockage indisponible : les capacités ouvertes ne seront pas retenues.
+  }
+}
+
+/** Tours découvertes : celles de base, plus celles qu'on a déjà pu construire (le héron au marais). */
+export function lireToursVues(): Set<TypeTour> {
+  try {
+    const brut = JSON.parse(localStorage.getItem(CLE_TOURS_VUES) ?? '[]') as unknown;
+    return new Set([...TOURS_DE_BASE, ...(Array.isArray(brut) ? (brut as TypeTour[]) : [])]);
+  } catch {
+    return new Set(TOURS_DE_BASE);
+  }
+}
+
+export function ecrireToursVues(vues: ReadonlySet<TypeTour>): void {
+  try {
+    localStorage.setItem(CLE_TOURS_VUES, JSON.stringify([...vues]));
+  } catch {
+    // Stockage indisponible : la collection ne sera pas retenue, le jeu continue.
   }
 }

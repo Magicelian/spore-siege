@@ -30,7 +30,8 @@ export type Effet =
   | 'arracher'
   | 'recolte'
   | 'devore'
-  | 'pique';
+  | 'pique'
+  | 'extinction';
 
 const VOLUME = 0.22;
 /** Ambiance de fond, basse exprès (même niveau que Tiny Shrooms) ; le vent par-dessus en léger souffle. */
@@ -151,6 +152,8 @@ const EFFETS: Record<Effet, { notes: Note[]; souffles?: Souffle[] }> = {
     souffles: [{ t: 0, d: 0.16, f: 1800, v: 0.25 }, { t: 0.22, d: 0.2, f: 1600, v: 0.25 }],
   },
   // Chenille qui finit une fleur : trois croques sèches.
+  // Lanterne soufflée par une chauve-souris : un « pff » et une note qui retombe.
+  extinction: { notes: [{ f: 520, t: 0.02, d: 0.22, vers: 180, onde: 'triangle', v: 0.14 }], souffles: [{ t: 0, d: 0.16, f: 900, v: 0.4 }] },
   devore: { notes: [{ f: 220, t: 0.18, d: 0.08, vers: 150, onde: 'square', v: 0.15 }], souffles: [{ t: 0, d: 0.05, f: 2600, v: 0.35 }, { t: 0.09, d: 0.05, f: 2300, v: 0.35 }, { t: 0.18, d: 0.07, f: 2000, v: 0.4 }] },
   recolte: { notes: [{ f: 1175, t: 0, d: 0.06, onde: 'sine', v: 0.16 }, { f: 1568, t: 0.06, d: 0.1, onde: 'sine', v: 0.14 }] },
   plongee: {

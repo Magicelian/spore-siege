@@ -94,6 +94,16 @@ export const MONSTRES_TEXTES: Record<TypeMonstre, { nom: string; description: st
     description: 'Un corbeau immense aux ailes cerclées de fer rouillé. Il tourne au-dessus de l’île, pique sur les fleurs à spores pour les arracher, puis fond sur la souche. S’il l’atteint, tout est perdu.',
     conseil: 'En vol, seules la ruche et le cristal l’atteignent. Quand il se pose sur une fleur, toutes tes tours peuvent tirer : place-en autour de tes fleurs.',
   },
+  chauveSouris: {
+    nom: 'Chauve-souris',
+    description: 'Elle file droit vers la souche au ras de la voûte, sans suivre le sentier. Chaque champignon-lanterne qu’elle frôle s’éteint quelques secondes.',
+    conseil: 'Seules la ruche et le cristal l’atteignent, et seulement dans la lumière : garde des tours près des luisants, qu’elle ne peut pas souffler.',
+  },
+  cloporte: {
+    nom: 'Cloporte',
+    description: 'Une carapace de plaques grises sur pattes. Au premier coup, il se roule en boule et presque rien ne le blesse ; puis il se déroule et file plus vite.',
+    conseil: 'L’éclair du cristal traverse sa carapace, même en boule. Les gros coups du canon passent aussi.',
+  },
 };
 
 export const ILES_TEXTES: Record<Biome, string> = {
@@ -185,7 +195,8 @@ export const TEXTES = {
   grimoireAide: 'Monstres rencontrés et tours, avec leurs chiffres',
   ouvrirGrimoire: 'Ouvrir le grimoire',
   ongletMonstres: (vus: number, total: number) => `Monstres ${vus}/${total}`,
-  ongletTours: 'Tours',
+  ongletTours: (vues: number, total: number) => `Tours ${vues}/${total}`,
+  inconnuTour: 'Pas encore découverte. Sa fiche s’écrira quand tu pourras la construire.',
   inconnu: '???',
   inconnuDetail: 'Pas encore rencontré. Sa fiche s’écrira quand il croisera ta route.',
   pv: 'Points de vie',

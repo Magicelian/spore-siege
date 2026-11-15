@@ -64,6 +64,10 @@ interface Monstre {
   rassasiee: boolean;
   /** Grand Corbeau : où il en est (voir `planer`) ; null pour les autres. */
   rapace: Rapace | null;
+  /** Cloporte : roulé en boule jusqu'à ce pas, plus rapide jusqu'à `elanFin`, pas de nouvelle boule avant `bouleRecharge`. */
+  bouleFin: number;
+  elanFin: number;
+  bouleRecharge: number;
 }
 
 interface Rapace {
@@ -359,6 +363,7 @@ export class Partie {
     if (this.phase === 'vague') {
       while (this.lachers[0] && this.lachers[0].pas <= this.pasPhase) this.lacher(this.lachers.shift()!);
       this.deplacer();
+      this.souffler();
       this.empoisonner();
       this.soigner();
     }
@@ -402,6 +407,7 @@ export class Partie {
       mange: m.horsSentier === 'repas',
       altitude: this.altitude(m),
       dansLeNoir: !this.eclaire(m.position),
+      enBoule: this.enBoule(m),
     }));
     const tours: TourVue[] = this.tours.map((t) => ({
       id: t.id,
@@ -434,7 +440,7 @@ export class Partie {
             ? { ...e, position: { ...e.position }, soignes: [...e.soignes] }
             : e.type === 'ponte'
               ? { ...e, position: { ...e.position }, petits: [...e.petits] }
-              : e.type === 'recolte' || e.type === 'devore'
+              : e.type === 'recolte' || e.type === 'devore' || e.type === 'extinction'
                 ? { ...e, case: { ...e.case } }
                 : e.type === 'pique'
                   ? { ...e, cible: { ...e.cible } }
@@ -564,6 +570,9 @@ export class Partie {
       repasFin: -1,
       rassasiee: false,
       rapace: null,
+      bouleFin: -1,
+      elanFin: -1,
+      bouleRecharge: -1,
       // Décalé selon l'id : une file de crapauds ne bondit pas d'un seul bloc.
       prochainSaut: this.pas + Math.round((MONSTRES[type].saut?.cadence ?? 0) * PAS_PAR_SECONDE) + (this.prochainId % 9),
     };
@@ -606,7 +615,8 @@ export class Partie {
     const saut = MONSTRES[m.type].saut;
     // En plein bond, rien ne le freine.
     if (saut && this.enSaut(m)) return saut.distance / saut.duree;
-    return MONSTRES[m.type].vitesse * this.facteurVitesse(m);
+    const elan = this.pas < m.elanFin ? (MONSTRES[m.type].boule?.elan ?? 1) : 1;
+    return MONSTRES[m.type].vitesse * elan * this.facteurVitesse(m);
   }
 
   /** Le crapaud est-il en l'air ? */
@@ -681,7 +691,7 @@ export class Partie {
         m.sautDebut = this.pas;
         m.prochainSaut = this.pas + Math.round((saut.cadence + saut.duree) * PAS_PAR_SECONDE);
       }
-      if (MONSTRES[m.type].gourmande && !this.gourmandise(m)) {
+      if ((MONSTRES[m.type].gourmande && !this.gourmandise(m)) || this.enBoule(m)) {
         restants.push(m);
         continue;
       }
@@ -1087,9 +1097,35 @@ export class Partie {
   /** Retire de la vie au monstre ; `source` = la sorte de tour, pour le bilan des dégâts (sans compter l'excédent). */
   private blesser(m: Monstre, degats: number, percant: boolean, source: TypeTour): void {
     if (m.pv <= 0) return;
-    const coup = percant ? degats : Math.max(1, degats - MONSTRES[m.type].armure);
+    const boule = MONSTRES[m.type].boule;
+    const armure = boule && this.enBoule(m) ? boule.armure : MONSTRES[m.type].armure;
+    const coup = percant ? degats : Math.max(1, degats - armure);
     this.degats[source] += Math.min(coup, m.pv);
     m.pv -= coup;
+    // Le cloporte touché se roule en boule, s'il en a le temps.
+    if (boule && m.pv > 0 && !this.enBoule(m) && this.pas >= m.bouleRecharge) {
+      m.bouleFin = this.pas + Math.round(boule.duree * PAS_PAR_SECONDE);
+      m.elanFin = m.bouleFin + Math.round(boule.elanDuree * PAS_PAR_SECONDE);
+      m.bouleRecharge = m.bouleFin + Math.round(boule.recharge * PAS_PAR_SECONDE);
+    }
+  }
+
+  /** Cloporte roulé en boule. */
+  private enBoule(m: Monstre): boolean {
+    return this.pas < m.bouleFin;
+  }
+
+  /** Les chauves-souris éteignent un moment les champignons-lanternes qu'elles survolent. */
+  private souffler(): void {
+    for (const m of this.monstres) {
+      const souffle = MONSTRES[m.type].souffle;
+      if (!souffle || m.pv <= 0) continue;
+      for (const l of this.lanternes) {
+        if (distance({ x: l.case.x + 0.5, y: l.case.y + 0.5 }, m.position) > souffle.rayon) continue;
+        if (this.pas >= l.eteinteJusqua) this.evenements.push({ type: 'extinction', id: l.id, par: m.id, case: { ...l.case }, pas: this.pas });
+        l.eteinteJusqua = Math.max(l.eteinteJusqua, this.pas + Math.round(souffle.duree * PAS_PAR_SECONDE));
+      }
+    }
   }
 
   /**

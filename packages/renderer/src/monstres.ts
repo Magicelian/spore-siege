@@ -34,6 +34,10 @@ const M = {
   corbeau: 0x2b2d38,
   plume: 0x3f4352,
   bec: 0x5a5048,
+  chauve: 0x3a3440,
+  membrane: 0x5e4c58,
+  cloporte: 0x8f8170,
+  cloporteSombre: 0x5c4e42,
 };
 lumineuse(M.oeil, M.soin);
 const C = -0.5;
@@ -262,6 +266,54 @@ function corbeau(): Voxels {
   return v;
 }
 
+/** Chauve-souris : petit corps velu, grandes ailes de peau tendues sur des doigts (le long de z), oreilles pointues. */
+function chauveSouris(): Voxels {
+  const v = new Voxels();
+  const envergure: Record<number, number> = { 2: 3, 1: 6, 0: 7, [-1]: 6, [-2]: 4 };
+  for (const [cle, n] of Object.entries(envergure)) {
+    const x = Number(cle);
+    for (let k = 1; k <= n; k++) {
+      // Doigts sombres tous les deux voxels, festons au bord arrière.
+      const doigt = k % 3 === 0 || k === n;
+      v.poser(x, 8, k, doigt ? M.chauve : M.membrane).poser(x, 8, -1 - k, doigt ? M.chauve : M.membrane);
+    }
+  }
+  taches(v, M.membrane, 0.12, M.rouilleSombre);
+  v.boule(C, 8.5, C, 2, 1.6, 1.4, M.chauve);
+  duvet(v, M.chauve, 0.4);
+  // Tête, oreilles, yeux qui luisent.
+  v.boite(2, 8, -1, 2, 9, 0, M.chauve);
+  v.poser(2, 10, -1, M.chauve).poser(2, 10, 0, M.chauve).poser(2, 11, -2, M.chauve).poser(2, 11, 1, M.chauve);
+  v.poser(3, 9, -1, M.oeil).poser(3, 9, 0, M.oeil);
+  return v;
+}
+
+/** Cloporte : dos bombé en plaques grises cerclées de sombre, petites pattes, antennes (avant = +x). */
+function cloporte(): Voxels {
+  const v = new Voxels().boule(C - 0.5, 1.2, C, 3.6, 1.8, 2.4, M.cloporte);
+  // Plaques : une bande sombre tous les deux voxels en x.
+  v.peindre((x, y, _z, c) => c === M.cloporte && y >= 1 && x % 2 === 0, M.cloporteSombre);
+  taches(v, M.cloporte, 0.2);
+  for (let x = -3; x <= 2; x += 1) for (const z of [-3, 2]) v.poser(x, 0, z, M.sombre);
+  v.poser(3, 1, -1, M.oeil).poser(3, 1, 0, M.oeil);
+  v.poser(4, 2, -2, M.cloporteSombre).poser(5, 3, -2, M.cloporteSombre).poser(4, 2, 1, M.cloporteSombre).poser(5, 3, 1, M.cloporteSombre);
+  return v;
+}
+
+/** Cloporte roulé en boule : une sphère cerclée de plaques, seulement deux yeux qui dépassent. */
+function cloporteBoule(): Voxels {
+  const v = new Voxels().boule(C, 2.5, C, 2.6, 2.6, 2.6, M.cloporte);
+  v.peindre((x, _y, _z, c) => c === M.cloporte && x % 2 === 0, M.cloporteSombre);
+  taches(v, M.cloporte, 0.2);
+  return v.poser(2, 2, -1, M.oeil).poser(2, 2, 0, M.oeil);
+}
+
+let modeleBoule: Modele | null = null;
+/** Le cloporte en boule (même palette, maillage échangé). */
+export function modeleCloporteBoule(): Modele {
+  return (modeleBoule ??= cloporteBoule().modele(false));
+}
+
 /** Couleurs des éclats quand le monstre meurt. */
 export const ECLATS: Record<TypeMonstre, number[]> = {
   limace: [M.gris, M.rouille, M.grisClair],
@@ -278,6 +330,8 @@ export const ECLATS: Record<TypeMonstre, number[]> = {
   chenille: [M.chenille, M.rouille, M.chenilleVentre],
   sauterelle: [M.sauterelle, M.sauterelleSombre, M.rouille],
   corbeau: [M.corbeau, M.plume, M.rouille],
+  chauveSouris: [M.chauve, M.membrane, M.rouille],
+  cloporte: [M.cloporte, M.cloporteSombre, M.rouille],
 };
 
 let modeles: Record<TypeMonstre, Modele> | null = null;
@@ -297,6 +351,8 @@ export function modelesMonstres(): Record<TypeMonstre, Modele> {
     chenille: chenille().modele(false),
     sauterelle: sauterelle().modele(false),
     corbeau: corbeau().modele(false),
+    chauveSouris: chauveSouris().modele(false),
+    cloporte: cloporte().modele(false),
   };
   return modeles;
 }
@@ -431,6 +487,8 @@ export class MonstresRendu {
       versMonde({ x: x + ecart, y: y - ecart }, ile, this.position);
       if (m.type === 'moucheron') this.position.y += Math.sin(instant / 120 + m.id) * 0.06;
       if (m.type === 'volant') this.position.y += Math.sin(instant / 300 + m.id) * 0.08;
+      // La chauve-souris vole en zigzag, par à-coups.
+      if (m.type === 'chauveSouris') this.position.y += 0.3 + Math.sin(instant / 180 + m.id) * 0.12;
       if (m.altitude !== null) this.planer(corps, m.altitude, x, y, ile, instant);
       // Sauterelle : petits bonds rapides.
       if (m.type === 'sauterelle') this.position.y += Math.abs(Math.sin(instant / 110 + m.id)) * 0.14;
@@ -447,6 +505,15 @@ export class MonstresRendu {
       }
       // La phalène bat des ailes (elles s'étendent le long de z) ; le corbeau aussi, lentement, et les replie posé.
       if (m.type === 'volant') corps.maillage.scale.set(1, 1, 1 + Math.sin(instant / 70 + m.id) * 0.3);
+      if (m.type === 'chauveSouris') corps.maillage.scale.set(1, 1, 0.6 + Math.abs(Math.sin(instant / 55 + m.id)) * 0.5);
+      // Cloporte : échange son maillage contre la boule, qui roule un peu sur place.
+      if (m.type === 'cloporte') {
+        const modele = m.enBoule ? modeleCloporteBoule() : modelesMonstres().cloporte;
+        if (corps.maillage.geometry !== modele.geometrie) {
+          corps.maillage.geometry = modele.geometrie;
+          corps.maillage.material = modele.materiaux;
+        }
+      }
       if (m.type === 'corbeau') {
         const vol = corps.vol ?? 1;
         corps.maillage.scale.set(TAILLE_CORBEAU, TAILLE_CORBEAU, TAILLE_CORBEAU * (0.4 + 0.6 * Math.min(1, vol * 4) + Math.sin(instant / 160) * 0.18 * Math.min(1, vol * 4)));

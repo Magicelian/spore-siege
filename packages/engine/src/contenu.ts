@@ -52,6 +52,13 @@ export interface FicheMonstre {
    * tours l'atteignent alors). Après `plongees` fleurs, ou s'il n'y en a plus, il fond sur la souche à `assaut` cases/s.
    */
   rapace?: { rayon: number; attente: number; pique: number; auSol: number; plongees: number; assaut: number };
+  /** Chauve-souris : éteint pendant `duree` secondes chaque champignon-lanterne qu'elle survole (à moins de `rayon`). */
+  souffle?: { rayon: number; duree: number };
+  /**
+   * Cloporte : touché, il se roule en boule `duree` secondes (armure `armure`, immobile), puis repart `elan` fois
+   * plus vite pendant `elanDuree` secondes ; il ne peut pas se rouler à nouveau avant `recharge` secondes.
+   */
+  boule?: { duree: number; armure: number; recharge: number; elan: number; elanDuree: number };
 }
 
 export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
@@ -114,6 +121,10 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
     boss: { paliers: [] },
     rapace: { rayon: 6, attente: 5, pique: 3, auSol: 4, plongees: 3, assaut: 0.35 },
   },
+  // Grotte, niveau 2 : vole tout droit comme la phalène et éteint les lanternes qu'elle survole.
+  chauveSouris: { pv: 12, vitesse: 1.1, morsure: 1, butin: 3, armure: 0, volant: true, souffle: { rayon: 1.2, duree: 6 } },
+  // Grotte, niveau 3 : se roule en boule quand on le touche (le cristal, qui perce l'armure, le blesse quand même).
+  cloporte: { pv: 40, vitesse: 0.55, morsure: 2, butin: 5, armure: 1, boule: { duree: 2, armure: 12, recharge: 3, elan: 1.8, elanDuree: 2 } },
 };
 
 /** Spores au départ : de quoi poser les deux premières tours. */
@@ -223,6 +234,8 @@ export const TOURS: Record<TypeTour, FicheTour> = {
 
 /** Les cinq tours, dans l'ordre de la bulle « Construire » (le héron, qui va sur l'eau, en dernier). */
 export const TYPES_TOURS = Object.keys(TOURS) as TypeTour[];
+/** Tours connues dès le début ; les autres (le héron du marais) se découvrent sur leur île. */
+export const TOURS_DE_BASE: TypeTour[] = ['ruche', 'cristal', 'mortier', 'canon'];
 
 /**
  * Stade 4 : une capacité choisie parmi deux, chiffres complets du stade (prix = celui du stade 4). Les champs
