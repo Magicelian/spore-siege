@@ -137,7 +137,7 @@ rendu.montrer('carte');
 ui.maj(actuel);
 
 function recommencer(): void {
-  partie = partieDe(niveau, Date.now() >>> 0, ui.capacitesOuvertes);
+  partie = partieDe(niveau, Date.now() >>> 0, ui.capacitesOuvertes, ui.difficulte);
   ui.jeu = jeuDe(partie);
   precedent = null;
   actuel = partie.instantane();

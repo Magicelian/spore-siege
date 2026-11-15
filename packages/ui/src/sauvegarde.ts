@@ -1,53 +1,110 @@
-// Ce qui reste d'une partie à l'autre, dans le stockage local de la fenêtre : monstres déjà rencontrés et
-// meilleures étoiles de chaque niveau.
-import { TOURS_DE_BASE, TOUTES_CAPACITES, type Capacite, type TypeMonstre, type TypeTour } from '@spore-siege/engine';
+// Ce qui reste d'une séance à l'autre, dans le stockage local de la fenêtre. Trois emplacements de partie, chacun
+// avec sa difficulté et toute sa progression (étoiles, Atelier, monstres et tours découverts) ; seuls les réglages
+// (son, musique) sont communs.
+import { TOURS_DE_BASE, TOUTES_CAPACITES, type Capacite, type Difficulte, type TypeMonstre, type TypeTour } from '@spore-siege/engine';
 
-const CLE_DECOUVERTS = 'spore-siege:decouverts';
-const CLE_TOURS_VUES = 'spore-siege:tours';
-const CLE_ETOILES = 'spore-siege:etoiles';
+export const NB_EMPLACEMENTS = 3;
+
+/** Une partie sauvegardée (un emplacement occupé). */
+export interface Sauvegarde {
+  difficulte: Difficulte;
+}
 
 /** Meilleures étoiles, par id de niveau (`foret-1`…). */
 export type Etoiles = Record<string, number>;
 
-export function lireEtoiles(): Etoiles {
+const CLE_PARTIES = 'spore-siege:parties';
+/** Avant les parties multiples : une seule progression, effacée (choix de Celian, on repart de zéro). */
+const ANCIENNES_CLES = ['spore-siege:etoiles', 'spore-siege:decouverts', 'spore-siege:tours', 'spore-siege:atelier'];
+const NOMS = ['etoiles', 'decouverts', 'tours', 'atelier'] as const;
+const cle = (n: number, nom: (typeof NOMS)[number]) => `spore-siege:partie-${n + 1}:${nom}`;
+
+function lire<T>(cleStockage: string, defaut: T): T {
   try {
-    const brut = JSON.parse(localStorage.getItem(CLE_ETOILES) ?? '{}') as unknown;
-    const etoiles = brut && typeof brut === 'object' ? { ...(brut as Etoiles) } : {};
-    // Avant la 0.2.0, une seule forêt, rangée sous son biome : elle devient la Clairière (niveau 1).
-    if ('foret' in etoiles) {
-      etoiles['foret-1'] = Math.max(etoiles['foret-1'] ?? 0, etoiles.foret ?? 0);
-      delete etoiles.foret;
+    const brut = localStorage.getItem(cleStockage);
+    return brut === null ? defaut : (JSON.parse(brut) as T);
+  } catch {
+    return defaut;
+  }
+}
+
+function ecrire(cleStockage: string, valeur: unknown): void {
+  try {
+    localStorage.setItem(cleStockage, JSON.stringify(valeur));
+  } catch {
+    // Stockage indisponible : rien ne sera retenu, le jeu continue.
+  }
+}
+
+/** Les 3 emplacements (null = vide). */
+export function lireParties(): (Sauvegarde | null)[] {
+  const brut = lire<unknown>(CLE_PARTIES, null);
+  if (!Array.isArray(brut)) {
+    try {
+      for (const c of ANCIENNES_CLES) localStorage.removeItem(c);
+    } catch {
+      // Stockage indisponible.
     }
-    return etoiles;
+  }
+  const liste = Array.isArray(brut) ? brut : [];
+  return Array.from({ length: NB_EMPLACEMENTS }, (_, n) => {
+    const s = liste[n] as Sauvegarde | null | undefined;
+    return s && ['facile', 'normal', 'difficile'].includes(s.difficulte) ? { difficulte: s.difficulte } : null;
+  });
+}
+
+export function ecrireParties(parties: readonly (Sauvegarde | null)[]): void {
+  ecrire(CLE_PARTIES, parties);
+}
+
+/** Vide l'emplacement `n` : toute sa progression disparaît. */
+export function effacerPartie(n: number): void {
+  try {
+    for (const nom of NOMS) localStorage.removeItem(cle(n, nom));
   } catch {
-    return {};
+    // Stockage indisponible.
   }
 }
 
-export function ecrireEtoiles(etoiles: Etoiles): void {
-  try {
-    localStorage.setItem(CLE_ETOILES, JSON.stringify(etoiles));
-  } catch {
-    // Stockage indisponible : les étoiles ne seront pas retenues.
-  }
+export function lireEtoiles(n: number): Etoiles {
+  const brut = lire<unknown>(cle(n, 'etoiles'), {});
+  return brut && typeof brut === 'object' && !Array.isArray(brut) ? { ...(brut as Etoiles) } : {};
 }
 
-export function lireDecouverts(): Set<TypeMonstre> {
-  try {
-    const brut = JSON.parse(localStorage.getItem(CLE_DECOUVERTS) ?? '[]') as unknown;
-    return new Set(Array.isArray(brut) ? (brut as TypeMonstre[]) : []);
-  } catch {
-    return new Set();
-  }
+export function ecrireEtoiles(n: number, etoiles: Etoiles): void {
+  ecrire(cle(n, 'etoiles'), etoiles);
 }
 
-export function ecrireDecouverts(decouverts: ReadonlySet<TypeMonstre>): void {
-  try {
-    localStorage.setItem(CLE_DECOUVERTS, JSON.stringify([...decouverts]));
-  } catch {
-    // Stockage indisponible : la collection ne sera pas retenue, le jeu continue.
-  }
+export function lireDecouverts(n: number): Set<TypeMonstre> {
+  const brut = lire<unknown>(cle(n, 'decouverts'), []);
+  return new Set(Array.isArray(brut) ? (brut as TypeMonstre[]) : []);
 }
+
+export function ecrireDecouverts(n: number, decouverts: ReadonlySet<TypeMonstre>): void {
+  ecrire(cle(n, 'decouverts'), [...decouverts]);
+}
+
+/** Capacités du stade 4 ouvertes dans l'Atelier (aucune au départ). */
+export function lireAtelier(n: number): Capacite[] {
+  const brut = lire<unknown>(cle(n, 'atelier'), []);
+  return Array.isArray(brut) ? TOUTES_CAPACITES.filter((c) => brut.includes(c)) : [];
+}
+
+export function ecrireAtelier(n: number, ouvertes: readonly Capacite[]): void {
+  ecrire(cle(n, 'atelier'), ouvertes);
+}
+
+/** Tours découvertes : celles de base, plus celles qu'on a déjà pu construire (le héron au marais). */
+export function lireToursVues(n: number): Set<TypeTour> {
+  const brut = lire<unknown>(cle(n, 'tours'), []);
+  return new Set([...TOURS_DE_BASE, ...(Array.isArray(brut) ? (brut as TypeTour[]) : [])]);
+}
+
+export function ecrireToursVues(n: number, vues: ReadonlySet<TypeTour>): void {
+  ecrire(cle(n, 'tours'), [...vues]);
+}
+
+// ─── Réglages, communs à toutes les parties ─────────────────────────────────────────────────
 
 const CLE_SONS = 'spore-siege:sons';
 
@@ -84,43 +141,5 @@ export function ecrireMusique(active: boolean): void {
     localStorage.setItem(CLE_MUSIQUE, active ? '1' : '0');
   } catch {
     // Stockage indisponible : le choix ne sera pas retenu.
-  }
-}
-
-const CLE_ATELIER = 'spore-siege:atelier';
-
-/** Capacités du stade 4 ouvertes dans l'Atelier (aucune au départ). */
-export function lireAtelier(): Capacite[] {
-  try {
-    const brut = JSON.parse(localStorage.getItem(CLE_ATELIER) ?? '[]') as unknown;
-    return Array.isArray(brut) ? TOUTES_CAPACITES.filter((c) => brut.includes(c)) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function ecrireAtelier(ouvertes: readonly Capacite[]): void {
-  try {
-    localStorage.setItem(CLE_ATELIER, JSON.stringify(ouvertes));
-  } catch {
-    // Stockage indisponible : les capacités ouvertes ne seront pas retenues.
-  }
-}
-
-/** Tours découvertes : celles de base, plus celles qu'on a déjà pu construire (le héron au marais). */
-export function lireToursVues(): Set<TypeTour> {
-  try {
-    const brut = JSON.parse(localStorage.getItem(CLE_TOURS_VUES) ?? '[]') as unknown;
-    return new Set([...TOURS_DE_BASE, ...(Array.isArray(brut) ? (brut as TypeTour[]) : [])]);
-  } catch {
-    return new Set(TOURS_DE_BASE);
-  }
-}
-
-export function ecrireToursVues(vues: ReadonlySet<TypeTour>): void {
-  try {
-    localStorage.setItem(CLE_TOURS_VUES, JSON.stringify([...vues]));
-  } catch {
-    // Stockage indisponible : la collection ne sera pas retenue, le jeu continue.
   }
 }

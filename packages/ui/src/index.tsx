@@ -2,10 +2,10 @@
 // visible, bulles au clic sur l'île (construire, tour, ronce).
 // Le contrôleur garde l'état de l'interface ; le frontend lui donne les instantanés et lit l'aperçu à dessiner.
 import { render } from 'preact';
-import type { Biome, Capacite, Case, Commande, FleurVue, Ile, Instantane, LanterneVue, ModeCible, Niveau, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
-import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, FLEUR, LANTERNE, MODES_CIBLE, MONSTRES, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, PRIX_RONCE, SEUIL_BOSS, TOURS, TOUTES_CAPACITES } from '@spore-siege/engine';
+import type { Biome, Capacite, Case, Difficulte, Commande, FleurVue, Ile, Instantane, LanterneVue, ModeCible, Niveau, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
+import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, FLEUR, LANTERNE, MODES_CIBLE, MONSTRES, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, PRIX_RONCE, SEUIL_BOSS, TOURS, TOURS_DE_BASE, TOUTES_CAPACITES } from '@spore-siege/engine';
 import { icone, type Icone } from './icones';
-import { ecrireAtelier, ecrireDecouverts, ecrireEtoiles, ecrireMusique, ecrireSons, ecrireToursVues, lireAtelier, lireDecouverts, lireEtoiles, lireMusique, lireSons, lireToursVues } from './sauvegarde';
+import { ecrireAtelier, ecrireDecouverts, ecrireEtoiles, ecrireMusique, ecrireParties, ecrireSons, ecrireToursVues, effacerPartie, lireAtelier, lireDecouverts, lireEtoiles, lireMusique, lireParties, lireSons, lireToursVues, type Etoiles, type Sauvegarde } from './sauvegarde';
 import { Sons } from './sons';
 
 export type { Effet } from './sons';
@@ -57,7 +57,7 @@ export interface OptionsInterface {
 }
 
 /** Accueil (titre + Jouer), archipel, carte d'une île (ses niveaux), ou partie en cours. */
-export type Ecran = 'accueil' | 'carte' | 'niveaux' | 'partie';
+export type Ecran = 'accueil' | 'parties' | 'carte' | 'niveaux' | 'partie';
 
 /** Ce qui se pose à la place d'une tour : fleur à spores (prairie) ou champignon-lanterne (grotte). */
 export type Plante = 'fleur' | 'lanterne';
@@ -84,6 +84,7 @@ type Bulle = { case: Case; enHaut: boolean };
 type Livre = { onglet: 'monstres'; choix: TypeMonstre } | { onglet: 'tours'; choix: TypeTour };
 
 const TYPES = Object.keys(TOURS) as TypeTour[];
+const DIFFICULTES: Difficulte[] = ['facile', 'normal', 'difficile'];
 const TYPES_MONSTRES = Object.keys(MONSTRES) as TypeMonstre[];
 const memeCase = (a: Case, b: Case) => a.x === b.x && a.y === b.y;
 
@@ -94,8 +95,15 @@ export class ControleurInterface {
   private ileChoisie: Biome = 'foret';
   /** Bruitages ; coupés tant que le joueur ne les a pas allumés par le menu de l’icône (choix retenu). */
   readonly sons = new Sons();
-  /** Meilleures étoiles de chaque île, gardées d'une partie à l'autre. */
-  private readonly etoiles = lireEtoiles();
+  /** Les 3 emplacements de partie (null = vide). */
+  private parties = lireParties();
+  /** Emplacement joué : sa difficulté et sa progression sont chargées ci-dessous. */
+  private emplacement = 0;
+  /** Écran des parties : emplacement vide dont on choisit la difficulté, ou partie à supprimer (confirmation). */
+  private creation: number | null = null;
+  private aSupprimer: number | null = null;
+  /** Meilleures étoiles de chaque niveau, pour la partie choisie. */
+  private etoiles: Etoiles = {};
   /** Vitesse choisie avant la pause, pour reprendre au même rythme. */
   private vitesseAvantPause: 1 | 2 = 1;
   private bulle: Bulle | null = null;
@@ -107,15 +115,15 @@ export class ControleurInterface {
   /** Case sous la souris (null hors de l'île ou pendant un glisser). */
   private caseSurvolee: Case | null = null;
   /** Monstres déjà rencontrés (fiche lue ou vague jouée), gardés d'une partie à l'autre. */
-  private readonly decouverts = lireDecouverts();
+  private decouverts = new Set<TypeMonstre>();
   /** Tours découvertes (grimoire, Atelier) : celles de base et celles qu'on a déjà pu construire. */
-  private readonly toursVues = lireToursVues();
+  private toursVues = new Set<TypeTour>(TOURS_DE_BASE);
   /** Fiche d'un nouveau monstre, ouverte depuis son médaillon. */
   private fiche: TypeMonstre | null = null;
   private pauseMenu = false;
   private livre: Livre | null = null;
   /** Capacités du stade 4 ouvertes avec les étoiles, gardées d'une partie à l'autre. */
-  private atelier: Capacite[] = lireAtelier();
+  private atelier: Capacite[] = [];
   /** Atelier ouvert sur cette capacité (null = fermé). */
   private atelierVu: Capacite | null = null;
   /** Vitesse à rétablir en refermant la fiche ou le grimoire (qui mettent le jeu en pause). */
@@ -148,7 +156,7 @@ export class ControleurInterface {
     if (instantane.phase === 'victoire' || instantane.phase === 'defaite') this.bulle = null;
     if (instantane.phase === 'victoire' && instantane.etoiles > (this.etoiles[this.jeu.niveau] ?? 0)) {
       this.etoiles[this.jeu.niveau] = instantane.etoiles;
-      ecrireEtoiles(this.etoiles);
+      ecrireEtoiles(this.emplacement, this.etoiles);
     }
     const v = this.vagueJouee;
     if (v && (instantane.phase !== 'vague' || instantane.vague !== v.n)) {
@@ -237,11 +245,47 @@ export class ControleurInterface {
     this.dessiner();
   }
 
-  /** Change d'écran : accueil, carte des îles ou partie. */
+  /** Change d'écran : accueil, parties, carte des îles ou partie. */
   aller(ecran: Ecran): void {
     this.fermer();
+    this.creation = null;
+    this.aSupprimer = null;
     this.ecran = ecran;
     this.options.changerEcran(ecran, ecran === 'niveaux' ? this.ileChoisie : undefined);
+    this.dessiner();
+  }
+
+  /** Difficulté de la partie choisie (vie des monstres). */
+  get difficulte(): Difficulte {
+    return this.parties[this.emplacement]?.difficulte ?? 'normal';
+  }
+
+  /** Charge la partie de l'emplacement `n` et ouvre l'archipel. */
+  private reprendre(n: number): void {
+    this.emplacement = n;
+    this.etoiles = lireEtoiles(n);
+    this.decouverts = lireDecouverts(n);
+    this.toursVues = lireToursVues(n);
+    this.atelier = lireAtelier(n);
+    this.ileChoisie = 'foret';
+    this.aller('carte');
+  }
+
+  private creer(n: number, difficulte: Difficulte): void {
+    effacerPartie(n);
+    this.parties = this.parties.map((p, i) => (i === n ? { difficulte } : p));
+    ecrireParties(this.parties);
+    this.creation = null;
+    this.sons.jouer('capacite');
+    this.reprendre(n);
+  }
+
+  private supprimer(n: number): void {
+    effacerPartie(n);
+    this.parties = this.parties.map((p, i) => (i === n ? null : p));
+    ecrireParties(this.parties);
+    this.aSupprimer = null;
+    this.sons.jouer('arracher');
     this.dessiner();
   }
 
@@ -285,14 +329,14 @@ export class ControleurInterface {
     const prix = etoilesPour(c, this.atelier);
     if (prix === 0 || prix > this.soldeEtoiles()) return;
     this.atelier = TOUTES_CAPACITES.filter((x) => x === c || this.atelier.includes(x));
-    ecrireAtelier(this.atelier);
+    ecrireAtelier(this.emplacement, this.atelier);
     this.sons.jouer('capacite');
     this.dessiner();
   }
 
   private rembourser(): void {
     this.atelier = [];
-    ecrireAtelier(this.atelier);
+    ecrireAtelier(this.emplacement, this.atelier);
     this.dessiner();
   }
 
@@ -364,7 +408,7 @@ export class ControleurInterface {
   private decouvrir(types: readonly TypeMonstre[]): void {
     const avant = this.decouverts.size;
     for (const t of types) this.decouverts.add(t);
-    if (this.decouverts.size !== avant) ecrireDecouverts(this.decouverts);
+    if (this.decouverts.size !== avant) ecrireDecouverts(this.emplacement, this.decouverts);
   }
 
   /** Tour ou ronce à dessiner en fantôme : la carte survolée dans la bulle « Construire ». */
@@ -423,7 +467,7 @@ export class ControleurInterface {
   private decouvrirTours(types: readonly TypeTour[]): void {
     const avant = this.toursVues.size;
     for (const t of types) this.toursVues.add(t);
-    if (this.toursVues.size !== avant) ecrireToursVues(this.toursVues);
+    if (this.toursVues.size !== avant) ecrireToursVues(this.emplacement, this.toursVues);
   }
 
   private executer(commande: Commande): boolean {
@@ -449,6 +493,7 @@ export class ControleurInterface {
 
   private dessiner(): void {
     if (this.ecran === 'accueil') return render(this.dessinerAccueil(), this.element);
+    if (this.ecran === 'parties') return render(this.dessinerParties(), this.element);
     if (this.ecran === 'carte') return render(this.dessinerCarte(), this.element);
     if (this.ecran === 'niveaux') return render(this.dessinerNiveaux(), this.element);
     const i = this.instantane;
@@ -507,22 +552,113 @@ export class ControleurInterface {
             <p class="accroche">{TEXTES.accroche}</p>
           </div>
           <div class="panneau-accueil">
-            <button class="bouton valider principal" onClick={() => this.aller('carte')}>
+            <button class="bouton valider principal" onClick={() => this.aller('parties')}>
               ▶ {TEXTES.jouer}
             </button>
-            <div class="rangee-boutons">
-              <button class="bouton" onClick={() => this.ouvrirLivre()}>
-                <Ico nom="livre" /> {TEXTES.grimoire}
+            {f && (
+              <button class="bouton danger" onClick={() => f.quitter()}>
+                {TEXTES.quitter}
               </button>
-              {f && (
-                <button class="bouton danger" onClick={() => f.quitter()}>
-                  {TEXTES.quitter}
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /** Les 3 emplacements de partie, sur l'archipel. */
+  private dessinerParties() {
+    return (
+      <div class="interface">
+        <div class="bandeau">
+          <button class="bouton carre" title={TEXTES.retourAccueil} onClick={() => this.aller('accueil')}>
+            ←
+          </button>
+          <span class="planche">{TEXTES.parties}</span>
+        </div>
+        <div class="emplacements">{this.parties.map((p, n) => this.dessinerEmplacement(n, p))}</div>
+      </div>
+    );
+  }
+
+  private dessinerEmplacement(n: number, p: Sauvegarde | null) {
+    if (!p) {
+      if (this.creation !== n) {
+        return (
+          <button class="emplacement vide" onClick={() => ((this.creation = n), (this.aSupprimer = null), this.dessiner())}>
+            <span class="numero">{n + 1}</span>
+            <span class="nouvelle">+ {TEXTES.nouvellePartie}</span>
+          </button>
+        );
+      }
+      return (
+        <div class="emplacement">
+          <span class="numero">{n + 1}</span>
+          <div class="contenu">
+            <span class="titre-emplacement">{TEXTES.choisirDifficulte}</span>
+            <div class="difficultes">
+              {DIFFICULTES.map((d) => (
+                <button class={`bouton${d === 'normal' ? ' valider' : ''}`} title={TEXTES.difficulteAide[d]} onClick={() => this.creer(n, d)}>
+                  {TEXTES.difficulte[d]}
                 </button>
-              )}
+              ))}
+            </div>
+          </div>
+          <button class="bouton fermer" title={TEXTES.annuler} onClick={() => ((this.creation = null), this.dessiner())}>
+            ✕
+          </button>
+        </div>
+      );
+    }
+    const etoiles = lireEtoiles(n);
+    const biomes = Object.keys(NIVEAUX) as Biome[];
+    const gagnees = Object.values(etoiles).reduce((t, e) => t + e, 0);
+    // Comme le bandeau de l'archipel : les îles à venir comptent 5 niveaux.
+    const maximum = (Object.keys(ILES_TEXTES) as Biome[]).reduce((t, b) => t + 3 * (NIVEAUX[b]?.length ?? 5), 0);
+    // Île atteinte : la dernière ouverte (le boss de la précédente battu).
+    let atteinte = biomes[0]!;
+    for (let k = 1; k < biomes.length; k++) {
+      const prec = NIVEAUX[biomes[k - 1]!]!;
+      if ((etoiles[prec[prec.length - 1]!.id] ?? 0) < 1) break;
+      atteinte = biomes[k]!;
+    }
+    if (this.aSupprimer === n) {
+      return (
+        <div class="emplacement alerte">
+          <span class="numero">{n + 1}</span>
+          <div class="contenu">
+            <span class="titre-emplacement">{TEXTES.supprimerQuestion}</span>
+            <div class="difficultes">
+              <button class="bouton danger" onClick={() => this.supprimer(n)}>
+                {TEXTES.supprimer}
+              </button>
+              <button class="bouton" onClick={() => ((this.aSupprimer = null), this.dessiner())}>
+                {TEXTES.annuler}
+              </button>
             </div>
           </div>
         </div>
-        {this.livre && this.dessinerLivre(this.livre)}
+      );
+    }
+    return (
+      <div class="emplacement">
+        <button class="jouer-emplacement" title={TEXTES.continuer} onClick={() => this.reprendre(n)}>
+          <span class="numero">{n + 1}</span>
+          <span class="contenu">
+            <span class="titre-emplacement">
+              {ILES_TEXTES[atteinte]}
+              <span class={`difficulte ${p.difficulte}`}>{TEXTES.difficulte[p.difficulte]}</span>
+            </span>
+            <span class="etoiles-emplacement">
+              <Ico nom="etoile" />
+              {`${gagnees}/${maximum}`}
+            </span>
+          </span>
+          <span class="fleche">▶</span>
+        </button>
+        <button class="bouton carre danger" title={TEXTES.supprimer} onClick={() => ((this.aSupprimer = n), (this.creation = null), this.dessiner())}>
+          ✕
+        </button>
       </div>
     );
   }
@@ -535,6 +671,9 @@ export class ControleurInterface {
     return (
       <div class="interface">
         <div class="bandeau">
+          <button class="bouton carre" title={TEXTES.retourParties} onClick={() => this.aller('parties')}>
+            ←
+          </button>
           <span class="planche" title={TEXTES.etoilesTotal}>
             <Ico nom="etoile" />
             {`${total}/${maximum}`}

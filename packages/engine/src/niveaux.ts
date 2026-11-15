@@ -1,5 +1,5 @@
 // Les niveaux : une carte, des vagues et des contraintes. Une île = 5 niveaux (4 + un boss), cahier §3.
-import type { Biome, Capacite, Ile, Regles } from './contrat';
+import type { Biome, Capacite, Difficulte, Ile, Regles } from './contrat';
 import {
   CARTE_BRAS_MORTS,
   CARTE_COEUR,
@@ -23,7 +23,7 @@ import {
   CARTE_TROIS_SENTIERS,
   lireCarte,
 } from './carte';
-import { MONSTRES, TOURS_DE_BASE, VAGUES_FORET } from './contenu';
+import { MONSTRES, TOURS_DE_BASE, VAGUES_FORET, VIE_DIFFICULTE } from './contenu';
 import type { Vague } from './contenu';
 import { Partie } from './partie';
 
@@ -526,6 +526,10 @@ export function ileDe(niveau: Niveau): Ile {
 }
 
 /** Partie neuve sur `niveau` ; `capacites` = capacités ouvertes dans l'Atelier (toutes si absent). */
-export function partieDe(niveau: Niveau, graine: number, capacites?: Capacite[]): Partie {
-  return new Partie(ileDe(niveau), niveau.vagues, graine, { ...niveau.regles, ...(capacites && { capacites }) });
+export function partieDe(niveau: Niveau, graine: number, capacites?: Capacite[], difficulte: Difficulte = 'normal'): Partie {
+  return new Partie(ileDe(niveau), niveau.vagues, graine, {
+    ...niveau.regles,
+    ...(capacites && { capacites }),
+    vieMonstres: VIE_DIFFICULTE[difficulte],
+  });
 }

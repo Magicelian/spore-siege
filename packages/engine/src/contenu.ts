@@ -1,5 +1,5 @@
 // Chiffres de la partie. Provisoires : la courbe des 10 vagues s'équilibre à l'étape 5 (joueur scripté).
-import type { Capacite, ModeCible, TypeMonstre, TypeTour } from './contrat';
+import type { Capacite, Difficulte, ModeCible, TypeMonstre, TypeTour } from './contrat';
 
 /** Durée d'un pas de simulation : 20 pas par seconde. */
 export const PAS_MS = 50;
@@ -383,3 +383,6 @@ export const VAGUES_FORET: Vague[] = [
     { type: 'limace', nombre: 20, intervalle: 1.2, debut: 25 },
   ],
 ];
+
+/** Vie des monstres selon la difficulté ; rien d'autre ne change (Normal = le jeu équilibré). */
+export const VIE_DIFFICULTE: Record<Difficulte, number> = { facile: 0.8, normal: 1, difficile: 1.2 };

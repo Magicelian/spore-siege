@@ -12,7 +12,7 @@ const herbe = { x: 2, y: 5 };
 describe('règles des niveaux', () => {
   it('sans contrainte : 120 spores, toutes les tours, ronces permises, ni fleurs ni noir', () => {
     const p = new Partie(ile, vagues, 1);
-    expect(p.instantane().regles).toEqual({ spores: SPORES_DEPART, tours: TYPES_TOURS, ronces: true, fleurs: false, noir: false, capacites: TOUTES_CAPACITES });
+    expect(p.instantane().regles).toEqual({ spores: SPORES_DEPART, tours: TYPES_TOURS, ronces: true, fleurs: false, noir: false, capacites: TOUTES_CAPACITES, vieMonstres: 1 });
   });
 
   it('les spores de départ suivent le niveau', () => {
@@ -50,5 +50,21 @@ describe('ouverture des niveaux', () => {
     expect(NIVEAUX_FORET[4]!.boss).toBe(true);
     expect(niveauOuvert(NIVEAUX_FORET, 4, sept)).toBe(false);
     expect(niveauOuvert(NIVEAUX_FORET, 4, { ...sept, [ids[3]!]: 2 })).toBe(true);
+  });
+});
+
+describe('difficulté', () => {
+  it('la vie des monstres suit la difficulté : 80 % / 100 % / 120 %', () => {
+    const vie = (d: 'facile' | 'normal' | 'difficile') => {
+      const p = partieDe(NIVEAUX_FORET[0]!, 1, undefined, d);
+      p.executer({ type: 'lancerVague' });
+      for (let i = 0; i < 400 && p.instantane().monstres.length === 0; i++) p.avancer();
+      const m = p.instantane().monstres[0]!;
+      expect(m.pv).toBe(m.pvMax);
+      return m.pvMax;
+    };
+    const normal = vie('normal');
+    expect(vie('facile')).toBe(Math.round(normal * 0.8));
+    expect(vie('difficile')).toBe(Math.round(normal * 1.2));
   });
 });

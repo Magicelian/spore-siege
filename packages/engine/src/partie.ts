@@ -180,7 +180,7 @@ export class Partie {
     graine: number,
     regles: Partial<Regles> = {},
   ) {
-    this.regles = { spores: SPORES_DEPART, tours: [...TYPES_TOURS], ronces: true, fleurs: false, noir: false, capacites: [...TOUTES_CAPACITES], ...regles };
+    this.regles = { spores: SPORES_DEPART, tours: [...TYPES_TOURS], ronces: true, fleurs: false, noir: false, capacites: [...TOUTES_CAPACITES], vieMonstres: 1, ...regles };
     this.spores = this.regles.spores;
     this.sentier = lireSentier(ile);
     this.emplacementsRonces = emplacementsRonces(ile, this.sentier.carrefours);
@@ -407,7 +407,7 @@ export class Partie {
       type: m.type,
       position: { ...m.position },
       pv: m.pv,
-      pvMax: MONSTRES[m.type].pv,
+      pvMax: this.pvMax(m.type),
       ralenti: this.facteurVitesse(m) < 1,
       empoisonne: this.pas < m.poisonJusqua,
       immerge: this.immerge(m),
@@ -556,11 +556,16 @@ export class Partie {
     this.monstres.push(this.nouveauMonstre(type, tracer(this.ile, chemin), 0));
   }
 
+  /** Vie pleine d'un monstre, selon la difficulté de la partie. */
+  private pvMax(type: TypeMonstre): number {
+    return Math.max(1, Math.round(MONSTRES[type].pv * this.regles.vieMonstres));
+  }
+
   private nouveauMonstre(type: TypeMonstre, trace: Position[], avancement: number): Monstre {
     return {
       id: this.prochainId++,
       type,
-      pv: MONSTRES[type].pv,
+      pv: this.pvMax(type),
       trace,
       longueur: longueur(trace),
       avancement,
@@ -668,7 +673,7 @@ export class Partie {
       s.soinRecharge = Math.round(soin.cadence * PAS_PAR_SECONDE);
       const soignes: number[] = [];
       for (const m of this.monstres) {
-        const max = MONSTRES[m.type].pv;
+        const max = this.pvMax(m.type);
         if (m === s || m.pv <= 0 || m.pv >= max || distance(m.position, s.position) > soin.rayon) continue;
         m.pv = Math.min(max, m.pv + soin.pv);
         soignes.push(m.id);
@@ -1196,7 +1201,7 @@ export class Partie {
       }
       const escorte: TypeMonstre[] = [];
       const avant = m.paliers;
-      while (m.paliers < boss.paliers.length && m.pv <= boss.paliers[m.paliers]!.part * MONSTRES[m.type].pv) {
+      while (m.paliers < boss.paliers.length && m.pv <= boss.paliers[m.paliers]!.part * this.pvMax(m.type)) {
         for (const { type, nombre } of boss.paliers[m.paliers]!.escorte) for (let k = 0; k < nombre; k++) escorte.push(type);
         m.paliers++;
       }

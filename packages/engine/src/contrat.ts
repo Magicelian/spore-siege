@@ -209,7 +209,12 @@ export interface Regles {
   noir: boolean;
   /** Capacités du stade 4 ouvertes dans l'Atelier (avec les étoiles) ; les autres sont refusées. */
   capacites: Capacite[];
+  /** Vie des monstres (1 = Normal) : fixée par la difficulté de la partie. */
+  vieMonstres: number;
 }
+
+/** Difficulté choisie à la création d'une partie (sauvegarde), pour toute la partie. */
+export type Difficulte = 'facile' | 'normal' | 'difficile';
 
 export interface Instantane {
   /** Pas de simulation écoulés depuis le début. */
