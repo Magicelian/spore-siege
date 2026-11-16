@@ -396,7 +396,8 @@ export class Partie {
     this.flaques = this.flaques.filter((f) => this.pas < f.fin);
     this.evenements = this.evenements.filter((e) => this.pas - e.pas < DUREE_EVENEMENT);
     if (this.phase === 'pause') {
-      if (this.pasPhase >= PAUSE_SECONDES * PAS_PAR_SECONDE) this.commencerVague();
+      // Avant la vague 1, pas de limite : on prépare tant qu'on veut, la vague part sur commande.
+      if (this.vague > 1 && this.pasPhase >= PAUSE_SECONDES * PAS_PAR_SECONDE) this.commencerVague();
       return;
     }
     if (this.pvSouche <= 0) {
@@ -515,13 +516,16 @@ export class Partie {
     return [...types];
   }
 
-  /** Spores gagnées en lançant la vague maintenant : une par seconde de pause écourtée. */
+  /** Spores gagnées en lançant la vague maintenant : une par seconde de pause écourtée (aucune avant la vague 1). */
   private bonusLancer(): number {
-    return this.pauseRestante() * BONUS_PAR_SECONDE_GAGNEE;
+    return (this.pauseRestante() ?? 0) * BONUS_PAR_SECONDE_GAGNEE;
   }
 
-  private pauseRestante(): number {
-    return this.phase === 'pause' ? Math.ceil(PAUSE_SECONDES - this.pasPhase / PAS_PAR_SECONDE) : 0;
+  /** Secondes avant le départ automatique ; `null` avant la vague 1 (pas de limite). */
+  private pauseRestante(): number | null {
+    if (this.phase !== 'pause') return 0;
+    if (this.vague === 1) return null;
+    return Math.ceil(PAUSE_SECONDES - this.pasPhase / PAS_PAR_SECONDE);
   }
 
   /** Lâchers de la vague `n` (1 = première), triés par pas ; les groupes sans plage tournent sur toutes. */

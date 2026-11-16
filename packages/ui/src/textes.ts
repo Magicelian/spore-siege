@@ -183,6 +183,7 @@ export const TEXTES = {
   lanterneRoleEnlever: 'Éclaire autour de lui. Enlevé, il rend la moitié de son prix.',
   enlever: 'Enlever',
   lancer: 'Lancer',
+  lancerPremiere: 'Lancer la première vague quand tu es prêt : elle attend.',
   lancerAide: (n: number) => `Lancer la vague maintenant : +${n} spores, une par seconde gagnée.`,
   vague: (n: number, total: number) => `${n}/${total}`,
   vagueAide: 'Vague en cours ou à venir',

@@ -1258,7 +1258,7 @@ function Bandeau(p: {
       <span class="planche" title={TEXTES.vagueAide}>
         <Ico nom="vague" />
         {i.regles.sansFin ? TEXTES.vagueSansFin(i.vague) : TEXTES.vague(i.vague, i.vagues)}
-        {i.phase === 'pause' && <span class="discret">{` · ${i.pauseRestante} s`}</span>}
+        {i.phase === 'pause' && i.pauseRestante !== null && <span class="discret">{` · ${i.pauseRestante} s`}</span>}
       </span>
       <span class={`planche${i.souche.pv <= i.souche.pvMax / 4 ? ' alerte' : ''}`} title={TEXTES.vieAide}>
         <Ico nom="vie" />
@@ -1270,8 +1270,13 @@ function Bandeau(p: {
       </span>
       <span class="espace" />
       {i.phase === 'pause' && (
-        <button class="bouton valider" title={TEXTES.lancerAide(i.bonusLancer)} onClick={p.lancer}>
-          {TEXTES.lancer} <span class="bonus">+{i.bonusLancer}</span>
+        <button
+          class="bouton valider"
+          title={i.pauseRestante === null ? TEXTES.lancerPremiere : TEXTES.lancerAide(i.bonusLancer)}
+          onClick={p.lancer}
+        >
+          {TEXTES.lancer}
+          {i.pauseRestante !== null && <span class="bonus"> +{i.bonusLancer}</span>}
         </button>
       )}
       {!fin && (

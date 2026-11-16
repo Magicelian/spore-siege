@@ -7,7 +7,10 @@ const ile = ileForet();
 /** Herbe juste au nord du sentier de l'ouest (ligne 7), que la limace longe vers la souche. */
 const PRES = { x: 6, y: 6 };
 
+/** Lance la vague 1 (elle attend le joueur), puis avance jusqu'à la condition. */
 function jouerJusqua(partie: Partie, condition: () => boolean, max = 20_000): void {
+  const i = partie.instantane();
+  if (i.phase === 'pause' && i.vague === 1) partie.executer({ type: 'lancerVague' });
   for (let n = 0; n < max && !condition(); n++) partie.avancer();
 }
 
@@ -109,10 +112,12 @@ describe('spores', () => {
     expect(partie.instantane().spores).toBe(SPORES_DEPART + BONUS_VAGUE.fixe + BONUS_VAGUE.parVague);
   });
 
-  it('récompensent la vague lancée plus tôt', () => {
+  it('récompensent la vague lancée plus tôt (à partir de la vague 2)', () => {
     const partie = new Partie(ile, deux, 1);
+    jouerJusqua(partie, () => partie.instantane().vague === 2);
+    const avant = partie.instantane().spores;
     for (let i = 0; i < 5 * PAS_PAR_SECONDE; i++) partie.avancer();
     partie.executer({ type: 'lancerVague' });
-    expect(partie.instantane().spores).toBe(SPORES_DEPART + PAUSE_SECONDES - 5);
+    expect(partie.instantane().spores).toBe(avant + PAUSE_SECONDES - 5);
   });
 });

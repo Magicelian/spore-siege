@@ -6,7 +6,10 @@ import { Partie } from './partie';
 const ile = ileForet();
 const ouest: Vague[] = [[{ type: 'limace', nombre: 1, intervalle: 1, plage: 1 }]];
 
+/** Lance la vague 1 (elle attend le joueur), puis avance jusqu'à la condition. */
 function jouerJusqua(partie: Partie, condition: () => boolean, max = 20_000): void {
+  const i = partie.instantane();
+  if (i.phase === 'pause' && i.vague === 1) partie.executer({ type: 'lancerVague' });
   for (let n = 0; n < max && !condition(); n++) partie.avancer();
 }
 
@@ -84,9 +87,12 @@ describe('ronces', () => {
 });
 
 describe('vague lancée tôt', () => {
-  it('annonce le bonus : une spore par seconde de pause restante', () => {
-    const partie = new Partie(ile, ouest, 1);
-    expect(partie.instantane().bonusLancer).toBe(PAUSE_SECONDES);
+  it('annonce le bonus : une spore par seconde de pause restante (pas avant la vague 1)', () => {
+    const partie = new Partie(ile, [...ouest, ...ouest], 1);
+    expect(partie.instantane().bonusLancer).toBe(0);
+    partie.executer({ type: 'lancerVague' });
+    for (let n = 0; n < 20_000 && partie.instantane().phase === 'vague'; n++) partie.avancer();
+    expect(partie.instantane()).toMatchObject({ phase: 'pause', vague: 2, bonusLancer: PAUSE_SECONDES });
     partie.executer({ type: 'lancerVague' });
     expect(partie.instantane().bonusLancer).toBe(0);
   });

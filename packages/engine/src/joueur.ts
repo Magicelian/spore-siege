@@ -11,7 +11,7 @@
 // Dans la grotte, tous sauf le naïf posent un champignon-lanterne là où il éclaire le plus de chemin noir à portée
 // de leurs tours (au moins 3 cases).
 import type { Capacite, Case, Ile, Instantane, Phase, Regles, TourVue, TypeMonstre, TypeTour } from './contrat';
-import { CAPACITES, CAPACITES_DE, FLEUR, LANTERNE, MONSTRES, PAS_PAR_SECONDE, PLATEFORME, TOURS, type Vague } from './contenu';
+import { CAPACITES, CAPACITES_DE, FLEUR, LANTERNE, MONSTRES, PAS_PAR_SECONDE, PAUSE_SECONDES, PLATEFORME, TOURS, type Vague } from './contenu';
 import { Partie, surPlateforme } from './partie';
 import { cle, route } from './sentier';
 
@@ -49,6 +49,8 @@ export function jouer(style: Style, ile: Ile, vagues: readonly Vague[], regles: 
     const pv = i.souche.pv;
     partie.avancer();
     pas++;
+    // La vague 1 attend le joueur : le script la lance au bout de la pause habituelle.
+    if (i.vague === 1 && i.phase === 'pause' && pas === PAUSE_SECONDES * PAS_PAR_SECONDE) partie.executer({ type: 'lancerVague' });
     const suivant = partie.instantane();
     observer?.(suivant);
     pertes[i.vague - 1]! += pv - suivant.souche.pv;

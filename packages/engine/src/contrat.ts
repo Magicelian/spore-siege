@@ -244,8 +244,8 @@ export interface Instantane {
   /** Vague en cours ou à venir, à partir de 1. */
   vague: number;
   vagues: number;
-  /** En pause : secondes avant que la vague parte d'elle-même. */
-  pauseRestante: number;
+  /** En pause : secondes avant que la vague parte d'elle-même ; `null` avant la vague 1 (elle attend le joueur). */
+  pauseRestante: number | null;
   souche: { pv: number; pvMax: number };
   monstres: MonstreVu[];
   spores: number;
@@ -266,7 +266,7 @@ export interface Instantane {
   lanternes: LanterneVue[];
   /** Zones éclairées (grotte ; vide ailleurs). */
   lumieres: Lumiere[];
-  /** Spores gagnées en lançant la vague maintenant (0 hors pause). */
+  /** Spores gagnées en lançant la vague maintenant (0 hors pause et avant la vague 1). */
   bonusLancer: number;
   /** Étoiles gagnées, une fois la partie gagnée (1 à 3) ; 0 sinon. */
   etoiles: number;

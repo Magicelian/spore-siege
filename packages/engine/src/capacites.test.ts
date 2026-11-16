@@ -8,7 +8,10 @@ const ile = ileForet();
 /** Herbe juste au nord du sentier de l'ouest (ligne 7), que les monstres longent vers la souche. */
 const PRES = { x: 6, y: 6 };
 
+/** Lance la vague 1 (elle attend le joueur), puis avance jusqu'à la condition. */
 function jouerJusqua(partie: Partie, condition: () => boolean, max = 20_000): void {
+  const i = partie.instantane();
+  if (i.phase === 'pause' && i.vague === 1) partie.executer({ type: 'lancerVague' });
   for (let n = 0; n < max && !condition(); n++) partie.avancer();
 }
 

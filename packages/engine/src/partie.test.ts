@@ -47,11 +47,14 @@ describe('sentier de l’île-forêt', () => {
 });
 
 describe('partie', () => {
-  it('attend la fin de la pause, puis lance la vague 1', () => {
+  it('avant la vague 1, attend le joueur sans limite de temps', () => {
     const partie = new Partie(ile, VAGUES_FORET, 1);
-    expect(partie.instantane()).toMatchObject({ phase: 'pause', vague: 1, pauseRestante: PAUSE_SECONDES });
-    for (let i = 0; i < PAUSE_SECONDES * PAS_PAR_SECONDE; i++) partie.avancer();
-    expect(partie.instantane().phase).toBe('vague');
+    expect(partie.instantane()).toMatchObject({ phase: 'pause', vague: 1, pauseRestante: null, bonusLancer: 0 });
+    for (let i = 0; i < 10 * PAUSE_SECONDES * PAS_PAR_SECONDE; i++) partie.avancer();
+    expect(partie.instantane()).toMatchObject({ phase: 'pause', vague: 1, bonusLancer: 0 });
+    const spores = partie.instantane().spores;
+    partie.executer({ type: 'lancerVague' });
+    expect(partie.instantane()).toMatchObject({ phase: 'vague', spores });
   });
 
   it('lance la vague plus tôt sur commande, seulement en pause', () => {
