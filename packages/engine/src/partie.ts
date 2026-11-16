@@ -158,6 +158,8 @@ export class Partie {
   readonly emplacementsRonces: Case[];
   private ronces = new Set<string>();
   private fleurs: { id: number; case: Case }[] = [];
+  /** Plateformes abattues par le Colosse d'écorce. */
+  private tombees = new Set<string>();
   /** Champignons-lanternes (grotte) ; `eteinteJusqua` = pas jusqu'auquel elle n'éclaire plus. */
   private lanternes: { id: number; case: Case; eteinteJusqua: number }[] = [];
   /** Centres des luisants de la carte. */
@@ -330,7 +332,7 @@ export class Partie {
 
   /** Une tour (de cette sorte, ou de n'importe laquelle) peut-elle être posée sur cette case ? */
   libre(c: Case, tour?: TypeTour): boolean {
-    return constructible(this.ile, c, tour) && !this.occupee(c);
+    return constructible(this.ile, c, tour) && !this.occupee(c) && !this.tombees.has(cle(c));
   }
 
   /** Une fleur à spores peut-elle être plantée ici ? Là où pousse une tour de terre, si le niveau le permet. */
@@ -477,6 +479,10 @@ export class Partie {
         return { x, y };
       }),
       fleurs: this.fleurs.map((f): FleurVue => ({ id: f.id, case: { ...f.case }, revente: Math.floor(FLEUR.prix * FLEUR.partRendue) })),
+      plateformesTombees: [...this.tombees].map((k) => {
+        const [x, y] = k.split(',').map(Number) as [number, number];
+        return { x, y };
+      }),
       lanternes: this.lanternes.map(
         (l): LanterneVue => ({ id: l.id, case: { ...l.case }, revente: Math.floor(LANTERNE.prix * LANTERNE.partRendue), allumee: this.pas >= l.eteinteJusqua }),
       ),
@@ -1263,6 +1269,24 @@ export class Partie {
   }
 
   /**
+   * Le Colosse d'écorce frappe le sol : la plateforme occupée la plus proche de lui tombe, sa tour est détruite et
+   * une part de ce qu'elle a coûté est rendue. Sans plateforme occupée, la frappe ne fait que trembler le sol.
+   */
+  private abattre(m: Monstre, part: number): void {
+    this.evenements.push({ type: 'frappe', id: m.id, monstre: m.type, position: { ...m.position }, pas: this.pas });
+    let cible: Tour | null = null;
+    for (const t of this.tours) {
+      if (t.haute && (!cible || distance(t.centre, m.position) < distance(cible.centre, m.position))) cible = t;
+    }
+    if (!cible) return;
+    const rembourse = Math.floor(cible.depense * part + 1e-9);
+    this.spores += rembourse;
+    this.tours = this.tours.filter((t) => t !== cible);
+    this.tombees.add(cle(cible.case));
+    this.evenements.push({ type: 'chute', id: cible.id, tour: cible.type, case: { ...cible.case }, rembourse, pas: this.pas });
+  }
+
+  /**
    * Le boss blessé sous un palier pond son escorte juste derrière lui (plusieurs paliers d'un coup : tout). Le
    * Crapaud-roi, lui, plonge d'abord et ne pond qu'en ressortant.
    */
@@ -1291,6 +1315,7 @@ export class Partie {
         m.paliers++;
       }
       if (boss.noir && m.paliers > avant) this.toutEteindre(m, boss.noir);
+      if (boss.abat) for (let k = avant; k < m.paliers; k++) this.abattre(m, boss.abat.rembourse);
       if (escorte.length === 0) continue;
       if (boss.plongee) {
         m.plongeeFin = this.pas + Math.round(boss.plongee.duree * PAS_PAR_SECONDE);

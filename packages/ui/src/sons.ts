@@ -34,7 +34,9 @@ export type Effet =
   | 'extinction'
   | 'souffle'
   | 'fil'
-  | 'grimpe';
+  | 'grimpe'
+  | 'frappe'
+  | 'chute';
 
 const VOLUME = 0.22;
 /** Ambiance de fond, basse exprès (même niveau que Tiny Shrooms) ; le vent par-dessus en léger souffle. */
@@ -167,6 +169,16 @@ const EFFETS: Record<Effet, { notes: Note[]; souffles?: Souffle[] }> = {
   souffle: {
     notes: [{ f: 70, t: 0, d: 0.7, vers: 45, onde: 'sawtooth', v: 0.45 }, { f: 140, t: 0.05, d: 0.5, vers: 90, onde: 'triangle', v: 0.25 }],
     souffles: [{ t: 0.05, d: 0.8, f: 500, v: 0.55 }],
+  },
+  // Colosse d'écorce qui frappe le sol : coup sourd très grave, terre qui retombe.
+  frappe: {
+    notes: [{ f: 55, t: 0, d: 0.6, vers: 30, onde: 'sine', v: 0.7 }, { f: 110, t: 0, d: 0.25, vers: 50, onde: 'triangle', v: 0.35 }],
+    souffles: [{ t: 0, d: 0.15, f: 700, v: 0.6 }, { t: 0.15, d: 0.5, f: 350, v: 0.3 }],
+  },
+  // Plateforme qui s'effondre : craquement de bois, puis fracas des planches au sol.
+  chute: {
+    notes: [{ f: 300, t: 0, d: 0.08, vers: 180, onde: 'square', v: 0.12 }, { f: 90, t: 0.55, d: 0.4, vers: 45, onde: 'triangle', v: 0.5 }],
+    souffles: [{ t: 0, d: 0.05, f: 2600, v: 0.4 }, { t: 0.1, d: 0.05, f: 2200, v: 0.35 }, { t: 0.55, d: 0.35, f: 1200, v: 0.55 }],
   },
   plongee: {
     notes: [{ f: 180, t: 0, d: 0.35, vers: 60, onde: 'sine', v: 0.5 }],

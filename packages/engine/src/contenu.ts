@@ -29,6 +29,11 @@ export interface FicheMonstre {
     plongee?: { duree: number; avance: number };
     /** Ver des profondeurs : à chaque palier, toutes les lanternes s'éteignent pendant `noir` secondes. */
     noir?: number;
+    /**
+     * Colosse d'écorce : à chaque palier il frappe le sol et la plateforme occupée la plus proche de lui tombe ; sa
+     * tour est détruite et `rembourse` (part de ce qu'elle a coûté) rendu.
+     */
+    abat?: { rembourse: number };
   };
   pv: number;
   /** Cases par seconde. */
@@ -158,6 +163,23 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
   araignee: { pv: 26, vitesse: 0.85, morsure: 1, butin: 4, armure: 0, fil: { duree: 1.5, de: 0.3, a: 0.65 } },
   // Futaie, niveau 3 : grimpe sur une tour en hauteur et la bloque quelques secondes.
   ecureuil: { pv: 20, vitesse: 1.4, morsure: 1, butin: 3, armure: 0, grimpeur: { flair: 1.8, duree: 3 } },
+  // Boss de la futaie (dernier boss) : arbre géant, très lent ; à chaque palier il abat une plateforme occupée.
+  // Pas d'escorte (cahier) : la menace, c'est de perdre ses meilleures tours. Chiffres provisoires, à régler en 12d.
+  colosse: {
+    pv: 900,
+    vitesse: 0.2,
+    morsure: 20,
+    butin: 90,
+    armure: 4,
+    boss: {
+      abat: { rembourse: 0.5 },
+      paliers: [
+        { part: 0.75, escorte: [] },
+        { part: 0.5, escorte: [] },
+        { part: 0.25, escorte: [] },
+      ],
+    },
+  },
 };
 
 /** Spores au départ : de quoi poser les deux premières tours. */

@@ -4,6 +4,7 @@ import { Eclairage } from './eclairage';
 import type { Biome, Case, EvenementVu, Ile, Instantane } from '@spore-siege/engine';
 import { Archipel, COTE_ARCHIPEL, ETAPES_ARCHIPEL, reduire } from './archipel';
 import { CameraIso } from './camera';
+import { ChutesRendu } from './chutes';
 import { construireIle } from './ile';
 import { centreCase } from './repere';
 import { MonstresRendu } from './monstres';
@@ -46,6 +47,7 @@ export class Rendu {
   /** Événements déjà montrés (ils restent quelques pas dans l'instantané). */
   private evenementsVus = new Set<string>();
   private readonly monstres = new MonstresRendu();
+  private readonly chutes = new ChutesRendu();
   private readonly tours = new ToursRendu();
   private readonly sceneCarte = new THREE.Scene();
   private readonly vueCarte = new CameraIso();
@@ -81,7 +83,7 @@ export class Rendu {
     soleil.shadow.mapSize.set(1024, 1024);
     soleil.shadow.bias = -0.002;
     Object.assign(soleil.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 50 });
-    this.scene.add(ciel, soleil, this.souche.groupe, this.monstres.groupe, this.tours.groupe);
+    this.scene.add(ciel, soleil, this.souche.groupe, this.monstres.groupe, this.tours.groupe, this.chutes.groupe);
     this.eclairage = new Eclairage(this.scene, ciel, soleil);
     this.dessus.add(this.monstres.dessus, this.tours.dessus);
 
@@ -177,9 +179,11 @@ export class Rendu {
       if (e.type === 'ponte') this.monstres.pondre(e.id, instant);
       if (e.type === 'plongee') this.monstres.plonger(e.id, instant);
       if (e.type === 'souffle') this.monstres.souffler(e.id, instant);
+      if (e.type === 'frappe') this.monstres.frapper(e.id, instant);
       if (e.type === 'pique') this.monstres.alerter(e.cible, this.ile, instant);
       if (e.type === 'recolte') this.monstres.lacherButin(e.gain, centreCase(e.case.x, e.case.y, this.ile, new THREE.Vector3()), HAUTEUR_FLEUR, instant / 1000);
     }
+    if (this.decor) this.chutes.afficher(this.decor, this.ile, actuel.plateformesTombees, instant);
     this.tours.afficher(this.ile, precedent, actuel, alpha, selection, pose, marque, instant, parPixel);
     this.eclairage.afficher(this.ile, actuel.regles.noir, actuel.lumieres, instant / 1000);
     return nouveaux;

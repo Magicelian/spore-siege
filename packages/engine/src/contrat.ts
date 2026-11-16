@@ -54,7 +54,8 @@ export type TypeMonstre =
   | 'cloporte'
   | 'ver'
   | 'araignee'
-  | 'ecureuil';
+  | 'ecureuil'
+  | 'colosse';
 
 export interface MonstreVu {
   id: number;
@@ -169,7 +170,11 @@ export type EvenementVu =
   /** L'araignée `id` se laisse tomber d'un arbre au bout de son fil, au-dessus de `position`. */
   | { type: 'fil'; id: number; monstre: TypeMonstre; position: Position; pas: number }
   /** L'écureuil `id` grimpe sur la tour `tour` : elle ne tire plus tant qu'il y reste. */
-  | { type: 'grimpe'; id: number; monstre: TypeMonstre; tour: number; pas: number };
+  | { type: 'grimpe'; id: number; monstre: TypeMonstre; tour: number; pas: number }
+  /** Le Colosse d'écorce `id` frappe le sol (palier de vie). */
+  | { type: 'frappe'; id: number; monstre: TypeMonstre; position: Position; pas: number }
+  /** La plateforme `case` s'effondre sous la frappe du Colosse : la tour `id` est détruite, `rembourse` spores rendues. */
+  | { type: 'chute'; id: number; tour: TypeTour; case: Case; rembourse: number; pas: number };
 
 /** Fleur à spores plantée par le joueur (prairie) : elle rapporte des spores à chaque fin de vague. */
 export interface FleurVue {
@@ -253,6 +258,8 @@ export interface Instantane {
   ronces: Case[];
   /** Fleurs à spores plantées. */
   fleurs: FleurVue[];
+  /** Plateformes de la futaie abattues par le Colosse d'écorce : plus rien n'y pousse. */
+  plateformesTombees: Case[];
   /** Champignons-lanternes posés (grotte). */
   lanternes: LanterneVue[];
   /** Zones éclairées (grotte ; vide ailleurs). */

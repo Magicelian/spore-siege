@@ -140,7 +140,7 @@ export function modeleSouche(tailleCases: number): Modele {
 
 // ─── Décor et éléments ─────────────────────────────────────────────────────────
 
-export type Decor = 'arbre' | 'roseau' | 'fleur' | 'luisant' | 'chene' | 'buisson' | 'caillou' | 'nenuphar' | 'plateforme';
+export type Decor = 'arbre' | 'roseau' | 'fleur' | 'luisant' | 'chene' | 'buisson' | 'caillou' | 'nenuphar' | 'plateforme' | 'chicot';
 let cacheDecor: Record<Decor, Modele> | null = null;
 
 /** Arbre, roseaux, fleurs, luisants, vieux chêne, buisson sauvage, rocher et nénuphar, posés en instances sur le terrain. */
@@ -215,7 +215,14 @@ export function modelesDecor(): Record<Decor, Modele> {
   plateforme.boule(5.5, 10.5, -2.5, 2.2, 1.6, 2.4, COULEURS.feuillageChene);
   plateforme.boule(2, 10, -6.5, 2.4, 1.6, 2, COULEURS.feuillageChene);
   plateforme.peindre((x, y, z, c) => c === COULEURS.feuillageChene && (x * 5 + y * 3 + z * 7) % 5 === 0, COULEURS.feuillageCheneClair);
+  // Chicot : ce qui reste d'un arbre à plateforme abattu par le Colosse (tronc cassé en dents, planches au sol).
+  const chicot = new Voxels();
+  chicot.cylindre(C, C, 0, 3, 3.2, COULEURS.troncChene, 2.6);
+  chicot.peindre((x, y, z, c) => c === COULEURS.troncChene && y >= 2 && (x * 3 + z * 5) % 4 !== 0, COULEURS.plancheSombre);
+  for (const [x, z, h] of [[-2, -1, 2], [1, 0, 3], [0, -2, 1], [-1, 1, 2]] as const) chicot.boite(x, 4, z, x, 3 + h, z, COULEURS.troncChene);
+  for (const [x, z] of [[3, -5], [-6, 2], [2, 4]] as const) chicot.boite(x, 0, z, x + 3, 0, z, COULEURS.planche);
   cacheDecor = {
+    chicot: chicot.modele(),
     plateforme: plateforme.modele(),
     arbre: arbre.modele(),
     roseau: roseau.modele(),

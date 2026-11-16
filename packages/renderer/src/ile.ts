@@ -15,6 +15,15 @@ interface Piece {
   couleur: number;
   matrice: THREE.Matrix4;
   ombre: 'porte' | 'recoit';
+  /** Plateforme de la futaie : clé `x,y` de sa case, pour pouvoir l'abattre. */
+  case?: string;
+}
+
+/** Arbre à plateforme posé dans un maillage instancié : on le cache quand le Colosse l'abat. */
+export interface PlateformeVue {
+  maillage: THREE.InstancedMesh;
+  index: number;
+  matrice: THREE.Matrix4;
 }
 
 /** Ce qui pousse sur les cases `foret` selon le biome. */
@@ -30,9 +39,9 @@ export function construireIle(ile: Ile): THREE.Group {
   const rotation = new THREE.Quaternion();
   const axeY = new THREE.Vector3(0, 1, 0);
 
-  const poser = (forme: Forme, couleur: number, ombre: Piece['ombre'], position: THREE.Vector3, taille: THREE.Vector3, angle = 0) => {
+  const poser = (forme: Forme, couleur: number, ombre: Piece['ombre'], position: THREE.Vector3, taille: THREE.Vector3, angle = 0, cle?: string) => {
     rotation.setFromAxisAngle(axeY, angle);
-    pieces.push({ forme, couleur, ombre, matrice: new THREE.Matrix4().compose(position, rotation, taille) });
+    pieces.push({ forme, couleur, ombre, matrice: new THREE.Matrix4().compose(position, rotation, taille), case: cle });
   };
 
   const bords = distancesAuBord(ile);
@@ -65,7 +74,7 @@ export function construireIle(ile: Ile): THREE.Group {
         poser('luisant', 0, 'porte', decalage, echelle.setScalar(1.25 + b * 0.2), quart(b));
       } else if (terrain === 'plateforme') {
         // Grand arbre à plateforme (futaie) : centré et à taille fixe, pour que la tour tombe pile sur le plancher.
-        poser('plateforme', 0, 'porte', centre.clone(), echelle.setScalar(1), quart(b));
+        poser('plateforme', 0, 'porte', centre.clone(), echelle.setScalar(1), quart(b), `${x},${y}`);
       } else if (terrain === 'rocher') {
         poser('caillou', 0, 'porte', decalage, echelle.set(0.85, 0.75 + b * 0.3, 0.85), quart(b));
       } else if (terrain === 'nenuphar') {
@@ -112,13 +121,18 @@ function regrouper(pieces: Piece[]): THREE.Group {
     else lots.set(cle, [piece]);
   }
   const groupe = new THREE.Group();
+  const plateformes = new Map<string, PlateformeVue>();
+  groupe.userData.plateformes = plateformes;
   for (const lot of lots.values()) {
     const { forme, couleur, ombre } = lot[0]!;
     const modele = forme === 'cube' ? null : modelesDecor()[forme];
     const maillage = modele
       ? new THREE.InstancedMesh(modele.geometrie, modele.materiaux, lot.length)
       : new THREE.InstancedMesh(CUBE, materiau(couleur), lot.length);
-    lot.forEach((piece, i) => maillage.setMatrixAt(i, piece.matrice));
+    lot.forEach((piece, i) => {
+      maillage.setMatrixAt(i, piece.matrice);
+      if (piece.case) plateformes.set(piece.case, { maillage, index: i, matrice: piece.matrice });
+    });
     maillage.castShadow = true;
     maillage.receiveShadow = ombre === 'recoit';
     groupe.add(maillage);

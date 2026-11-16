@@ -46,6 +46,9 @@ const M = {
   ecureuil: 0x9a5a34,
   ecureuilClair: 0xc9a27a,
   queue: 0xb0703f,
+  ecorce: 0x5e4a36,
+  ecorceSombre: 0x3b2d21,
+  feuilleMorte: 0x8a5a2e,
 };
 lumineuse(M.oeil, M.soin);
 const C = -0.5;
@@ -383,6 +386,33 @@ function ver(): Voxels {
   return v;
 }
 
+/**
+ * Colosse d'écorce : arbre géant qui marche, deux jambes de racines, bras-branches jusqu'au sol, visage creusé dans
+ * l'écorce aux yeux qui luisent, couronne de branches mortes et de feuilles rouillées (avant = +x).
+ */
+function colosse(): Voxels {
+  const v = new Voxels();
+  // Jambes : deux grosses racines, pieds évasés.
+  for (const z of [-3, 1]) v.boite(-2, 0, z, 0, 4, z + 1, M.ecorce).boite(-3, 0, z - 1, 1, 0, z + 2, M.ecorceSombre);
+  // Tronc, plus large aux épaules.
+  v.boule(C, 8, C, 3, 4.4, 3.2, M.ecorce).boule(C, 11, C, 3.2, 2.4, 4, M.ecorce);
+  // Bras-branches qui pendent jusqu'au sol, poings noueux.
+  for (const z of [-6, 5]) v.boite(-1, 3, z, 0, 11, z, M.ecorce).boule(C, 2, z + C + 0.5, 1.6, 1.6, 1.6, M.ecorceSombre);
+  // Sillons verticaux de l'écorce.
+  v.peindre((x, y, z, c) => c === M.ecorce && (z + 9) % 3 === 0 && hachage(x, y, z) < 0.7, M.ecorceSombre);
+  taches(v, M.ecorce, 0.14);
+  duvet(v, M.ecorce, 0.18);
+  // Visage creusé : bouche sombre, deux yeux qui luisent.
+  v.boite(3, 6, -2, 3, 7, 1, M.sombre).poser(3, 8, -1, M.dent).poser(3, 8, 0, M.dent);
+  v.boite(3, 10, -3, 3, 10, -2, M.sombre).boite(3, 10, 1, 3, 10, 2, M.sombre);
+  v.poser(4, 10, -2, M.oeil).poser(4, 10, 1, M.oeil);
+  // Couronne : branches mortes et feuilles rouillées.
+  for (const [x, z, h] of [[-1, -3, 4], [0, 2, 5], [-2, 0, 6], [1, -1, 3]] as const) v.boite(x, 13, z, x, 13 + h, z, M.ecorceSombre);
+  for (const [x, y, z] of [[-1, 17, -3], [0, 18, 2], [-2, 19, 0]] as const) v.boule(x, y, z, 1.8, 1.2, 1.8, M.feuilleMorte);
+  taches(v, M.feuilleMorte, 0.3, M.rouille);
+  return v;
+}
+
 let modeleBoule: Modele | null = null;
 /** Le cloporte en boule (même palette, maillage échangé). */
 export function modeleCloporteBoule(): Modele {
@@ -410,6 +440,7 @@ export const ECLATS: Record<TypeMonstre, number[]> = {
   ver: [M.ver, M.verSombre, M.rouille],
   araignee: [M.araignee, M.rouille, M.araigneeSombre],
   ecureuil: [M.ecureuil, M.queue, M.rouille],
+  colosse: [M.ecorce, M.feuilleMorte, M.ecorceSombre],
 };
 
 let modeles: Record<TypeMonstre, Modele> | null = null;
@@ -434,6 +465,7 @@ export function modelesMonstres(): Record<TypeMonstre, Modele> {
     ver: ver().modele(false),
     araignee: araignee().modele(false),
     ecureuil: ecureuil().modele(false),
+    colosse: colosse().modele(false),
   };
   return modeles;
 }
@@ -514,6 +546,8 @@ const SOIE = new THREE.LineBasicMaterial({ color: 0xe8e2d0 });
 const HAUTEUR_VOL = 2.4;
 /** Le corbeau est un boss : son modèle est grossi d'autant. */
 const TAILLE_CORBEAU = 1.5;
+/** Le Colosse d'écorce dépasse les arbres de la futaie. */
+const TAILLE_COLOSSE = 1.5;
 const OMBRE = new THREE.CircleGeometry(0.55, 20).rotateX(-Math.PI / 2);
 /** Cible d'un piqué du corbeau : anneau rouge qui bat, le temps qu'il arrive. */
 const ALERTE = new THREE.RingGeometry(0.4, 0.55, 24).rotateX(-Math.PI / 2);
@@ -563,7 +597,7 @@ export class MonstresRendu {
         const modele = modelesMonstres()[m.type];
         const maillage = new THREE.Mesh(modele.geometrie, modele.materiaux);
         maillage.castShadow = true;
-        corps = { maillage, type: m.type, hauteur: modele.hauteur, fond: new THREE.Sprite(FOND), jauge: new THREE.Sprite(JAUGES.vert) };
+        corps = { maillage, type: m.type, hauteur: modele.hauteur * (m.type === 'colosse' ? TAILLE_COLOSSE : 1), fond: new THREE.Sprite(FOND), jauge: new THREE.Sprite(JAUGES.vert) };
         this.corps.set(m.id, corps);
         this.groupe.add(maillage);
         this.dessus.add(corps.fond, corps.jauge);
@@ -633,6 +667,12 @@ export class MonstresRendu {
         corps.maillage.scale.set(TAILLE_CORBEAU, TAILLE_CORBEAU, TAILLE_CORBEAU * (0.4 + 0.6 * Math.min(1, vol * 4) + Math.sin(instant / 160) * 0.18 * Math.min(1, vol * 4)));
       }
       // Limace et amas ondulent en avançant (et s'arrêtent avec eux).
+      // Colosse : pas lourds, il se balance d'une jambe sur l'autre.
+      if (m.type === 'colosse') {
+        const s = Math.sin((x + y) * 5 + m.id);
+        corps.maillage.rotation.x = s * 0.06;
+        corps.maillage.scale.set(TAILLE_COLOSSE, TAILLE_COLOSSE * (1 - Math.abs(s) * 0.04), TAILLE_COLOSSE);
+      }
       if (m.type === 'limace' || m.type === 'amas' || m.type === 'petitAmas' || m.type === 'limaceMere' || m.type === 'ver') {
         const s = Math.sin((x + y) * 7 + m.id) * 0.07;
         corps.maillage.scale.set(1 + s, 1 - s, 1 + s);
@@ -763,6 +803,14 @@ export class MonstresRendu {
     if (!corps) return;
     const depart = corps.maillage.position.clone().setY(corps.maillage.position.y + corps.hauteur * 0.8);
     this.eclats.lancer(depart, instant / 1000, { couleurs: [M.ver, M.dent, M.sombre, M.oeil], nombre: 22, taille: 0.14, force: 2.6, duree: 0.6 });
+  }
+
+  /** Le Colosse d'écorce frappe le sol : gerbe d'écorce, de terre et de feuilles mortes à ses pieds. */
+  frapper(id: number, instant: number): void {
+    const corps = this.corps.get(id);
+    if (!corps) return;
+    const depart = corps.maillage.position.clone().setY(corps.maillage.position.y + 0.1);
+    this.eclats.lancer(depart, instant / 1000, { couleurs: [M.ecorce, M.ecorceSombre, M.feuilleMorte, M.rouille], nombre: 26, taille: 0.15, force: 2.8, duree: 0.6 });
   }
 
   /** Le Crapaud-roi plonge : gerbe d'eau là où il disparaît. */

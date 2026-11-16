@@ -119,6 +119,11 @@ export const MONSTRES_TEXTES: Record<TypeMonstre, { nom: string; description: st
     description: 'Rapide et effronté. Quand il passe près d’une plateforme, il grimpe sur la tour du haut et s’y installe : elle ne tire plus tant qu’il y reste.',
     conseil: 'Une tour au sol à côté de tes plateformes le décroche vite. Il ne s’en prend jamais aux tours au sol.',
   },
+  colosse: {
+    nom: 'Colosse d’écorce',
+    description: 'Le plus vieil arbre de la futaie, rongé par la Rouille jusqu’au cœur. Il avance à peine, mais chaque fois qu’il faiblit, il frappe le sol : la plateforme occupée la plus proche s’effondre, et sa tour avec.',
+    conseil: 'Ne mise pas tout sur les plateformes près de son chemin : garde de solides tours au sol. Une tour abattue te rend la moitié de ce qu’elle a coûté.',
+  },
 };
 
 export const ILES_TEXTES: Record<Biome, string> = {
