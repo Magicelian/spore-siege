@@ -4,3 +4,4 @@ export * from './contenu';
 export * from './sentier';
 export * from './partie';
 export * from './niveaux';
+export * from './sansFin';

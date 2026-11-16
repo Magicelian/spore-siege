@@ -230,6 +230,8 @@ export interface Regles {
   capacites: Capacite[];
   /** Vie des monstres (1 = Normal) : fixée par la difficulté de la partie. */
   vieMonstres: number;
+  /** Mode vagues sans fin : pas de victoire, la vie des monstres monte à chaque vague. */
+  sansFin: boolean;
 }
 
 /** Difficulté choisie à la création d'une partie (sauvegarde), pour toute la partie. */

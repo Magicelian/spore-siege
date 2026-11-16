@@ -16,7 +16,7 @@ export type Etoiles = Record<string, number>;
 const CLE_PARTIES = 'spore-siege:parties';
 /** Avant les parties multiples : une seule progression, effacée (choix de Celian, on repart de zéro). */
 const ANCIENNES_CLES = ['spore-siege:etoiles', 'spore-siege:decouverts', 'spore-siege:tours', 'spore-siege:atelier'];
-const NOMS = ['etoiles', 'decouverts', 'tours', 'atelier'] as const;
+const NOMS = ['etoiles', 'decouverts', 'tours', 'atelier', 'record'] as const;
 const cle = (n: number, nom: (typeof NOMS)[number]) => `spore-siege:partie-${n + 1}:${nom}`;
 
 function lire<T>(cleStockage: string, defaut: T): T {
@@ -142,4 +142,14 @@ export function ecrireMusique(active: boolean): void {
   } catch {
     // Stockage indisponible : le choix ne sera pas retenu.
   }
+}
+
+/** Mode vagues sans fin : meilleure vague atteinte dans cette partie (0 = jamais joué). */
+export function lireRecord(n: number): number {
+  const brut = lire<unknown>(cle(n, 'record'), 0);
+  return typeof brut === 'number' && brut > 0 ? Math.floor(brut) : 0;
+}
+
+export function ecrireRecord(n: number, vague: number): void {
+  ecrire(cle(n, 'record'), vague);
 }

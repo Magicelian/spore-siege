@@ -1,7 +1,7 @@
 // Petites icônes pixel (9 × 9) dessinées depuis des motifs texte, converties une fois en images
 // (même principe que Tiny Shrooms).
 
-export type Icone = 'spore' | 'vie' | 'vague' | 'pause' | 'lecture' | 'rapide' | 'reglages' | 'degats' | 'portee' | 'cadence' | 'etoile' | 'etoileVide' | 'armure' | 'livre' | 'cadenas' | 'enclume' | 'premier';
+export type Icone = 'spore' | 'vie' | 'vague' | 'pause' | 'lecture' | 'rapide' | 'reglages' | 'degats' | 'portee' | 'cadence' | 'etoile' | 'etoileVide' | 'armure' | 'livre' | 'cadenas' | 'enclume' | 'premier' | 'infini';
 
 /** `.` transparent, `#` encre ; les autres lettres renvoient à la palette de l'icône. */
 const MOTIFS: Record<Icone, { motif: string[]; palette: Record<string, string> }> = {
@@ -100,6 +100,21 @@ const MOTIFS: Record<Icone, { motif: string[]; palette: Record<string, string> }
   livre: {
     motif: ['.#######.', '#rrrrrrw#', '#rjjjrrw#', '#rrrrrrw#', '#rjjrrrw#', '#rrrrrrw#', '#rrrrrrw#', '#########', '.........'],
     palette: { r: '#8a3a2a', j: '#e8a33d', w: '#f3e6c8' },
+  },
+  // Vagues sans fin : un huit couché doré.
+  infini: {
+    motif: [
+      '.........',
+      '.........',
+      '.##...##.',
+      '#oo#.#oo#',
+      '#o.#o#.o#',
+      '#oo#.#oo#',
+      '.##...##.',
+      '.........',
+      '.........',
+    ],
+    palette: { o: '#e8a33d' },
   },
   enclume: {
     motif: [

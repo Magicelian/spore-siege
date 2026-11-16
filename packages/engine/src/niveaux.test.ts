@@ -12,7 +12,7 @@ const herbe = { x: 2, y: 5 };
 describe('règles des niveaux', () => {
   it('sans contrainte : 120 spores, toutes les tours, ronces permises, ni fleurs ni noir', () => {
     const p = new Partie(ile, vagues, 1);
-    expect(p.instantane().regles).toEqual({ spores: SPORES_DEPART, tours: TYPES_TOURS, ronces: true, fleurs: false, noir: false, capacites: TOUTES_CAPACITES, vieMonstres: 1 });
+    expect(p.instantane().regles).toEqual({ spores: SPORES_DEPART, tours: TYPES_TOURS, ronces: true, fleurs: false, noir: false, capacites: TOUTES_CAPACITES, vieMonstres: 1, sansFin: false });
   });
 
   it('les spores de départ suivent le niveau', () => {

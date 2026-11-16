@@ -1444,3 +1444,23 @@ table.stades .icone {
   font-weight: 700;
   color: var(--rouille);
 }
+
+/* ─── Vagues sans fin : record en fin de partie, annonce sur la victoire finale ─────────────── */
+.bulle.fin .record {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.bulle.fin .record.nouveau {
+  color: var(--rouille);
+  animation: etoile 0.35s steps(4) 0.4s both;
+}
+.finale .annonce {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--discret);
+}

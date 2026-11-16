@@ -1,7 +1,9 @@
 // Les niveaux : une carte, des vagues et des contraintes. Une île = 5 niveaux (4 + un boss), cahier §3.
 import type { Biome, Capacite, Difficulte, Ile, Regles } from './contrat';
+import { vaguesSansFin } from './sansFin';
 import {
   CARTE_ALLEE,
+  CARTE_SANS_FIN,
   CARTE_COEUR_FUTAIE,
   CARTE_OBSCURE,
   CARTE_RUISSEAU,
@@ -599,6 +601,19 @@ export const NIVEAUX_FUTAIE: Niveau[] = [
     boss: true,
   },
 ];
+
+/**
+ * Vagues sans fin (ouvert après le Colosse d'écorce) : carte qui mêle tout, vagues tirées de tout l'archipel, vie
+ * qui monte à chaque vague, boss toutes les 10 vagues (`sansFin.ts`). Pas d'étoiles : un record de vague par partie.
+ */
+export const NIVEAU_SANS_FIN: Niveau = {
+  id: 'sans-fin',
+  nom: 'Vagues sans fin',
+  biome: 'foret',
+  carte: CARTE_SANS_FIN,
+  vagues: vaguesSansFin(),
+  regles: { sansFin: true, fleurs: true, spores: 550 },
+};
 
 /** Niveaux de chaque île, dans l'ordre du parcours ; une île sans niveaux n'est pas encore jouable. */
 export const NIVEAUX: Partial<Record<Biome, Niveau[]>> = { foret: NIVEAUX_FORET, marais: NIVEAUX_MARAIS, prairie: NIVEAUX_PRAIRIE, grotte: NIVEAUX_GROTTE, futaie: NIVEAUX_FUTAIE };

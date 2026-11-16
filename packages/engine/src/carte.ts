@@ -687,3 +687,30 @@ export const CARTE_COEUR_FUTAIE = [
   '....fffffffffffff...',
   '......ffffffff......',
 ] as const;
+
+/**
+ * Vagues sans fin : mêle tout. Plages nord-est (0), ouest (1) et sud (2) ; carrefours (4, 9) (ronce (5, 9) = l'ouest
+ * par le sud) et (9, 17) (ronce (9, 16) = le sud par l'ouest, à gués) ; ruisseau et mare pour le héron, 6 plateformes.
+ */
+export const CARTE_SANS_FIN = [
+  '.....hfffff....sss..',
+  '...fffhhhhhh..hh=h..',
+  '..ffffh=======hh=hh.',
+  '.hfhfph=hhhhh=hP=hhf',
+  'fhhhhhh=Phhhh====rhf',
+  'ss===hh=hhhhhhhhhhhf',
+  'fhhh=hh====hhfhhhfff',
+  'fhhh=hhhhh=hPfffffff',
+  'ffhh=hhhhh=hffffffff',
+  '.fbh=====SShhpfffff.',
+  'fffh=hhhhSSfhffffff.',
+  'ffhh=hPfh=hfffeeeeff',
+  '.fhP=hhhh=hhffeneef.',
+  '.ffh=hhhh=hPffeeeeff',
+  '.neegeeee=eeeeeeeee.',
+  '..eegeeee=eeneeeeee.',
+  '..hh=hhhh=hhfffffff.',
+  '...h======hfffffff..',
+  '....hhhhh=hffffff...',
+  '......hfhshhff......',
+] as const;

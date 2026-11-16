@@ -28,6 +28,7 @@ import {
   type Vague,
 } from './contenu';
 import { creerHasard } from './hasard';
+import { vieSansFin } from './sansFin';
 import { cle, emplacementsRonces, lireSentier, route, type Sentier } from './sentier';
 
 interface Monstre {
@@ -190,7 +191,7 @@ export class Partie {
     graine: number,
     regles: Partial<Regles> = {},
   ) {
-    this.regles = { spores: SPORES_DEPART, tours: [...TYPES_TOURS], ronces: true, fleurs: false, noir: false, capacites: [...TOUTES_CAPACITES], vieMonstres: 1, ...regles };
+    this.regles = { spores: SPORES_DEPART, tours: [...TYPES_TOURS], ronces: true, fleurs: false, noir: false, capacites: [...TOUTES_CAPACITES], vieMonstres: 1, sansFin: false, ...regles };
     this.spores = this.regles.spores;
     this.sentier = lireSentier(ile);
     this.emplacementsRonces = emplacementsRonces(ile, this.sentier.carrefours);
@@ -402,7 +403,7 @@ export class Partie {
       this.pvSouche = 0;
       this.phase = 'defaite';
     } else if (this.lachers.length === 0 && this.monstres.length === 0) {
-      if (this.vague >= this.vagues.length) this.phase = 'victoire';
+      if (this.vague >= this.vagues.length && !this.regles.sansFin) this.phase = 'victoire';
       else {
         this.spores += BONUS_VAGUE.fixe + BONUS_VAGUE.parVague * this.vague;
         this.recolter();
@@ -560,6 +561,8 @@ export class Partie {
   }
 
   private lacher({ type, plage }: Lacher): void {
+    // Mode sans fin : un boss qui marche prend toujours la plus longue des routes (ronces comprises).
+    if (this.regles.sansFin && MONSTRES[type].boss && !MONSTRES[type].rapace) plage = this.plageLaPlusLongue();
     const { depart } = this.sentier.plages[plage]!;
     if (MONSTRES[type].rapace) {
       const a = { x: depart.x + 0.5, y: depart.y + 0.5 };
@@ -588,6 +591,17 @@ export class Partie {
     this.monstres.push(this.nouveauMonstre(type, tracer(this.ile, chemin), 0));
   }
 
+  /** Plage dont la route jusqu'à la souche est la plus longue, avec les ronces posées. */
+  private plageLaPlusLongue(): number {
+    let meilleure = 0;
+    let longue = -1;
+    this.sentier.plages.forEach((p, k) => {
+      const n = route(this.ile, p.depart, this.ronces)?.length ?? -1;
+      if (n > longue) [meilleure, longue] = [k, n];
+    });
+    return meilleure;
+  }
+
   /** Araignée encore au bout de son fil : hors d'atteinte, immobile. */
   private descend(m: Monstre): boolean {
     return m.descenteFin >= 0 && this.pas < m.descenteFin;
@@ -598,9 +612,10 @@ export class Partie {
     return this.monstres.some((m) => m.tour === t.id && m.horsSentier === 'repas' && m.pv > 0);
   }
 
-  /** Vie pleine d'un monstre, selon la difficulté de la partie. */
+  /** Vie pleine d'un monstre, selon la difficulté de la partie (et la vague, en mode sans fin). */
   private pvMax(type: TypeMonstre): number {
-    return Math.max(1, Math.round(MONSTRES[type].pv * this.regles.vieMonstres));
+    const vague = this.regles.sansFin ? vieSansFin(this.vague, !!MONSTRES[type].boss) : 1;
+    return Math.max(1, Math.round(MONSTRES[type].pv * this.regles.vieMonstres * vague));
   }
 
   private nouveauMonstre(type: TypeMonstre, trace: Position[], avancement: number): Monstre {

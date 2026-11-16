@@ -3,9 +3,9 @@
 // Le contrôleur garde l'état de l'interface ; le frontend lui donne les instantanés et lit l'aperçu à dessiner.
 import { render } from 'preact';
 import type { Biome, Capacite, Case, Difficulte, Commande, FleurVue, Ile, Instantane, LanterneVue, ModeCible, Niveau, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
-import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, FLEUR, LANTERNE, MODES_CIBLE, MONSTRES, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, VIE_DIFFICULTE, PRIX_RONCE, SEUIL_BOSS, PLATEFORME, prixPour, surPlateforme, TOURS, TOURS_DE_BASE, TOUTES_CAPACITES } from '@spore-siege/engine';
+import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, FLEUR, LANTERNE, MODES_CIBLE, MONSTRES, NIVEAU_SANS_FIN, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, VIE_DIFFICULTE, PRIX_RONCE, SEUIL_BOSS, PLATEFORME, prixPour, surPlateforme, TOURS, TOURS_DE_BASE, TOUTES_CAPACITES } from '@spore-siege/engine';
 import { icone, type Icone } from './icones';
-import { ecrireAtelier, ecrireDecouverts, ecrireEtoiles, ecrireMusique, ecrireParties, ecrireSons, ecrireToursVues, effacerPartie, lireAtelier, lireDecouverts, lireEtoiles, lireMusique, lireParties, lireSons, lireToursVues, type Etoiles, type Sauvegarde } from './sauvegarde';
+import { ecrireAtelier, ecrireDecouverts, ecrireEtoiles, ecrireMusique, ecrireParties, ecrireRecord, ecrireSons, ecrireToursVues, effacerPartie, lireAtelier, lireDecouverts, lireEtoiles, lireMusique, lireParties, lireRecord, lireSons, lireToursVues, type Etoiles, type Sauvegarde } from './sauvegarde';
 import { Sons } from './sons';
 
 export type { Effet } from './sons';
@@ -97,6 +97,9 @@ export class ControleurInterface {
   readonly sons = new Sons();
   /** Écran de victoire finale ouvert par-dessus l'archipel (après le dernier boss). */
   private finale = false;
+  /** Vagues sans fin : meilleure vague atteinte dans la partie, et record battu par la partie en cours. */
+  private record = 0;
+  private nouveauRecord = false;
   /** Les 3 emplacements de partie (null = vide). */
   private parties = lireParties();
   /** Emplacement joué : sa difficulté et sa progression sont chargées ci-dessous. */
@@ -156,6 +159,13 @@ export class ControleurInterface {
   maj(instantane: Instantane): void {
     this.instantane = instantane;
     if (instantane.phase === 'victoire' || instantane.phase === 'defaite') this.bulle = null;
+    // Une partie en cours (Rejouer compris) n'a pas encore battu de record.
+    if (instantane.phase !== 'victoire' && instantane.phase !== 'defaite') this.nouveauRecord = false;
+    if (instantane.phase === 'defaite' && instantane.regles.sansFin && instantane.vague > this.record) {
+      this.record = instantane.vague;
+      this.nouveauRecord = true;
+      ecrireRecord(this.emplacement, this.record);
+    }
     if (instantane.phase === 'victoire' && instantane.etoiles > (this.etoiles[this.jeu.niveau] ?? 0)) {
       this.etoiles[this.jeu.niveau] = instantane.etoiles;
       ecrireEtoiles(this.emplacement, this.etoiles);
@@ -247,6 +257,16 @@ export class ControleurInterface {
     this.dessiner();
   }
 
+  /** Quitte la partie : la carte de l'île, ou l'archipel pour les vagues sans fin. */
+  private quitterPartie(): void {
+    this.aller(this.jeu.niveau === NIVEAU_SANS_FIN.id ? 'carte' : 'niveaux');
+  }
+
+  /** Le Colosse d'écorce battu ouvre les vagues sans fin. */
+  private get sansFinOuvert(): boolean {
+    return !!DERNIER_NIVEAU && (this.etoiles[DERNIER_NIVEAU] ?? 0) >= 1;
+  }
+
   /** Dernier boss battu : retour à l'archipel, avec l'écran de victoire finale par-dessus. */
   finirJeu(): void {
     this.aller('carte');
@@ -278,6 +298,7 @@ export class ControleurInterface {
     this.decouverts = lireDecouverts(n);
     this.toursVues = lireToursVues(n);
     this.atelier = lireAtelier(n);
+    this.record = lireRecord(n);
     this.ileChoisie = 'foret';
     this.aller('carte');
   }
@@ -308,6 +329,7 @@ export class ControleurInterface {
 
   /** Lance une partie neuve sur ce niveau. */
   jouer(niveau: Niveau): void {
+    this.nouveauRecord = false;
     this.options.lancer(niveau);
     this.vitesse = 1;
     this.aller('partie');
@@ -393,7 +415,7 @@ export class ControleurInterface {
           >
             {TEXTES.recommencer}
           </button>
-          <button class="bouton large" onClick={() => this.aller('niveaux')}>
+          <button class="bouton large" onClick={() => this.quitterPartie()}>
             {TEXTES.retourCarte}
           </button>
         </div>
@@ -526,7 +548,8 @@ export class ControleurInterface {
           <EcranFin
             i={i}
             rejouer={this.options.recommencer}
-            carte={() => this.aller('niveaux')}
+            carte={() => this.quitterPartie()}
+            record={i.regles.sansFin ? { vague: this.record, nouveau: this.nouveauRecord } : undefined}
             suite={i.phase === 'victoire' && this.jeu.niveau === DERNIER_NIVEAU ? () => this.finirJeu() : undefined}
             vignette={(t) => this.options.vignette(t, 3)}
           />
@@ -723,6 +746,11 @@ export class ControleurInterface {
           </span>
           <span class="planche">{TEXTES.archipel}</span>
           <span class="espace" />
+          {this.sansFinOuvert && (
+            <button class="bouton carre sans-fin" title={TEXTES.sansFinAide(this.record)} onClick={() => this.jouer(NIVEAU_SANS_FIN)}>
+              <Ico nom="infini" />
+            </button>
+          )}
           <button class="bouton carre" title={TEXTES.atelierAide} onClick={() => (this.atelierVu ? this.fermer() : this.ouvrirAtelier())}>
             <Ico nom="enclume" />
           </button>
@@ -800,6 +828,10 @@ export class ControleurInterface {
               <span class={`difficulte ${this.difficulte}`}>{TEXTES.difficulte[this.difficulte]}</span>
             </p>
             <p class="merci">{TEXTES.merci}</p>
+            <p class="annonce">
+              <Ico nom="infini" />
+              {TEXTES.sansFinNouveau}
+            </p>
             <button class="bouton valider large" onClick={() => ((this.finale = false), this.dessiner())}>
               {TEXTES.retourArchipelLong}
             </button>
@@ -1225,7 +1257,7 @@ function Bandeau(p: {
     <div class="bandeau">
       <span class="planche" title={TEXTES.vagueAide}>
         <Ico nom="vague" />
-        {TEXTES.vague(i.vague, i.vagues)}
+        {i.regles.sansFin ? TEXTES.vagueSansFin(i.vague) : TEXTES.vague(i.vague, i.vagues)}
         {i.phase === 'pause' && <span class="discret">{` · ${i.pauseRestante} s`}</span>}
       </span>
       <span class={`planche${i.souche.pv <= i.souche.pvMax / 4 ? ' alerte' : ''}`} title={TEXTES.vieAide}>
@@ -1340,7 +1372,22 @@ const DERNIER_NIVEAU = NIVEAUX.futaie?.[NIVEAUX.futaie.length - 1]?.id;
 const SPORES_FINALE: [number, number, number][] = Array.from({ length: 14 }, (_, k) => [(k * 37 + 11) % 96 + 2, (k * 0.53) % 3, 3 + ((k * 7) % 5) * 0.4]);
 
 /** Fin de partie : titre, étoiles qui tombent une à une, vie restante, Rejouer (la carte viendra en 4c). */
-function EcranFin({ i, rejouer, carte, suite, vignette }: { i: Instantane; rejouer: () => void; carte: () => void; suite?: () => void; vignette: (t: TypeTour) => string }) {
+function EcranFin({
+  i,
+  rejouer,
+  carte,
+  suite,
+  record,
+  vignette,
+}: {
+  i: Instantane;
+  rejouer: () => void;
+  carte: () => void;
+  suite?: () => void;
+  /** Vagues sans fin : record de la partie (déjà mis à jour) et s'il vient d'être battu. */
+  record?: { vague: number; nouveau: boolean };
+  vignette: (t: TypeTour) => string;
+}) {
   const victoire = i.phase === 'victoire';
   // Bilan : dégâts de chaque sorte de tour, de la plus utile à la moins utile (celles qui n'ont rien fait, absentes).
   const bilan = TYPES.map((t) => ({ t, n: Math.round(i.degats[t]) }))
@@ -1354,12 +1401,19 @@ function EcranFin({ i, rejouer, carte, suite, vignette }: { i: Instantane; rejou
           <h2>{victoire ? TEXTES.victoire : TEXTES.defaite}</h2>
         </header>
         <div class="corps">
-          <div class="etoiles" title={TEXTES.etoilesAide}>
-            {[1, 2, 3].map((n) => (
-              <img class={`etoile${n <= i.etoiles ? ' gagnee' : ''}`} style={{ animationDelay: `${0.25 + n * 0.3}s` }} src={icone(n <= i.etoiles ? 'etoile' : 'etoileVide')} alt="" />
-            ))}
-          </div>
-          <p class="sous-titre">{victoire ? TEXTES.victoireSous : TEXTES.defaiteSous(i.vague, i.vagues)}</p>
+          {record ? (
+            <p class={`record${record.nouveau ? ' nouveau' : ''}`}>
+              <Ico nom="infini" />
+              {record.nouveau ? TEXTES.nouveauRecord : TEXTES.record(record.vague)}
+            </p>
+          ) : (
+            <div class="etoiles" title={TEXTES.etoilesAide}>
+              {[1, 2, 3].map((n) => (
+                <img class={`etoile${n <= i.etoiles ? ' gagnee' : ''}`} style={{ animationDelay: `${0.25 + n * 0.3}s` }} src={icone(n <= i.etoiles ? 'etoile' : 'etoileVide')} alt="" />
+              ))}
+            </div>
+          )}
+          <p class="sous-titre">{victoire ? TEXTES.victoireSous : record ? TEXTES.sansFinSous(i.vague) : TEXTES.defaiteSous(i.vague, i.vagues)}</p>
           <p class="vie">
             <Ico nom="vie" />
             {TEXTES.vieRestante(i.souche.pv, i.souche.pvMax)}
