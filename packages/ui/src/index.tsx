@@ -95,6 +95,8 @@ export class ControleurInterface {
   private ileChoisie: Biome = 'foret';
   /** Bruitages ; coupés tant que le joueur ne les a pas allumés par le menu de l’icône (choix retenu). */
   readonly sons = new Sons();
+  /** Écran de victoire finale ouvert par-dessus l'archipel (après le dernier boss). */
+  private finale = false;
   /** Les 3 emplacements de partie (null = vide). */
   private parties = lireParties();
   /** Emplacement joué : sa difficulté et sa progression sont chargées ci-dessous. */
@@ -245,11 +247,20 @@ export class ControleurInterface {
     this.dessiner();
   }
 
+  /** Dernier boss battu : retour à l'archipel, avec l'écran de victoire finale par-dessus. */
+  finirJeu(): void {
+    this.aller('carte');
+    this.finale = true;
+    this.sons.jouer('victoire');
+    this.dessiner();
+  }
+
   /** Change d'écran : accueil, parties, carte des îles ou partie. */
   aller(ecran: Ecran): void {
     this.fermer();
     this.creation = null;
     this.aSupprimer = null;
+    this.finale = false;
     this.ecran = ecran;
     this.options.changerEcran(ecran, ecran === 'niveaux' ? this.ileChoisie : undefined);
     this.dessiner();
@@ -511,7 +522,15 @@ export class ControleurInterface {
           livre={() => this.ouvrirLivre()}
           carte={() => this.ouvrirPause()}
         />
-        {(i.phase === 'victoire' || i.phase === 'defaite') && <EcranFin i={i} rejouer={this.options.recommencer} carte={() => this.aller('niveaux')} vignette={(t) => this.options.vignette(t, 3)} />}
+        {(i.phase === 'victoire' || i.phase === 'defaite') && (
+          <EcranFin
+            i={i}
+            rejouer={this.options.recommencer}
+            carte={() => this.aller('niveaux')}
+            suite={i.phase === 'victoire' && this.jeu.niveau === DERNIER_NIVEAU ? () => this.finirJeu() : undefined}
+            vignette={(t) => this.options.vignette(t, 3)}
+          />
+        )}
         {this.dessinerArrivees(i)}
         {this.dessinerMedaillons(i)}
         {!this.livre && !this.fiche && !this.pauseMenu && <BarreBoss i={i} />}
@@ -741,6 +760,51 @@ export class ControleurInterface {
         })}
         {this.livre && this.dessinerLivre(this.livre)}
         {this.atelierVu && this.dessinerAtelier(this.atelierVu)}
+        {this.finale && this.dessinerFinale()}
+      </div>
+    );
+  }
+
+  /** Victoire finale : la Rouille recule, étoiles de chaque île, total, merci. */
+  private dessinerFinale() {
+    const iles = (Object.keys(NIVEAUX) as Biome[]).filter((b) => NIVEAUX[b]);
+    const total = iles.reduce((n, b) => n + this.etoilesIle(b), 0);
+    const maximum = iles.reduce((n, b) => n + 3 * NIVEAUX[b]!.length, 0);
+    return (
+      <div class="voile finale">
+        {SPORES_FINALE.map(([x, retard, duree]) => (
+          <span class="spore-finale" style={{ left: `${x}%`, animationDelay: `${retard}s`, animationDuration: `${duree}s` }} />
+        ))}
+        <section class="bulle fin gagne finale">
+          <header>
+            <h2>{TEXTES.finTitre}</h2>
+          </header>
+          <div class="corps">
+            <p class="recit">{TEXTES.finRecit}</p>
+            <ul class="iles-finale">
+              {iles.map((b, k) => (
+                <li style={{ animationDelay: `${0.4 + k * 0.25}s` }}>
+                  <span class={`ilot-piste ${b} faite`} />
+                  <span class="nom">{ILES_TEXTES[b]}</span>
+                  <span class="qte">
+                    <Ico nom="etoile" />
+                    {`${this.etoilesIle(b)}/${3 * NIVEAUX[b]!.length}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p class="total" title={TEXTES.finTotal}>
+              <Ico nom="etoile" />
+              {total}
+              <span class="sur">/{maximum}</span>
+              <span class={`difficulte ${this.difficulte}`}>{TEXTES.difficulte[this.difficulte]}</span>
+            </p>
+            <p class="merci">{TEXTES.merci}</p>
+            <button class="bouton valider large" onClick={() => ((this.finale = false), this.dessiner())}>
+              {TEXTES.retourArchipelLong}
+            </button>
+          </div>
+        </section>
       </div>
     );
   }
@@ -1270,8 +1334,13 @@ function Stats({
   );
 }
 
+/** Dernier niveau du parcours : le battre ouvre l'écran de victoire finale. */
+const DERNIER_NIVEAU = NIVEAUX.futaie?.[NIVEAUX.futaie.length - 1]?.id;
+/** Spores dorées qui montent derrière la victoire finale : position (%), retard et durée (s). */
+const SPORES_FINALE: [number, number, number][] = Array.from({ length: 14 }, (_, k) => [(k * 37 + 11) % 96 + 2, (k * 0.53) % 3, 3 + ((k * 7) % 5) * 0.4]);
+
 /** Fin de partie : titre, étoiles qui tombent une à une, vie restante, Rejouer (la carte viendra en 4c). */
-function EcranFin({ i, rejouer, carte, vignette }: { i: Instantane; rejouer: () => void; carte: () => void; vignette: (t: TypeTour) => string }) {
+function EcranFin({ i, rejouer, carte, suite, vignette }: { i: Instantane; rejouer: () => void; carte: () => void; suite?: () => void; vignette: (t: TypeTour) => string }) {
   const victoire = i.phase === 'victoire';
   // Bilan : dégâts de chaque sorte de tour, de la plus utile à la moins utile (celles qui n'ont rien fait, absentes).
   const bilan = TYPES.map((t) => ({ t, n: Math.round(i.degats[t]) }))
@@ -1311,12 +1380,25 @@ function EcranFin({ i, rejouer, carte, vignette }: { i: Instantane; rejouer: () 
             </ul>
           )}
           <div class="rang choix">
-            <button class="bouton" onClick={carte}>
-              {TEXTES.carte}
-            </button>
-            <button class="bouton valider" onClick={rejouer}>
-              {TEXTES.rejouer}
-            </button>
+            {suite ? (
+              <>
+                <button class="bouton" onClick={rejouer}>
+                  {TEXTES.rejouer}
+                </button>
+                <button class="bouton valider" title={TEXTES.suiteAide} onClick={suite}>
+                  {TEXTES.suite} <span class="fleche">▶</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button class="bouton" onClick={carte}>
+                  {TEXTES.carte}
+                </button>
+                <button class="bouton valider" onClick={rejouer}>
+                  {TEXTES.rejouer}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </section>
