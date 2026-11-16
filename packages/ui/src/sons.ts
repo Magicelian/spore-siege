@@ -1,6 +1,6 @@
 // Sons synthétisés avec Web Audio, aucun fichier (principe repris de Tiny Shrooms) : bruitages brefs façon 8-bit
 // pour les tirs, les explosions, les morts, la souche mordue et l'interface ; ambiance de fond comme Tiny Shrooms
-// (vent qui respire, oiseaux de temps en temps ; au marais, grenouilles et grillons ; à la prairie, alouettes, bourdons et grillons ; à la grotte, gouttes et grondements) ; musique de combat pendant les vagues (`musique.ts`).
+// (vent qui respire, oiseaux de temps en temps ; au marais, grenouilles et grillons ; à la prairie, alouettes, bourdons et grillons ; à la grotte, gouttes et grondements ; à la futaie, pic-vert, coucou et grands arbres qui grincent) ; musique de combat pendant les vagues (`musique.ts`).
 // Coupé par défaut ; le contexte audio n'est créé qu'une fois le son allumé.
 import type { Biome, TypeTour } from '@spore-siege/engine';
 import { MusiqueCombat } from './musique';
@@ -362,6 +362,12 @@ export class Sons {
           // Grotte : gouttes qui tombent et résonnent, parfois un grondement lointain dans la roche.
           if (r < 0.8) this.goutte(ctx.currentTime);
           else this.grondement(ctx.currentTime);
+        } else if (this.biome === 'futaie') {
+          // Futaie : pic-vert qui tambourine, coucou au loin, grands troncs qui grincent dans le vent.
+          if (r < 0.35) this.pic(ctx.currentTime);
+          else if (r < 0.6) this.coucou(ctx.currentTime);
+          else if (r < 0.8) this.grincement(ctx.currentTime);
+          else this.oiseau(ctx.currentTime);
         } else this.oiseau(ctx.currentTime);
       }
       this.minuterie = setTimeout(suivant, 4000 + Math.random() * 6000);
@@ -441,6 +447,33 @@ export class Sons {
   private grondement(debut: number): void {
     this.note({ f: 55 + Math.random() * 15, t: 0, d: 1.4, vers: 40, onde: 'triangle', v: 0.28 }, debut, this.ambiance!);
     this.note({ f: 90, t: 0.1, d: 0.9, vers: 60, onde: 'sine', v: 0.12 }, debut, this.ambiance!);
+  }
+
+  /** Pic-vert : une rafale de coups secs sur un tronc, de plus en plus rapprochés et faibles. */
+  private pic(debut: number): void {
+    const f = 700 + Math.random() * 300;
+    let t = 0;
+    for (let i = 0; i < 12; i++) {
+      this.note({ f, t, d: 0.02, vers: f * 0.6, onde: 'triangle', v: 0.3 * (1 - i / 16) }, debut, this.ambiance!);
+      t += 0.075 - i * 0.002;
+    }
+  }
+
+  /** Coucou au loin : deux notes douces qui descendent (« cou-cou »), parfois répétées. */
+  private coucou(debut: number): void {
+    const haut = 650 + Math.random() * 60;
+    const fois = Math.random() < 0.5 ? 2 : 1;
+    for (let k = 0; k < fois; k++) {
+      this.note({ f: haut, t: k * 0.9, d: 0.22, vers: haut * 0.97, onde: 'sine', v: 0.18 }, debut, this.ambiance!);
+      this.note({ f: haut * 0.8, t: k * 0.9 + 0.3, d: 0.32, vers: haut * 0.77, onde: 'sine', v: 0.16 }, debut, this.ambiance!);
+    }
+  }
+
+  /** Grand arbre qui grince : un frottement grave et rauque qui monte lentement, comme une branche qui ploie. */
+  private grincement(debut: number): void {
+    const f = 140 + Math.random() * 60;
+    this.note({ f, t: 0, d: 0.9 + Math.random() * 0.5, vers: f * 1.4, onde: 'sawtooth', v: 0.05 }, debut, this.ambiance!);
+    this.note({ f: f * 1.5, t: 0.05, d: 0.7, vers: f * 2, onde: 'triangle', v: 0.04 }, debut, this.ambiance!);
   }
 
   /** Grillon : une rafale de petits cris aigus. */

@@ -222,7 +222,7 @@ describe('équilibrage de la grotte', () => {
 });
 
 // Futaie (étape 12) : le niveau 1 vaut à peu près le niveau 3 de la grotte ; les scripts posent des tours sur les
-// plateformes quand la portée gagnée vaut le surcoût. Réglage complet des 5 niveaux en 12d.
+// plateformes quand la portée gagnée vaut le surcoût, des lanternes dans la Futaie obscure, le héron au Ruisseau.
 const futaie = NIVEAUX_FUTAIE.map((n) => {
   const [naif, simple, bon, ruches, cristaux] = (['naif', 'simple', 'bon', 'seul:ruche', 'seul:cristal'] as Style[]).map((st) =>
     jouer(st, ileDe(n), n.vagues, n.regles),
@@ -249,4 +249,9 @@ describe('équilibrage de la futaie', () => {
       expect(meilleur.minutes).toBeLessThanOrEqual(19);
     });
   }
+
+  it('le Colosse d’écorce est le niveau le plus dur : le meilleur script y garde le moins de vie', () => {
+    const coeur = futaie[4]!.meilleur.pv;
+    for (const { meilleur } of futaie.slice(0, 4)) expect(coeur).toBeLessThanOrEqual(meilleur.pv);
+  });
 });

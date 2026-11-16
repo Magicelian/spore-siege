@@ -93,7 +93,7 @@ class Joueur {
     const chemins = prevues.flat();
     // Le joueur simple ne pense au héron qu'au marais (les repères de la forêt ont été réglés sans lui).
     this.eauUtile =
-      (style === 'bon' || (style === 'simple' && ile.biome === 'marais')) &&
+      (style === 'bon' || (style === 'simple' && (ile.biome === 'marais' || ile.biome === 'futaie'))) &&
       partie.regles.tours.includes('heron') &&
       ile.terrain.some((_, k) => {
         const c = { x: k % ile.largeur, y: Math.floor(k / ile.largeur) };
@@ -268,6 +268,10 @@ class Joueur {
     if (proches.has('sauterelle')) besoins.push('canon', 'mortier');
     if (proches.has('chenille')) besoins.push('cristal');
     if (proches.has('corbeau')) besoins.push('cristal', 'ruche', 'cristal');
+    // Futaie : l'araignée tombe au milieu du chemin, l'écureuil bloque les tours du haut, le Colosse est blindé.
+    if (proches.has('araignee')) besoins.push('canon', 'cristal');
+    if (proches.has('ecureuil')) besoins.push('ruche');
+    if (proches.has('colosse')) besoins.push('cristal', 'cristal', 'canon');
     // Héron : contre les files de marcheurs, s'il a une case d'eau qui voit assez de chemin.
     if (this.eauUtile && (proches.has('limace') || proches.has('amas') || proches.has('scarabee'))) besoins.push('heron');
     const compte = (t: TypeTour) => i.tours.filter((x) => x.type === t).length;

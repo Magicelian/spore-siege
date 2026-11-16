@@ -164,10 +164,11 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
   // Futaie, niveau 3 : grimpe sur une tour en hauteur et la bloque quelques secondes.
   ecureuil: { pv: 20, vitesse: 1.4, morsure: 1, butin: 3, armure: 0, grimpeur: { flair: 1.8, duree: 3 } },
   // Boss de la futaie (dernier boss) : arbre géant, très lent ; à chaque palier il abat une plateforme occupée.
-  // Pas d'escorte (cahier) : la menace, c'est de perdre ses meilleures tours. Chiffres provisoires, à régler en 12d.
+  // Pas d'escorte (cahier) : la menace, c'est de perdre ses meilleures tours. Réglé en 12d : à 2 200 PV personne ne
+  // le laissait passer (l'économie de fin de partie fait boule de neige), à 3 500 le simple perd, le bon gagne.
   colosse: {
-    pv: 900,
-    vitesse: 0.2,
+    pv: 3500,
+    vitesse: 0.25,
     morsure: 20,
     butin: 90,
     armure: 4,

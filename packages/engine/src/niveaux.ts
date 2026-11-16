@@ -2,6 +2,10 @@
 import type { Biome, Capacite, Difficulte, Ile, Regles } from './contrat';
 import {
   CARTE_ALLEE,
+  CARTE_COEUR_FUTAIE,
+  CARTE_OBSCURE,
+  CARTE_RUISSEAU,
+  CARTE_TOILES,
   CARTE_BRAS_MORTS,
   CARTE_COEUR,
   CARTE_COEUR_MARAIS,
@@ -520,9 +524,80 @@ export const VAGUES_ALLEE: Vague[] = [
   [g('scarabee', 12, 2.4), g('amas', 12, 2, 6), g('crapaud', 10, 2, 10), g('chauveSouris', 12, 1.4, 12)],
 ];
 
-/** Futaie (étape 12) : plateformes dans les grands arbres ; le niveau 1 vaut à peu près le niveau 3 de la grotte. */
+/** Sentier des toiles (futaie 2) : l'Araignée arrive, au milieu des chemins des deux plages (0 = ouest, 1 = est). */
+export const VAGUES_TOILES: Vague[] = [
+  [g('limace', 12, 1.8)],
+  [g('araignee', 4, 3, 0, 0), g('limace', 10, 1.6, 3, 1)],
+  [g('scarabee', 3, 4), g('araignee', 6, 2, 6)],
+  [g('sauterelle', 18, 0.4), g('araignee', 6, 2, 4, 1)],
+  [g('amas', 8, 2.6), g('soigneur', 2, 6, 6), g('araignee', 8, 1.8, 8, 0)],
+  [g('cloporte', 8, 2.6), g('volant', 8, 1.8, 6)],
+  [g('araignee', 14, 1.2), g('scarabee', 6, 3, 8)],
+  [g('crapaud', 10, 2.2), g('limace', 16, 1.2, 6)],
+  [g('amas', 10, 2.4), g('araignee', 12, 1.4, 6), g('soigneur', 3, 5, 10)],
+  [g('scarabee', 12, 2.4), g('araignee', 16, 1, 6), g('cloporte', 10, 2.2, 12)],
+];
+
+/** Ruisseau des racines (futaie 3) : l'Écureuil rouillé, et l'eau (sangsues ; plage 0 = nord, 1 = sud). */
+export const VAGUES_RUISSEAU: Vague[] = [
+  [g('limace', 12, 1.8)],
+  [g('ecureuil', 6, 2), g('limace', 10, 1.6, 4)],
+  [g('sangsue', 10, 1.6, 0, 1), g('araignee', 4, 2.5, 4, 0)],
+  [g('scarabee', 6, 3.5), g('ecureuil', 8, 1.6, 6)],
+  [g('crapaud', 10, 2.2), g('sangsue', 8, 1.6, 6, 1)],
+  [g('amas', 8, 2.6), g('ecureuil', 10, 1.4, 6), g('soigneur', 2, 6, 8)],
+  [g('sauterelle', 30, 0.3), g('araignee', 8, 1.8, 6)],
+  [g('scarabee', 8, 3), g('sangsue', 12, 1.4, 6, 1), g('ecureuil', 8, 1.6, 10)],
+  [g('cloporte', 10, 2.4), g('crapaud', 10, 2, 6), g('volant', 8, 1.8, 10)],
+  [g('amas', 10, 2.4), g('ecureuil', 14, 1.2, 6), g('scarabee', 10, 2.6, 10), g('sangsue', 10, 1.4, 12, 1)],
+];
+
+/** Futaie obscure (futaie 4, pénombre) : chauves-souris et cloportes reviennent avec les nouveaux (0 = nord-est, 1 = ouest). */
+export const VAGUES_OBSCURE: Vague[] = [
+  [g('limace', 12, 1.8)],
+  [g('cloporte', 4, 3.5), g('araignee', 4, 2.5, 4)],
+  [g('chauveSouris', 8, 1.8), g('ecureuil', 8, 1.6, 6)],
+  [g('scarabee', 6, 3.5), g('limace', 14, 1.4, 4)],
+  [g('araignee', 12, 1.4), g('chauveSouris', 8, 1.6, 8)],
+  [g('amas', 6, 2.8), g('cloporte', 5, 2.6, 6), g('soigneur', 1, 6, 8)],
+  [g('sauterelle', 30, 0.3), g('ecureuil', 10, 1.4, 6)],
+  [g('scarabee', 8, 3), g('chauveSouris', 12, 1.4, 6), g('araignee', 10, 1.6, 10)],
+  [g('cloporte', 12, 2), g('amas', 10, 2.4, 6), g('ecureuil', 10, 1.4, 10)],
+  [g('scarabee', 12, 2.4), g('araignee', 14, 1.2, 6), g('chauveSouris', 14, 1.2, 10), g('cloporte', 10, 2, 12)],
+];
+
+/** Cœur de la futaie (boss) : tout l'archipel, et le Colosse d'écorce en dernière vague (0 = nord-est, 1 = ouest). */
+export const VAGUES_COEUR_FUTAIE: Vague[] = [
+  [g('limace', 14, 1.6)],
+  [g('araignee', 8, 2), g('ecureuil', 8, 1.6, 6)],
+  [g('scarabee', 6, 3.5), g('volant', 8, 1.8, 6)],
+  [g('amas', 8, 2.6), g('cloporte', 8, 2.4, 6)],
+  [g('sauterelle', 34, 0.3), g('ecureuil', 10, 1.4, 6)],
+  [g('crapaud', 10, 2.2), g('araignee', 12, 1.4, 6), g('soigneur', 3, 5, 8)],
+  [g('scarabee', 10, 2.6), g('chauveSouris', 12, 1.4, 6)],
+  [g('amas', 10, 2.4), g('ecureuil', 12, 1.2, 6), g('araignee', 12, 1.4, 10)],
+  [g('cloporte', 14, 1.8), g('volant', 12, 1.4, 6), g('soigneur', 3, 5, 10)],
+  [g('colosse', 1, 1, 4, 1), g('scarabee', 10, 2.5), g('araignee', 12, 1.4, 10), g('ecureuil', 12, 1.2, 14)],
+];
+
+/**
+ * Futaie (étape 12) : plateformes dans les grands arbres ; le niveau 1 vaut à peu près le niveau 3 de la grotte,
+ * puis ça monte jusqu'au Colosse d'écorce. Un niveau avec de l'eau (héron), un dans la pénombre (lanternes).
+ */
 export const NIVEAUX_FUTAIE: Niveau[] = [
   { id: 'futaie-1', nom: 'Allée des géants', biome: 'futaie', carte: CARTE_ALLEE, vagues: renforcer(VAGUES_ALLEE, 0.5, 0.95), regles: { spores: 240 } },
+  { id: 'futaie-2', nom: 'Sentier des toiles', biome: 'futaie', carte: CARTE_TOILES, vagues: renforcer(VAGUES_TOILES, 0.45, 0.85), regles: { spores: 300 } },
+  { id: 'futaie-3', nom: 'Ruisseau des racines', biome: 'futaie', carte: CARTE_RUISSEAU, vagues: renforcer(VAGUES_RUISSEAU, 0.55, 0.95), regles: { spores: 300 } },
+  { id: 'futaie-4', nom: 'Futaie obscure', biome: 'futaie', carte: CARTE_OBSCURE, vagues: renforcer(VAGUES_OBSCURE, 0.45, 0.85), regles: { noir: true, spores: 460 } },
+  {
+    id: 'futaie-5',
+    nom: 'Cœur de la futaie',
+    biome: 'futaie',
+    carte: CARTE_COEUR_FUTAIE,
+    vagues: renforcer(VAGUES_COEUR_FUTAIE, 1.5, 2.4),
+    regles: { spores: 200, ronces: false },
+    boss: true,
+  },
 ];
 
 /** Niveaux de chaque île, dans l'ordre du parcours ; une île sans niveaux n'est pas encore jouable. */
