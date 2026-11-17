@@ -1,5 +1,5 @@
-//! Clics sur l'icône de la barre des menus : le clic gauche montre ou cache la fenêtre, le clic droit
-//! (ou à deux doigts, ou Ctrl + clic) ouvre le menu.
+//! Clics sur l'icône de la barre des menus (zone de notification sous Windows) : le clic gauche montre ou cache
+//! la fenêtre, le clic droit (ou à deux doigts, ou Ctrl + clic) ouvre le menu.
 //!
 //! Sur les macOS récents, une icône à laquelle un menu est attaché l'ouvre à tout clic, sans que
 //! l'application ne voie l'événement (`set_show_menu_on_left_click(false)` n'y change rien). Le menu
@@ -61,5 +61,20 @@ fn ouvrir_menu(app: &AppHandle, menu: &Menu<Wry>) {
     let _ = icone.set_menu(None::<Menu<Wry>>);
 }
 
+/// Windows (et Linux) : le menu reste attaché à l'icône et s'ouvre au clic droit ; le clic gauche montre ou cache
+/// la fenêtre.
 #[cfg(not(target_os = "macos"))]
-pub fn surveiller(_app: AppHandle, _menu: Menu<Wry>, _basculer: fn(&AppHandle)) {}
+pub fn surveiller(app: AppHandle, menu: Menu<Wry>, basculer: fn(&AppHandle)) {
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconEvent};
+
+    let Some(icone) = app.tray_by_id("main") else {
+        return;
+    };
+    let _ = icone.set_menu(Some(menu));
+    let _ = icone.set_show_menu_on_left_click(false);
+    icone.on_tray_icon_event(move |icone, evenement| {
+        if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = evenement {
+            basculer(icone.app_handle());
+        }
+    });
+}

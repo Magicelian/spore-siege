@@ -232,7 +232,11 @@ if (dansTauri) {
   // Fenêtre cachée par l'icône de la barre des menus : silence jusqu'à ce qu'elle revienne.
   void listen<boolean>('visible', (e) => {
     ui.sons.masquer(!e.payload);
-    if (!e.payload) enregistrer();
+    // Fenêtre cachée par l'icône : pause, et le menu de pause attend le joueur à son retour.
+    if (!e.payload) {
+      ui.mettreEnPause();
+      enregistrer();
+    }
   });
 }
 // Pour mesurer depuis la console en développement : `debogage()`.

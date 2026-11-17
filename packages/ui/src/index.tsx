@@ -323,6 +323,7 @@ export class ControleurInterface {
     this.vitesseAvantPause = 1;
     this.vitesse = 0;
     this.aller('partie');
+    this.mettreEnPause();
   }
 
   /** Charge la partie de l'emplacement `n` et ouvre l'archipel. */
@@ -436,6 +437,22 @@ export class ControleurInterface {
     this.dessiner();
   }
 
+  /** Fenêtre cachée (ou partie reprise) : jeu en pause, menu de pause ouvert ; on reprend en cliquant. */
+  mettreEnPause(): void {
+    const fin = this.instantane?.phase === 'victoire' || this.instantane?.phase === 'defaite';
+    if (this.ecran !== 'partie' || fin || this.pauseMenu) return;
+    this.fermer();
+    this.pauseMenu = true;
+    this.suspendre();
+    this.dessiner();
+  }
+
+  /** Bouton Reprendre du menu de pause : relance le jeu, même s'il était en pause avant. */
+  private reprendrePartie(): void {
+    this.fermer();
+    if (this.vitesse === 0) this.changerVitesse(this.vitesseAvantPause);
+  }
+
   private dessinerPause() {
     return (
       <section class="bulle haut menu">
@@ -446,6 +463,9 @@ export class ControleurInterface {
           </button>
         </header>
         <div class="corps">
+          <button class="bouton large valider" onClick={() => this.reprendrePartie()}>
+            ▶ {TEXTES.reprendre}
+          </button>
           <button
             class="bouton large"
             onClick={() => {
