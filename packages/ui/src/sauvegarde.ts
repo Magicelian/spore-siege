@@ -1,7 +1,7 @@
 // Ce qui reste d'une séance à l'autre, dans le stockage local de la fenêtre. Trois emplacements de partie, chacun
 // avec sa difficulté et toute sa progression (étoiles, Atelier, monstres et tours découverts) ; seuls les réglages
 // (son, musique) sont communs.
-import { TOURS_DE_BASE, TOUTES_CAPACITES, type Capacite, type Difficulte, type TypeMonstre, type TypeTour } from '@spore-siege/engine';
+import { TOURS_DE_BASE, TOUTES_CAPACITES, type Capacite, type Difficulte, type Reprise, type TypeMonstre, type TypeTour } from '@spore-siege/engine';
 
 export const NB_EMPLACEMENTS = 3;
 
@@ -16,7 +16,9 @@ export type Etoiles = Record<string, number>;
 const CLE_PARTIES = 'spore-siege:parties';
 /** Avant les parties multiples : une seule progression, effacée (choix de Celian, on repart de zéro). */
 const ANCIENNES_CLES = ['spore-siege:etoiles', 'spore-siege:decouverts', 'spore-siege:tours', 'spore-siege:atelier'];
-const NOMS = ['etoiles', 'decouverts', 'tours', 'atelier', 'record'] as const;
+const NOMS = ['etoiles', 'decouverts', 'tours', 'atelier', 'record', 'encours'] as const;
+/** Dernier emplacement joué : l'accueil propose d'y continuer la partie laissée en cours. */
+const CLE_DERNIERE = 'spore-siege:derniere';
 const cle = (n: number, nom: (typeof NOMS)[number]) => `spore-siege:partie-${n + 1}:${nom}`;
 
 function lire<T>(cleStockage: string, defaut: T): T {
@@ -152,4 +154,29 @@ export function lireRecord(n: number): number {
 
 export function ecrireRecord(n: number, vague: number): void {
   ecrire(cle(n, 'record'), vague);
+}
+
+/** Partie laissée en cours dans l'emplacement `n` (application fermée en pleine partie), ou null. */
+export function lireEnCours(n: number): Reprise | null {
+  const r = lire<Reprise | null>(cle(n, 'encours'), null);
+  return r && typeof r.niveau === 'string' && Array.isArray(r.commandes) && typeof r.pas === 'number' ? r : null;
+}
+
+export function ecrireEnCours(n: number, reprise: Reprise | null): void {
+  if (reprise) ecrire(cle(n, 'encours'), reprise);
+  else
+    try {
+      localStorage.removeItem(cle(n, 'encours'));
+    } catch {
+      // Stockage indisponible.
+    }
+}
+
+export function lireDerniere(): number | null {
+  const n = lire<unknown>(CLE_DERNIERE, null);
+  return typeof n === 'number' && n >= 0 && n < NB_EMPLACEMENTS ? n : null;
+}
+
+export function ecrireDerniere(n: number): void {
+  ecrire(CLE_DERNIERE, n);
 }

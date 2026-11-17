@@ -833,6 +833,14 @@ table.stades .icone {
   padding: 7px;
   font-size: 18px;
 }
+.panneau-accueil .continuer-partie {
+  flex-direction: column;
+  gap: 0;
+}
+.detail-continuer {
+  font-size: 11px;
+  opacity: 0.85;
+}
 .rangee-boutons {
   display: flex;
   gap: 6px;

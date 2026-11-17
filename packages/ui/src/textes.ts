@@ -272,6 +272,8 @@ export const TEXTES = {
     difficile: 'Monstres plus solides : 120 % de leur vie',
   },
   continuer: 'Continuer cette partie',
+  continuerPartie: 'Continuer',
+  continuerAide: 'Reprendre la partie laissée en cours, là où tu l’avais quittée.',
   supprimer: 'Supprimer',
   supprimerQuestion: 'Supprimer cette partie ?',
   perdue: 'tout sera perdu',

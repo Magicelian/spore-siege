@@ -2,10 +2,10 @@
 // visible, bulles au clic sur l'île (construire, tour, ronce).
 // Le contrôleur garde l'état de l'interface ; le frontend lui donne les instantanés et lit l'aperçu à dessiner.
 import { render } from 'preact';
-import type { Biome, Capacite, Case, Difficulte, Commande, FleurVue, Ile, Instantane, LanterneVue, ModeCible, Niveau, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
-import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, FLEUR, LANTERNE, MODES_CIBLE, MONSTRES, NIVEAU_SANS_FIN, NIVEAUX, niveauOuvert, PART_RONCE_RENDUE, VIE_DIFFICULTE, PRIX_RONCE, SEUIL_BOSS, PLATEFORME, prixPour, surPlateforme, TOURS, TOURS_DE_BASE, TOUTES_CAPACITES } from '@spore-siege/engine';
+import type { Biome, Capacite, Case, Difficulte, Commande, FleurVue, Ile, Instantane, LanterneVue, ModeCible, Niveau, Reprise, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
+import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, FLEUR, LANTERNE, MODES_CIBLE, MONSTRES, NIVEAU_SANS_FIN, NIVEAUX, niveauOuvert, niveauParId, PART_RONCE_RENDUE, VIE_DIFFICULTE, PRIX_RONCE, SEUIL_BOSS, PLATEFORME, prixPour, surPlateforme, TOURS, TOURS_DE_BASE, TOUTES_CAPACITES } from '@spore-siege/engine';
 import { icone, type Icone } from './icones';
-import { ecrireAtelier, ecrireDecouverts, ecrireEtoiles, ecrireMusique, ecrireParties, ecrireRecord, ecrireSons, ecrireToursVues, effacerPartie, lireAtelier, lireDecouverts, lireEtoiles, lireMusique, lireParties, lireRecord, lireSons, lireToursVues, type Etoiles, type Sauvegarde } from './sauvegarde';
+import { ecrireAtelier, ecrireDecouverts, ecrireDerniere, ecrireEnCours, lireDerniere, lireEnCours, ecrireEtoiles, ecrireMusique, ecrireParties, ecrireRecord, ecrireSons, ecrireToursVues, effacerPartie, lireAtelier, lireDecouverts, lireEtoiles, lireMusique, lireParties, lireRecord, lireSons, lireToursVues, type Etoiles, type Sauvegarde } from './sauvegarde';
 import { Sons } from './sons';
 
 export type { Effet } from './sons';
@@ -54,6 +54,8 @@ export interface OptionsInterface {
   ecranDe(cases: Case[]): { x: number; y: number }[];
   /** Prépare une partie neuve sur ce niveau. */
   lancer(niveau: Niveau): void;
+  /** Refait la partie laissée en cours ; son niveau, ou null si elle ne peut pas être reprise. */
+  reprendre(reprise: Reprise): Niveau | null;
 }
 
 /** Accueil (titre + Jouer), archipel, carte d'une île (ses niveaux), ou partie en cours. */
@@ -259,6 +261,7 @@ export class ControleurInterface {
 
   /** Quitte la partie : la carte de l'île, ou l'archipel pour les vagues sans fin. */
   private quitterPartie(): void {
+    this.enregistrer(null);
     this.aller(this.jeu.niveau === NIVEAU_SANS_FIN.id ? 'carte' : 'niveaux');
   }
 
@@ -291,16 +294,53 @@ export class ControleurInterface {
     return this.parties[this.emplacement]?.difficulte ?? 'normal';
   }
 
+  /** Partie laissée en cours dans le dernier emplacement joué (proposée sur l'accueil). */
+  private get enCours(): { n: number; reprise: Reprise } | null {
+    const n = lireDerniere();
+    if (n === null || !this.parties[n]) return null;
+    const reprise = lireEnCours(n);
+    return reprise && { n, reprise };
+  }
+
+  /** Retient la partie en cours de l'emplacement joué (null : plus rien à reprendre). */
+  enregistrer(reprise: Reprise | null): void {
+    ecrireEnCours(this.emplacement, reprise);
+  }
+
+  /** Reprend la partie laissée en cours, en pause, là où on l'avait quittée. */
+  private continuer(): void {
+    const c = this.enCours;
+    if (!c) return;
+    this.charger(c.n);
+    const niveau = this.options.reprendre(c.reprise);
+    if (!niveau) {
+      this.enregistrer(null);
+      this.aller('carte');
+      return;
+    }
+    this.ileChoisie = niveau.biome;
+    this.nouveauRecord = false;
+    this.vitesseAvantPause = 1;
+    this.vitesse = 0;
+    this.aller('partie');
+  }
+
   /** Charge la partie de l'emplacement `n` et ouvre l'archipel. */
   private reprendre(n: number): void {
+    this.charger(n);
+    this.ileChoisie = 'foret';
+    this.aller('carte');
+  }
+
+  /** Charge la progression de l'emplacement `n`. */
+  private charger(n: number): void {
+    ecrireDerniere(n);
     this.emplacement = n;
     this.etoiles = lireEtoiles(n);
     this.decouverts = lireDecouverts(n);
     this.toursVues = lireToursVues(n);
     this.atelier = lireAtelier(n);
     this.record = lireRecord(n);
-    this.ileChoisie = 'foret';
-    this.aller('carte');
   }
 
   private creer(n: number, difficulte: Difficulte): void {
@@ -580,6 +620,7 @@ export class ControleurInterface {
 
   private dessinerAccueil() {
     const f = this.options.fenetre;
+    const enCours = this.enCours;
     return (
       <div class="interface">
         <div class="accueil">
@@ -596,8 +637,14 @@ export class ControleurInterface {
             <p class="accroche">{TEXTES.accroche}</p>
           </div>
           <div class="panneau-accueil">
-            <button class="bouton valider principal" onClick={() => this.aller('parties')}>
-              ▶ {TEXTES.jouer}
+            {enCours && (
+              <button class="bouton valider principal continuer-partie" title={TEXTES.continuerAide} onClick={() => this.continuer()}>
+                <span>▶ {TEXTES.continuerPartie}</span>
+                <span class="detail-continuer">{niveauParId(enCours.reprise.niveau)?.nom}</span>
+              </button>
+            )}
+            <button class={`bouton ${enCours ? '' : 'valider principal'}`} onClick={() => this.aller('parties')}>
+              {enCours ? TEXTES.jouer : `▶ ${TEXTES.jouer}`}
             </button>
             {f && (
               <button class="bouton danger" onClick={() => f.quitter()}>

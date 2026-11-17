@@ -203,6 +203,11 @@ export class Partie {
     if (this.sentier.plages.length === 0) throw new Error("l'île n'a aucune plage reliée au sentier");
   }
 
+  /** Pas joués depuis le début de la partie (pour enregistrer puis rejouer une partie). */
+  get pasJoues(): number {
+    return this.pas;
+  }
+
   executer(commande: Commande): boolean {
     if (this.phase === 'victoire' || this.phase === 'defaite') return false;
     switch (commande.type) {

@@ -2,7 +2,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { ileDe, NIVEAUX, NIVEAUX_FORET, partieDe, PAS_MS, type Niveau, type Partie, type Commande, type EvenementVu, type Instantane, type Phase } from '@spore-siege/engine';
+import { ileDe, NIVEAUX, NIVEAUX_FORET, partieDe, PAS_MS, reprendre, type Reprise, type Niveau, type Partie, type Commande, type EvenementVu, type Instantane, type Phase } from '@spore-siege/engine';
 import { echelleAffichage, ORDRE_ILES, Rendu } from '@spore-siege/renderer';
 import { ControleurInterface, type Effet, type Fenetre, type Jeu } from '@spore-siege/ui';
 import '@spore-siege/ui/interface.css';
@@ -33,13 +33,22 @@ let actuel = partie.instantane();
 let reserve = 0;
 let dernierInstant: number | null = null;
 let departVague = 0;
+/** De quoi refaire la partie à l'écran si l'application se ferme en pleine partie (null : partie d'attente). */
+let reprise: Reprise | null = null;
+/** Dernier enregistrement de la partie en cours (ms). */
+let dernierEnregistrement = 0;
+let phaseEnregistree: Phase | null = null;
+const ENREGISTRER_TOUTES_MS = 2000;
 
 const fenetre: Fenetre | undefined = dansTauri
   ? {
       tailles: TAILLES,
       regler: (taille) => invoke<number>('regler_taille', { taille }),
       actuelle: () => invoke<number>('taille_actuelle'),
-      quitter: () => void invoke('quitter'),
+      quitter: () => {
+        enregistrer();
+        void invoke('quitter');
+      },
       son: (son) => void invoke('regler_son', { son }),
       musique: (musique) => void invoke('regler_musique', { musique }),
     }
@@ -91,7 +100,13 @@ function jeuDe(p: Partie): Jeu {
   return {
     executer: (commande) => {
       const fait = p.executer(commande);
-      if (fait) actuel = p.instantane();
+      if (fait) {
+        actuel = p.instantane();
+        if (p === partie && reprise) {
+          reprise.commandes.push({ pas: p.pasJoues, commande });
+          enregistrer();
+        }
+      }
       const effet = fait ? SON_COMMANDE[commande.type] : 'refus';
       if (effet) ui.sons.jouer(effet);
       return fait;
@@ -132,12 +147,30 @@ const ui = new ControleurInterface(document.getElementById('interface')!, jeuDe(
     niveau = n;
     recommencer();
   },
+  reprendre: (r) => {
+    const refaite = reprendre(r);
+    if (!refaite) return null;
+    if (refaite.niveau !== niveau) rendu.appliquerIle(ileDe(refaite.niveau));
+    niveau = refaite.niveau;
+    installer(refaite.partie, r);
+    return niveau;
+  },
 });
 rendu.montrer('carte');
 ui.maj(actuel);
 
 function recommencer(): void {
-  partie = partieDe(niveau, Date.now() >>> 0, ui.capacitesOuvertes, ui.difficulte);
+  const graine = Date.now() >>> 0;
+  const capacites = [...ui.capacitesOuvertes];
+  const difficulte = ui.difficulte;
+  installer(partieDe(niveau, graine, capacites, difficulte), { niveau: niveau.id, graine, capacites, difficulte, commandes: [], pas: 0 });
+  enregistrer();
+}
+
+/** Met cette partie à l'écran ; `r` = de quoi la refaire. */
+function installer(p: Partie, r: Reprise): void {
+  partie = p;
+  reprise = r;
   ui.jeu = jeuDe(partie);
   precedent = null;
   actuel = partie.instantane();
@@ -145,6 +178,22 @@ function recommencer(): void {
   ui.fermer();
   ui.maj(actuel);
 }
+
+/** Retient la partie en cours (pour la reprendre après une fermeture) ; finie, elle n'est plus à reprendre. */
+function enregistrer(): void {
+  if (!reprise || ui.ecran !== 'partie') return;
+  dernierEnregistrement = performance.now();
+  phaseEnregistree = actuel.phase;
+  if (actuel.phase === 'victoire' || actuel.phase === 'defaite') {
+    reprise = null;
+    ui.enregistrer(null);
+    return;
+  }
+  reprise.pas = partie.pasJoues;
+  ui.enregistrer(reprise);
+}
+addEventListener('pagehide', enregistrer);
+document.addEventListener('visibilitychange', () => document.hidden && enregistrer());
 
 rendu.surImage = (instant) => {
   // Musique de combat seulement pendant une vague, île à l'écran.
@@ -172,6 +221,7 @@ rendu.surImage = (instant) => {
     }
   }
   ui.maj(actuel);
+  if (actuel.phase !== phaseEnregistree || performance.now() - dernierEnregistrement > ENREGISTRER_TOUTES_MS) enregistrer();
 };
 rendu.demarrer();
 // Menu de l'icône de la barre des menus : le jeu suit le son et la taille choisis.
@@ -180,7 +230,10 @@ if (dansTauri) {
   void listen<boolean>('musique', (e) => ui.signalerMusique(e.payload));
   void listen<number>('taille', (e) => ui.signalerTaille(e.payload));
   // Fenêtre cachée par l'icône de la barre des menus : silence jusqu'à ce qu'elle revienne.
-  void listen<boolean>('visible', (e) => ui.sons.masquer(!e.payload));
+  void listen<boolean>('visible', (e) => {
+    ui.sons.masquer(!e.payload);
+    if (!e.payload) enregistrer();
+  });
 }
 // Pour mesurer depuis la console en développement : `debogage()`.
 if (import.meta.env.DEV) Object.assign(window, { debogage: () => ({ actuel, reserve, images: rendu.images, rendu, ui, partie }) });
