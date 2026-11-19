@@ -302,7 +302,7 @@ export const VAGUES_COEUR_MARAIS: Vague[] = [
   [g('limace', 14, 1.8)],
   [g('sangsue', 12, 1.8)],
   [g('crapaud', 12, 1.8), g('moucheron', 16, 1, 6)],
-  [g('amas', 8, 3), g('volant', 4, 3, 6)],
+  [g('amas', 8, 3), g('volant', 3, 3, 6)],
   [g('soigneur', 3, 5), g('scarabee', 8, 3.5, 3)],
   [g('sangsue', 18, 1.1), g('crapaud', 12, 1.6, 6)],
   [g('scarabee', 12, 2.8), g('volant', 5, 2.5, 8), g('soigneur', 4, 4.5, 5)],
@@ -325,9 +325,9 @@ export const NIVEAUX_MARAIS: Niveau[] = [
     biome: 'marais',
     carte: CARTE_BRAS_MORTS,
     vagues: renforcer(VAGUES_BRAS_MORTS, 1, 1.6),
-    regles: { tours: ['heron', 'mortier'] },
+    regles: { tours: ['heron', 'mortier'], spores: 150 },
   },
-  { id: 'marais-5', nom: 'Cœur du marais', biome: 'marais', carte: CARTE_COEUR_MARAIS, vagues: renforcer(VAGUES_COEUR_MARAIS, 0.8, 1.2), regles: {}, boss: true },
+  { id: 'marais-5', nom: 'Cœur du marais', biome: 'marais', carte: CARTE_COEUR_MARAIS, vagues: renforcer(VAGUES_COEUR_MARAIS, 0.8, 1.2), regles: { spores: 160 }, boss: true },
 ];
 
 /** Lisière (prairie, niveau 2) : la Chenille arrive. Plage 0 au nord-est, 1 au sud. */

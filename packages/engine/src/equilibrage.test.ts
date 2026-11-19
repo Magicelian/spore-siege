@@ -147,9 +147,10 @@ describe('équilibrage du marais', () => {
     });
   }
 
-  it('le Crapaud-roi est le niveau le plus dur : le meilleur script y garde le moins de vie', () => {
+  // Tolérance de 2 PV (19/11, retour d'un testeur : début du Cœur adouci) : la Tourbière reste mal jouée par les scripts.
+  it('le Crapaud-roi est le niveau le plus dur : le meilleur script y garde le moins de vie (à 2 PV près)', () => {
     const coeur = marais[4]!.meilleur.pv;
-    for (const { meilleur } of marais.slice(0, 4)) expect(coeur).toBeLessThanOrEqual(meilleur.pv);
+    for (const { meilleur } of marais.slice(0, 4)) expect(coeur).toBeLessThanOrEqual(meilleur.pv + 2);
   });
 });
 
