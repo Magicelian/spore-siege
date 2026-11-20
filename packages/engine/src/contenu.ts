@@ -339,23 +339,19 @@ export const CAPACITES_DE: Record<TypeTour, readonly [Capacite, Capacite]> = {
 /** Toutes les capacités, tour par tour, dans l'ordre de `CAPACITES_DE`. */
 export const TOUTES_CAPACITES: Capacite[] = Object.values(CAPACITES_DE).flat();
 
-/** Étoiles pour ouvrir une capacité dans l'Atelier : 1 pour la première de sa tour, 2 pour la seconde. */
-export const ETOILES_CAPACITE = [1, 2] as const;
-
-/** Prix en étoiles de `capacite`, sachant celles déjà ouvertes (0 si elle l'est déjà). */
+/**
+ * Étoiles pour ouvrir une capacité dans l'Atelier : le prix monte avec chaque capacité ouverte (1 ★ la première,
+ * 2 ★ la deuxième… 10 ★ la dixième ; 55 ★ pour tout sur 75). Demande de Celian (20/11) : à 1 puis 2 ★ par tour,
+ * tout s'ouvrait en 3-4 niveaux.
+ */
 export function etoilesPour(capacite: Capacite, ouvertes: readonly Capacite[]): number {
-  if (ouvertes.includes(capacite)) return 0;
-  const tour = (Object.keys(CAPACITES_DE) as TypeTour[]).find((t) => CAPACITES_DE[t].includes(capacite))!;
-  const deja = CAPACITES_DE[tour].filter((c) => ouvertes.includes(c)).length;
-  return ETOILES_CAPACITE[Math.min(deja, ETOILES_CAPACITE.length - 1)]!;
+  return ouvertes.includes(capacite) ? 0 : ouvertes.length + 1;
 }
 
-/** Étoiles dépensées pour ouvrir `ouvertes` (ce que rend « Tout rembourser »). */
+/** Étoiles dépensées pour ouvrir `ouvertes` (ce que rend « Tout rembourser ») : 1 + 2 + … + n. */
 export function etoilesDepensees(ouvertes: readonly Capacite[]): number {
-  return Object.values(CAPACITES_DE).reduce((somme, paire) => {
-    const n = paire.filter((c) => ouvertes.includes(c)).length;
-    return somme + ETOILES_CAPACITE.slice(0, n).reduce((a, b) => a + b, 0);
-  }, 0);
+  const n = ouvertes.length;
+  return (n * (n + 1)) / 2;
 }
 
 export const CAPACITES: Record<Capacite, FicheCapacite> = {

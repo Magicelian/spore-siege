@@ -4,13 +4,13 @@ import { Partie } from './partie';
 import { ileDe, NIVEAUX_FORET } from './niveaux';
 
 describe('Atelier', () => {
-  it('coûte 1 étoile pour la 1re capacité d\'une tour, 2 pour la seconde, 15 pour tout (5 tours)', () => {
+  it('coûte 1 étoile de plus à chaque capacité ouverte : 1, 2, 3… 55 pour tout', () => {
     expect(etoilesPour('essaim', [])).toBe(1);
     expect(etoilesPour('dard', ['essaim'])).toBe(2);
-    expect(etoilesPour('dard', ['tempete'])).toBe(1);
+    expect(etoilesPour('dard', ['tempete'])).toBe(2);
     expect(etoilesPour('essaim', ['essaim'])).toBe(0);
-    expect(etoilesDepensees(TOUTES_CAPACITES)).toBe(15);
-    expect(etoilesDepensees(['essaim', 'tempete', 'prisme'])).toBe(4);
+    expect(etoilesDepensees(TOUTES_CAPACITES)).toBe(55);
+    expect(etoilesDepensees(['essaim', 'tempete', 'prisme'])).toBe(6);
     expect(TOUTES_CAPACITES).toHaveLength(10);
   });
 
