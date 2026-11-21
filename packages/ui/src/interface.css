@@ -164,6 +164,28 @@
   padding: 0;
   background: var(--bois-clair);
 }
+.bouton-atelier {
+  position: relative;
+}
+/* Pastille : une capacité peut être ouverte avec les étoiles du solde. */
+.bouton-atelier .puce {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  background: var(--rouge);
+  box-shadow:
+    inset 2px 2px 0 rgba(255, 255, 255, 0.35),
+    var(--contour);
+  animation: puce 1s steps(2) infinite;
+  pointer-events: none;
+}
+@keyframes puce {
+  50% {
+    transform: translateY(-1px);
+  }
+}
 .bouton.carre.actif {
   background: var(--rouille);
 }

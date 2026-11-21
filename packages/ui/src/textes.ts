@@ -230,6 +230,7 @@ export const TEXTES = {
   grimoire: 'Grimoire',
   atelier: 'Atelier',
   atelierAide: 'Atelier : ouvrir les capacités du stade 4 avec tes étoiles',
+  atelierPret: 'une capacité peut être ouverte',
   solde: (n: number) => `${n} ★ à dépenser`,
   ouvrir: 'Ouvrir',
   ouverte: 'Ouverte',

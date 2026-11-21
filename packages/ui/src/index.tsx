@@ -392,6 +392,26 @@ export class ControleurInterface {
     return Math.max(0, gagnees - etoilesDepensees(this.atelier));
   }
 
+  /** Une capacité d'une tour déjà vue peut être ouverte avec le solde : pastille sur le bouton de l'Atelier. */
+  private atelierAchetable(): boolean {
+    const prix = this.atelier.length + 1;
+    return prix <= this.soldeEtoiles() && TOUTES_CAPACITES.some((c) => !this.atelier.includes(c) && this.toursVues.has(CAPACITES[c].tour));
+  }
+
+  private boutonAtelier() {
+    const pret = this.atelierAchetable();
+    return (
+      <button
+        class="bouton carre bouton-atelier"
+        title={pret ? `${TEXTES.atelierAide} · ${TEXTES.atelierPret}` : TEXTES.atelierAide}
+        onClick={() => (this.atelierVu ? this.fermer() : this.ouvrirAtelier())}
+      >
+        <Ico nom="enclume" />
+        {pret && <span class="puce" aria-hidden="true" />}
+      </button>
+    );
+  }
+
   /** Atelier : on y ouvre les capacités du stade 4 avec les étoiles. */
   ouvrirAtelier(): void {
     this.fermer();
@@ -818,9 +838,7 @@ export class ControleurInterface {
               <Ico nom="infini" />
             </button>
           )}
-          <button class="bouton carre" title={TEXTES.atelierAide} onClick={() => (this.atelierVu ? this.fermer() : this.ouvrirAtelier())}>
-            <Ico nom="enclume" />
-          </button>
+          {this.boutonAtelier()}
           <button class="bouton carre" title={TEXTES.grimoire} onClick={() => (this.livre ? this.fermer() : this.ouvrirLivre())}>
             <Ico nom="livre" />
           </button>
@@ -924,9 +942,7 @@ export class ControleurInterface {
           </span>
           <span class="planche">{ILES_TEXTES[this.ileChoisie]}</span>
           <span class="espace" />
-          <button class="bouton carre" title={TEXTES.atelierAide} onClick={() => (this.atelierVu ? this.fermer() : this.ouvrirAtelier())}>
-            <Ico nom="enclume" />
-          </button>
+          {this.boutonAtelier()}
           <button class="bouton carre" title={TEXTES.grimoire} onClick={() => (this.livre ? this.fermer() : this.ouvrirLivre())}>
             <Ico nom="livre" />
           </button>
