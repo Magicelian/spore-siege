@@ -221,8 +221,8 @@ export class ControleurInterface {
     if (ronce) return { case: c, sorte: 'boite', hauteur: 0.6 };
     if (this.fleurDe(c)) return { case: c, sorte: 'boite', hauteur: 1.45 };
     if (this.lanterneDe(c)) return { case: c, sorte: 'boite', hauteur: 1.3 };
-    // Bulle ouverte sur une case vide : le fantôme suffit.
-    if (this.bulle) return null;
+    // Bulle ouverte sur une case vide : carré au sol, pour voir où l'on a cliqué (même sous le fantôme).
+    if (this.bulle) return nature ? { case: c, sorte: 'case', hauteur: 0 } : null;
     if (nature === 'construire' || (nature === 'ronce' && this.jeu.ronceLibre(c))) return { case: c, sorte: 'case', hauteur: 0 };
     return null;
   }
@@ -1204,7 +1204,7 @@ export class ControleurInterface {
             this.capaciteVue = c;
             this.dessiner();
           }}
-          choisirCapacite={(c) => this.executer({ type: 'choisirCapacite', id: t.id, capacite: c })}
+          choisirCapacite={(c) => this.executer({ type: 'choisirCapacite', id: t.id, capacite: c }) && fermer()}
           fermer={fermer}
           ameliorer={() => this.executer({ type: 'ameliorerTour', id: t.id })}
           vendre={() => this.executer({ type: 'vendreTour', id: t.id }) && fermer()}
