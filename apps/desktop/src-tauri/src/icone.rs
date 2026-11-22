@@ -18,6 +18,7 @@ pub fn surveiller(app: AppHandle, menu: Menu<Wry>, basculer: fn(&AppHandle)) {
     let Some(mtm) = MainThreadMarker::new() else {
         return;
     };
+    let (app_secours, menu_secours) = (app.clone(), menu.clone());
     let bloc = RcBlock::new(move |evenement: NonNull<NSEvent>| -> *mut NSEvent {
         let evenement_ref = unsafe { evenement.as_ref() };
         // La seule fenêtre de barre d'état de l'application est celle de l'icône.
@@ -41,6 +42,28 @@ pub fn surveiller(app: AppHandle, menu: Menu<Wry>, basculer: fn(&AppHandle)) {
     let moniteur = unsafe { NSEvent::addLocalMonitorForEventsMatchingMask_handler(masque, &bloc) };
     // Le moniteur vit aussi longtemps que l'application.
     std::mem::forget(moniteur);
+
+    // Secours : un clic que le moniteur n'a pas reconnu (il arrive que l'événement de l'icône ne porte pas sa
+    // fenêtre) arrive jusqu'à `tray-icon`. Seul l'appui compte : quand le moniteur l'a pris, il l'a avalé, donc
+    // pas de double bascule (le relâchement, lui, passe toujours).
+    {
+        use tauri::tray::{MouseButton, MouseButtonState, TrayIconEvent};
+        let Some(icone) = app_secours.tray_by_id("main") else {
+            return;
+        };
+        icone.on_tray_icon_event(move |icone, evenement| {
+            let TrayIconEvent::Click { button, button_state: MouseButtonState::Down, .. } = evenement else {
+                return;
+            };
+            let app = icone.app_handle();
+            crate::diagnostic::ecrire(app, "clic reçu par le secours");
+            match button {
+                MouseButton::Left => basculer(app),
+                MouseButton::Right => ouvrir_menu(app, &menu_secours),
+                _ => {}
+            }
+        });
+    }
 }
 
 /// Attache le menu, le fait ouvrir par l'icône puis le détache : `performClick` rend la main à sa fermeture.
