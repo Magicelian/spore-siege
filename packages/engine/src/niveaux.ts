@@ -64,6 +64,24 @@ export function renforcer(vagues: readonly Vague[], debut: number, fin = debut):
   });
 }
 
+/** Forme de la difficulté au fil d'un niveau : les vagues vont de ×0,8 à ×2, lentement puis vite (au cube). */
+export const COURBE = { debut: 0.8, fin: 2, forme: 3 };
+
+/**
+ * Applique `COURBE` (× `m`, propre au niveau) au nombre de monstres de chaque vague (pas aux boss). Le début reste doux
+ * (on a peu de tours) et la fin suit la boule de neige de la défense : sans ça, les pertes arrivaient aux vagues 2-3 et
+ * la fin était gagnée d'avance (22/11/2026).
+ */
+export function courbe(vagues: readonly Vague[], m = 1): Vague[] {
+  const k = vagues.length;
+  return vagues.map((v, i) => {
+    const f = m * (COURBE.debut + (COURBE.fin - COURBE.debut) * Math.pow(i / Math.max(1, k - 1), COURBE.forme));
+    return v.map((g) =>
+      MONSTRES[g.type].boss ? g : { ...g, nombre: Math.max(1, Math.round(g.nombre * f)), intervalle: Math.round((g.intervalle / Math.sqrt(f)) * 100) / 100 },
+    );
+  });
+}
+
 /**
  * Clairière (forêt, niveau 1) : on apprend. Huit vagues qui présentent les monstres un par un, moins nombreux que
  * sur l'ancienne forêt unique. Plage 0 au nord-est, plage 1 à l'ouest.
@@ -234,17 +252,17 @@ export const VAGUES_COEUR: Vague[] = [
  */
 export const NIVEAUX_FORET: Niveau[] = [
   { id: 'foret-1', nom: 'Clairière', biome: 'foret', carte: CARTE_FORET, vagues: VAGUES_CLAIRIERE, regles: { spores: 140, tours: TOURS_DE_BASE } },
-  { id: 'foret-2', nom: 'Sous-bois', biome: 'foret', carte: CARTE_SOUS_BOIS, vagues: renforcer(VAGUES_SOUS_BOIS, 0.3), regles: { spores: 80, tours: TOURS_DE_BASE } },
-  { id: 'foret-3', nom: 'Trois sentiers', biome: 'foret', carte: CARTE_TROIS_SENTIERS, vagues: renforcer(VAGUES_FORET, 1.2, 2), regles: { ronces: false, tours: TOURS_DE_BASE } },
+  { id: 'foret-2', nom: 'Sous-bois', biome: 'foret', carte: CARTE_SOUS_BOIS, vagues: courbe(renforcer(VAGUES_SOUS_BOIS, 0.3), 0.8), regles: { spores: 100, tours: TOURS_DE_BASE } },
+  { id: 'foret-3', nom: 'Trois sentiers', biome: 'foret', carte: CARTE_TROIS_SENTIERS, vagues: courbe(renforcer(VAGUES_FORET, 1.2, 2), 1.2), regles: { spores: 120, ronces: false, tours: TOURS_DE_BASE } },
   {
     id: 'foret-4',
     nom: 'Fourré',
     biome: 'foret',
     carte: CARTE_FOURRE,
-    vagues: renforcer(VAGUES_FOURRE, 0.8, 1.8),
-    regles: { tours: ['cristal', 'canon'] },
+    vagues: courbe(renforcer(VAGUES_FOURRE, 0.8, 1.8), 1.5),
+    regles: { spores: 120, tours: ['cristal', 'canon'] },
   },
-  { id: 'foret-5', nom: 'Cœur de la forêt', biome: 'foret', carte: CARTE_COEUR, vagues: VAGUES_COEUR, regles: { tours: TOURS_DE_BASE }, boss: true },
+  { id: 'foret-5', nom: 'Cœur de la forêt', biome: 'foret', carte: CARTE_COEUR, vagues: courbe(VAGUES_COEUR, 0.8), regles: { spores: 140, tours: TOURS_DE_BASE }, boss: true },
 ];
 type G = Vague[number];
 const g = (type: G['type'], nombre: number, intervalle: number, debut?: number, plage?: number): G => ({
@@ -316,18 +334,18 @@ export const VAGUES_COEUR_MARAIS: Vague[] = [
  * réglés en 9e avec les joueurs scriptés (`equilibrage.test.ts`).
  */
 export const NIVEAUX_MARAIS: Niveau[] = [
-  { id: 'marais-1', nom: 'Roselière', biome: 'marais', carte: CARTE_ROSELIERE, vagues: renforcer(VAGUES_FORET, 1.6, 2.6), regles: { spores: 90 } },
-  { id: 'marais-2', nom: 'Les Gués', biome: 'marais', carte: CARTE_GUES, vagues: renforcer(VAGUES_GUES, 1.3, 1.8), regles: { ronces: false } },
-  { id: 'marais-3', nom: 'Tourbière', biome: 'marais', carte: CARTE_TOURBIERE, vagues: renforcer(VAGUES_TOURBIERE, 0.5, 0.9), regles: { spores: 100 } },
+  { id: 'marais-1', nom: 'Roselière', biome: 'marais', carte: CARTE_ROSELIERE, vagues: courbe(renforcer(VAGUES_FORET, 1.6, 2.6), 0.8), regles: { spores: 90 } },
+  { id: 'marais-2', nom: 'Les Gués', biome: 'marais', carte: CARTE_GUES, vagues: courbe(renforcer(VAGUES_GUES, 1.3, 1.8), 0.8), regles: { spores: 170, ronces: false } },
+  { id: 'marais-3', nom: 'Tourbière', biome: 'marais', carte: CARTE_TOURBIERE, vagues: courbe(renforcer(VAGUES_TOURBIERE, 0.5, 0.9), 0.9), regles: { spores: 140 } },
   {
     id: 'marais-4',
     nom: 'Bras morts',
     biome: 'marais',
     carte: CARTE_BRAS_MORTS,
-    vagues: renforcer(VAGUES_BRAS_MORTS, 1, 1.6),
+    vagues: courbe(renforcer(VAGUES_BRAS_MORTS, 1, 1.6), 1.5),
     regles: { tours: ['heron', 'mortier'], spores: 140 },
   },
-  { id: 'marais-5', nom: 'Cœur du marais', biome: 'marais', carte: CARTE_COEUR_MARAIS, vagues: renforcer(VAGUES_COEUR_MARAIS, 0.8, 1.2), regles: { spores: 160 }, boss: true },
+  { id: 'marais-5', nom: 'Cœur du marais', biome: 'marais', carte: CARTE_COEUR_MARAIS, vagues: courbe(renforcer(VAGUES_COEUR_MARAIS, 0.8, 1.2), 1), regles: { spores: 160 }, boss: true },
 ];
 
 /** Lisière (prairie, niveau 2) : la Chenille arrive. Plage 0 au nord-est, 1 au sud. */
@@ -391,31 +409,31 @@ export const VAGUES_COEUR_PRAIRIE: Vague[] = [
  * chaque fin de vague. Facteurs de `renforcer` réglés en 10d avec les joueurs scriptés (`equilibrage.test.ts`).
  */
 export const NIVEAUX_PRAIRIE: Niveau[] = [
-  { id: 'prairie-1', nom: 'Prés fleuris', biome: 'prairie', carte: CARTE_PRES_FLEURIS, vagues: renforcer(VAGUES_FORET, 0.8, 1.4), regles: { fleurs: true } },
-  { id: 'prairie-2', nom: 'Lisière', biome: 'prairie', carte: CARTE_LISIERE, vagues: renforcer(VAGUES_LISIERE, 0.6, 1), regles: { fleurs: true } },
+  { id: 'prairie-1', nom: 'Prés fleuris', biome: 'prairie', carte: CARTE_PRES_FLEURIS, vagues: courbe(renforcer(VAGUES_FORET, 0.8, 1.4), 0.9), regles: { spores: 140, fleurs: true } },
+  { id: 'prairie-2', nom: 'Lisière', biome: 'prairie', carte: CARTE_LISIERE, vagues: courbe(renforcer(VAGUES_LISIERE, 0.6, 1), 1.1), regles: { spores: 170, fleurs: true } },
   {
     id: 'prairie-3',
     nom: 'Hautes herbes',
     biome: 'prairie',
     carte: CARTE_HAUTES_HERBES,
-    vagues: renforcer(VAGUES_HAUTES_HERBES, 1, 1.5),
-    regles: { fleurs: true, ronces: false },
+    vagues: courbe(renforcer(VAGUES_HAUTES_HERBES, 1, 1.5), 1.2),
+    regles: { spores: 170, fleurs: true, ronces: false },
   },
   {
     id: 'prairie-4',
     nom: 'Champs du moulin',
     biome: 'prairie',
     carte: CARTE_CHAMPS_MOULIN,
-    vagues: renforcer(VAGUES_CHAMPS_MOULIN, 0.6, 1),
-    regles: { fleurs: true, spores: 100 },
+    vagues: courbe(renforcer(VAGUES_CHAMPS_MOULIN, 0.6, 1), 1),
+    regles: { fleurs: true, spores: 120 },
   },
   {
     id: 'prairie-5',
     nom: 'Cœur de la prairie',
     biome: 'prairie',
     carte: CARTE_COEUR_PRAIRIE,
-    vagues: renforcer(VAGUES_COEUR_PRAIRIE, 0.8, 1.3),
-    regles: { fleurs: true },
+    vagues: courbe(renforcer(VAGUES_COEUR_PRAIRIE, 0.8, 1.3), 1.1),
+    regles: { spores: 140, fleurs: true },
     boss: true,
   },
 ];
@@ -497,17 +515,17 @@ export const VAGUES_COEUR_GROTTE: Vague[] = [
  * champignons-lanternes. Niveau 1 ≈ niveau 3 de la prairie, puis ça monte jusqu'au Ver des profondeurs.
  */
 export const NIVEAUX_GROTTE: Niveau[] = [
-  { id: 'grotte-1', nom: 'Galerie des luisants', biome: 'grotte', carte: CARTE_GALERIE, vagues: renforcer(VAGUES_GALERIE, 0.8, 1.2), regles: { noir: true, spores: 150 } },
-  { id: 'grotte-2', nom: 'La Voûte', biome: 'grotte', carte: CARTE_VOUTE, vagues: renforcer(VAGUES_VOUTE, 0.7, 1.1), regles: { noir: true, spores: 280 } },
-  { id: 'grotte-3', nom: 'Lac souterrain', biome: 'grotte', carte: CARTE_LAC, vagues: renforcer(VAGUES_LAC, 0.9, 1.4), regles: { noir: true, spores: 220, ronces: false } },
-  { id: 'grotte-4', nom: 'Mine abandonnée', biome: 'grotte', carte: CARTE_MINE, vagues: renforcer(VAGUES_MINE, 1, 1.4), regles: { noir: true, spores: 220 } },
+  { id: 'grotte-1', nom: 'Galerie des luisants', biome: 'grotte', carte: CARTE_GALERIE, vagues: courbe(renforcer(VAGUES_GALERIE, 0.8, 1.2), 1), regles: { noir: true, spores: 210 } },
+  { id: 'grotte-2', nom: 'La Voûte', biome: 'grotte', carte: CARTE_VOUTE, vagues: courbe(renforcer(VAGUES_VOUTE, 0.7, 1.1), 1.1), regles: { noir: true, spores: 340 } },
+  { id: 'grotte-3', nom: 'Lac souterrain', biome: 'grotte', carte: CARTE_LAC, vagues: courbe(renforcer(VAGUES_LAC, 0.9, 1.4), 1.35), regles: { noir: true, spores: 220, ronces: false } },
+  { id: 'grotte-4', nom: 'Mine abandonnée', biome: 'grotte', carte: CARTE_MINE, vagues: courbe(renforcer(VAGUES_MINE, 1, 1.4), 1.2), regles: { noir: true, spores: 220 } },
   {
     id: 'grotte-5',
     nom: 'Cœur de la grotte',
     biome: 'grotte',
     carte: CARTE_COEUR_GROTTE,
-    vagues: renforcer(VAGUES_COEUR_GROTTE, 1, 1.5),
-    regles: { noir: true, spores: 280 },
+    vagues: courbe(renforcer(VAGUES_COEUR_GROTTE, 1, 1.5), 1.1),
+    regles: { noir: true, spores: 290 },
     boss: true,
   },
 ];
@@ -587,16 +605,16 @@ export const VAGUES_COEUR_FUTAIE: Vague[] = [
  * puis ça monte jusqu'au Colosse d'écorce. Un niveau avec de l'eau (héron), un dans la pénombre (lanternes).
  */
 export const NIVEAUX_FUTAIE: Niveau[] = [
-  { id: 'futaie-1', nom: 'Allée des géants', biome: 'futaie', carte: CARTE_ALLEE, vagues: renforcer(VAGUES_ALLEE, 0.5, 0.95), regles: { spores: 240 } },
-  { id: 'futaie-2', nom: 'Sentier des toiles', biome: 'futaie', carte: CARTE_TOILES, vagues: renforcer(VAGUES_TOILES, 0.45, 0.85), regles: { spores: 300 } },
-  { id: 'futaie-3', nom: 'Ruisseau des racines', biome: 'futaie', carte: CARTE_RUISSEAU, vagues: renforcer(VAGUES_RUISSEAU, 0.55, 0.95), regles: { spores: 300 } },
-  { id: 'futaie-4', nom: 'Futaie obscure', biome: 'futaie', carte: CARTE_OBSCURE, vagues: renforcer(VAGUES_OBSCURE, 0.45, 0.85), regles: { noir: true, spores: 460 } },
+  { id: 'futaie-1', nom: 'Allée des géants', biome: 'futaie', carte: CARTE_ALLEE, vagues: courbe(renforcer(VAGUES_ALLEE, 0.5, 0.95), 0.8), regles: { spores: 290 } },
+  { id: 'futaie-2', nom: 'Sentier des toiles', biome: 'futaie', carte: CARTE_TOILES, vagues: courbe(renforcer(VAGUES_TOILES, 0.45, 0.85), 1.1), regles: { spores: 360 } },
+  { id: 'futaie-3', nom: 'Ruisseau des racines', biome: 'futaie', carte: CARTE_RUISSEAU, vagues: courbe(renforcer(VAGUES_RUISSEAU, 0.55, 0.95), 1.2), regles: { spores: 310 } },
+  { id: 'futaie-4', nom: 'Futaie obscure', biome: 'futaie', carte: CARTE_OBSCURE, vagues: courbe(renforcer(VAGUES_OBSCURE, 0.45, 0.85), 0.8), regles: { noir: true, spores: 470 } },
   {
     id: 'futaie-5',
     nom: 'Cœur de la futaie',
     biome: 'futaie',
     carte: CARTE_COEUR_FUTAIE,
-    vagues: renforcer(VAGUES_COEUR_FUTAIE, 1.5, 2.4),
+    vagues: courbe(renforcer(VAGUES_COEUR_FUTAIE, 1.5, 2.4), 1.7),
     regles: { spores: 200, ronces: false },
     boss: true,
   },

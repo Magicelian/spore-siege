@@ -90,7 +90,7 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
   soigneur: { pv: 40, vitesse: 0.6, morsure: 2, butin: 6, armure: 1, soin: { rayon: 1.8, pv: 6, cadence: 2 } },
   // Boss de la forêt (niveau 5, dernière vague). Réglé en 8d : à 2 500 PV le joueur simple perd, à 1 800 il gagne.
   limaceMere: {
-    pv: 1500,
+    pv: 1875,
     vitesse: 0.3,
     morsure: 20,
     butin: 60,
@@ -109,7 +109,7 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
   crapaud: { pv: 26, vitesse: 0.6, morsure: 1, butin: 3, armure: 0, saut: { cadence: 2.5, distance: 2, duree: 0.4 } },
   // Boss du marais (niveau 5). Chiffres provisoires, à régler en 9e avec les joueurs scriptés.
   crapaudRoi: {
-    pv: 500,
+    pv: 750,
     vitesse: 0.2,
     morsure: 20,
     butin: 70,
@@ -145,7 +145,7 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
   // Boss de la grotte : énorme et lent ; à chaque palier il souffle toutes les lanternes (seuls les luisants de la
   // carte restent). Chiffres provisoires, à régler en 11d avec les joueurs scriptés.
   ver: {
-    pv: 700,
+    pv: 1050,
     vitesse: 0.3,
     morsure: 20,
     butin: 70,
@@ -167,7 +167,7 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
   // Pas d'escorte (cahier) : la menace, c'est de perdre ses meilleures tours. Réglé en 12d : à 2 200 PV personne ne
   // le laissait passer (l'économie de fin de partie fait boule de neige), à 3 500 le simple perd, le bon gagne.
   colosse: {
-    pv: 3500,
+    pv: 5250,
     vitesse: 0.25,
     morsure: 20,
     butin: 90,
@@ -356,7 +356,7 @@ export function etoilesDepensees(ouvertes: readonly Capacite[]): number {
 
 export const CAPACITES: Record<Capacite, FicheCapacite> = {
   essaim: { tour: 'ruche', prix: 130, degats: 6, portee: 3.4, cadence: 0.3, tirs: 2 },
-  dard: { tour: 'ruche', prix: 130, degats: 9, portee: 3.4, cadence: 0.35, percant: true, poison: { degatsParSeconde: 4, duree: 3 } },
+  dard: { tour: 'ruche', prix: 130, degats: 12, portee: 3.4, cadence: 0.35, percant: true, poison: { degatsParSeconde: 4, duree: 3 } },
   tempete: { tour: 'cristal', prix: 150, degats: 13, portee: 3.2, cadence: 1.2, rebonds: 5, eclair: { distance: 2.4, attenuation: 0.8 } },
   prisme: { tour: 'cristal', prix: 150, degats: 70, portee: 3.6, cadence: 1.3, rebonds: 0 },
   salve: { tour: 'mortier', prix: 140, degats: 7, portee: 4.4, cadence: 1.8, tirs: 3, ecart: 0.35 },

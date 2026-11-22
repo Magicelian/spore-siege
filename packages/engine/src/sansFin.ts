@@ -17,7 +17,7 @@ export const SANS_FIN = {
    * Les boss gardent cette part de leur vie de l'île (une morsure suffit à finir la partie). Réglé avec les scripts :
    * à 0,5 tous tombaient à la Limace-mère (vague 10) ; à 0,35 avec 550 spores, naïf 10, simple 25, bon > 50.
    */
-  vieBoss: 0.35,
+  vieBoss: 0.25,
 };
 
 /** Les boss de l'archipel, dans l'ordre des îles : vague 10 = Limace-mère, 20 = Crapaud-roi… puis on recommence. */
