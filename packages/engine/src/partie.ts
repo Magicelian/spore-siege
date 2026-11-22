@@ -1159,10 +1159,38 @@ export class Partie {
     let avancement = m.avancement;
     for (let i = 0; i < 2; i++) {
       const duree = distance(depuis, point) / vitesseProjectile;
-      avancement = Math.min(m.longueur, m.avancement + this.vitesse(m) * duree);
+      avancement = Math.min(m.longueur, m.avancement + this.parcours(m, duree));
       point = pointSur(m.trace, avancement);
     }
     return avancement;
+  }
+
+  /** Distance que le monstre parcourra en `duree` secondes : un crapaud compte ses bonds à venir. */
+  private parcours(m: Monstre, duree: number): number {
+    const saut = MONSTRES[m.type].saut;
+    if (!saut || this.plonge(m)) return this.vitesse(m) * duree;
+    const marche = MONSTRES[m.type].vitesse * this.facteurVitesse(m);
+    const bond = saut.distance / saut.duree;
+    const enBond = dureeSaut(m.type) / PAS_PAR_SECONDE;
+    const ecart = Math.round((saut.cadence + saut.duree) * PAS_PAR_SECONDE) / PAS_PAR_SECONDE;
+    let t = this.pas / PAS_PAR_SECONDE;
+    const fin = t + duree;
+    // Début du bond en cours, sinon du prochain.
+    let debut = (this.enSaut(m) ? m.sautDebut : m.prochainSaut) / PAS_PAR_SECONDE;
+    let d = 0;
+    while (t < fin) {
+      if (t < debut) {
+        const jusqua = Math.min(debut, fin);
+        d += (jusqua - t) * marche;
+        t = jusqua;
+      } else {
+        const jusqua = Math.min(debut + enBond, fin);
+        d += Math.max(0, jusqua - t) * bond;
+        t = Math.max(t, jusqua);
+        debut += ecart;
+      }
+    }
+    return d;
   }
 
   private voler(): void {

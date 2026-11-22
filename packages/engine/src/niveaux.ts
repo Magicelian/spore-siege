@@ -325,7 +325,7 @@ export const NIVEAUX_MARAIS: Niveau[] = [
     biome: 'marais',
     carte: CARTE_BRAS_MORTS,
     vagues: renforcer(VAGUES_BRAS_MORTS, 1, 1.6),
-    regles: { tours: ['heron', 'mortier'], spores: 150 },
+    regles: { tours: ['heron', 'mortier'], spores: 140 },
   },
   { id: 'marais-5', nom: 'Cœur du marais', biome: 'marais', carte: CARTE_COEUR_MARAIS, vagues: renforcer(VAGUES_COEUR_MARAIS, 0.8, 1.2), regles: { spores: 160 }, boss: true },
 ];
