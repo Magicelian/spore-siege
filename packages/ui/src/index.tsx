@@ -1206,7 +1206,12 @@ export class ControleurInterface {
           }}
           choisirCapacite={(c) => this.executer({ type: 'choisirCapacite', id: t.id, capacite: c }) && fermer()}
           fermer={fermer}
-          ameliorer={() => this.executer({ type: 'ameliorerTour', id: t.id })}
+          ameliorer={() => {
+            if (!this.executer({ type: 'ameliorerTour', id: t.id })) return;
+            // Dernier stade atteint et aucune capacité ouverte dans l'Atelier : plus rien à faire dans la bulle.
+            const dernier = t.stade + 1 >= TOURS[t.type].stades.length;
+            if (dernier && !CAPACITES_DE[t.type].some((c) => i.regles.capacites.includes(c))) fermer();
+          }}
           vendre={() => this.executer({ type: 'vendreTour', id: t.id }) && fermer()}
           cibler={(mode) => this.executer({ type: 'ciblerTour', id: t.id, mode })}
         />
