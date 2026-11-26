@@ -257,7 +257,6 @@ export const TEXTES = {
   butinCourt: 'Butin',
   rebondsStades: (n: number[]) => `rebonds ${n.join(' / ')}`,
   titre: 'Tiny Siege',
-  surtitre: 'Tiny Shrooms',
   accroche: 'La Rouille débarque. Défends la souche.',
   jouer: 'Jouer',
   archipel: 'Archipel',

@@ -667,7 +667,6 @@ export class ControleurInterface {
       <div class="interface">
         <div class="accueil">
           <div class="titre-jeu">
-            <span class="surtitre">{TEXTES.surtitre}</span>
             <div class="ligne-titre">
               <img class="vignette" src={this.options.vignette('canon', 3)} alt="" />
               <h1>

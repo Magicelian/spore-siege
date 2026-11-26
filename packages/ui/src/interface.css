@@ -791,12 +791,6 @@ table.stades .icone {
   text-shadow: var(--texte-cerne);
   animation: flotter 3.2s ease-in-out infinite;
 }
-.titre-jeu .surtitre {
-  font-size: 11px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: var(--accent);
-}
 .titre-jeu .ligne-titre {
   display: flex;
   align-items: center;
