@@ -541,9 +541,11 @@ export class ControleurInterface {
     return { type: this.survol, case: b.case, possible: this.instantane.spores >= prix, portee };
   }
 
-  /** Tour dont on montre la portée : celle de la bulle ouverte. */
+  /** Tour dont on montre la portée : celle de la bulle ouverte, sinon celle sous la souris. */
   get selection(): number | null {
-    return this.tourDe(this.bulle?.case)?.id ?? null;
+    if (this.bulle) return this.tourDe(this.bulle.case)?.id ?? null;
+    if (this.fiche || this.livre || this.pauseMenu) return null;
+    return this.tourDe(this.caseSurvolee ?? undefined)?.id ?? null;
   }
 
   /** Case visée par la bulle ouverte (pour la marquer sur l'île). */

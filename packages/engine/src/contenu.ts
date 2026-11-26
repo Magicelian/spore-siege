@@ -166,9 +166,11 @@ export const MONSTRES: Record<TypeMonstre, FicheMonstre> = {
   // Boss de la futaie (dernier boss) : arbre géant, très lent ; à chaque palier il abat une plateforme occupée.
   // Pas d'escorte (cahier) : la menace, c'est de perdre ses meilleures tours. Réglé en 12d : à 2 200 PV personne ne
   // le laissait passer (l'économie de fin de partie fait boule de neige), à 3 500 le simple perd, le bon gagne.
+  // 26/11 (Celian : « un peu plus dur ») : 6 800 PV et 0,3 c/s ; le bon le tue encore en Facile et en Normal, à
+  // environ 2 cases de la souche (sa vie seule ne change presque rien : il fond sur les dernières cases).
   colosse: {
-    pv: 5250,
-    vitesse: 0.25,
+    pv: 6800,
+    vitesse: 0.3,
     morsure: 20,
     butin: 90,
     armure: 4,
