@@ -1,5 +1,5 @@
 {
-  "name": "@spore-siege/renderer",
+  "name": "@tiny-siege/renderer",
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
@@ -7,7 +7,7 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
-    "@spore-siege/engine": "workspace:*",
+    "@tiny-siege/engine": "workspace:*",
     "three": "^0.186.0"
   },
   "devDependencies": {

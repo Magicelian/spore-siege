@@ -2,7 +2,7 @@
 // Même rendu que l'île de jeu (construireIle), en miniature. Deux usages : l'archipel (une étape par île) et la carte
 // d'une île (une étape par niveau, îlot = la vraie carte du niveau réduite de moitié).
 import * as THREE from 'three';
-import { lireCarte, type Biome } from '@spore-siege/engine';
+import { lireCarte, type Biome } from '@tiny-siege/engine';
 import { construireIle } from './ile';
 import { modeleSouche } from './modeles';
 import { COULEURS, materiau } from './palette';

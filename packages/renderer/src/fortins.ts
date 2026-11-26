@@ -1,7 +1,7 @@
 // Les cinq tours de guerre, 3 stades chacune : bois brûlé, métal rouillé, et l'élément de Tiny Shrooms au
 // sommet (ruche, cristal, tourbe, champignon ; le héron, sur pilotis dans l'eau, garde son nid). Chaque stade monte plus haut et se hérisse davantage.
 // Repère : 12 voxels par case, x et z de -6 à 5 ; la caméra regarde depuis +x +z (faces avant).
-import type { Capacite, TypeTour } from '@spore-siege/engine';
+import type { Capacite, TypeTour } from '@tiny-siege/engine';
 import { lumineuse } from './palette';
 import { hachage, Voxels } from './voxels';
 

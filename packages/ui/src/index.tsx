@@ -2,8 +2,8 @@
 // visible, bulles au clic sur l'île (construire, tour, ronce).
 // Le contrôleur garde l'état de l'interface ; le frontend lui donne les instantanés et lit l'aperçu à dessiner.
 import { render } from 'preact';
-import type { Biome, Capacite, Case, Difficulte, Commande, FleurVue, Ile, Instantane, LanterneVue, ModeCible, Niveau, Reprise, StadeTour, TourVue, TypeMonstre, TypeTour } from '@spore-siege/engine';
-import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, FLEUR, LANTERNE, MODES_CIBLE, MONSTRES, NIVEAU_SANS_FIN, NIVEAUX, niveauOuvert, niveauParId, PART_RONCE_RENDUE, VIE_DIFFICULTE, PRIX_RONCE, SEUIL_BOSS, PLATEFORME, prixPour, surPlateforme, TOURS, TOURS_DE_BASE, TOUTES_CAPACITES } from '@spore-siege/engine';
+import type { Biome, Capacite, Case, Difficulte, Commande, FleurVue, Ile, Instantane, LanterneVue, ModeCible, Niveau, Reprise, StadeTour, TourVue, TypeMonstre, TypeTour } from '@tiny-siege/engine';
+import { CAPACITES, CAPACITES_DE, etoilesDepensees, etoilesPour, FLEUR, LANTERNE, MODES_CIBLE, MONSTRES, NIVEAU_SANS_FIN, NIVEAUX, niveauOuvert, niveauParId, PART_RONCE_RENDUE, VIE_DIFFICULTE, PRIX_RONCE, SEUIL_BOSS, PLATEFORME, prixPour, surPlateforme, TOURS, TOURS_DE_BASE, TOUTES_CAPACITES } from '@tiny-siege/engine';
 import { icone, type Icone } from './icones';
 import { ecrireAtelier, ecrireDecouverts, ecrireDerniere, ecrireEnCours, lireDerniere, lireEnCours, ecrireEtoiles, ecrireMusique, ecrireParties, ecrireRecord, ecrireSons, ecrireToursVues, effacerPartie, lireAtelier, lireDecouverts, lireEtoiles, lireMusique, lireParties, lireRecord, lireSons, lireToursVues, type Etoiles, type Sauvegarde } from './sauvegarde';
 import { Sons } from './sons';
@@ -671,7 +671,7 @@ export class ControleurInterface {
             <div class="ligne-titre">
               <img class="vignette" src={this.options.vignette('canon', 3)} alt="" />
               <h1>
-                <span>Spore</span>
+                <span>Tiny</span>
                 <span class="rouge">Siege</span>
               </h1>
               <img class="vignette" src={this.options.vignetteMonstre('limace')} alt="" />

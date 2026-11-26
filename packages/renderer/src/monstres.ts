@@ -2,7 +2,7 @@
 // placées entre deux instantanés du moteur pour un mouvement fluide. Barre de vie dès le premier coup ;
 // à la mort, le monstre s'écrase puis éclate en cubes, et ses spores montent en « +N ».
 import * as THREE from 'three';
-import { MONSTRES, type Ile, type Instantane, type TypeMonstre } from '@spore-siege/engine';
+import { MONSTRES, type Ile, type Instantane, type TypeMonstre } from '@tiny-siege/engine';
 import { HAUTEUR_PLATEFORME, hauteurCase, versMonde } from './repere';
 import { lumineuse } from './palette';
 import { Eclats } from './effets';

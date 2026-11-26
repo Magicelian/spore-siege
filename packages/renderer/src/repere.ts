@@ -1,7 +1,7 @@
 // Passage des coordonnées du contrat (cases) au monde Three.js : l'île est centrée sur l'origine,
 // y du contrat devient z, la surface de l'herbe est à y = 0.
 import * as THREE from 'three';
-import type { Ile, Position } from '@spore-siege/engine';
+import type { Ile, Position } from '@tiny-siege/engine';
 
 export function versMonde(position: Position, ile: Ile, cible = new THREE.Vector3()): THREE.Vector3 {
   return cible.set(position.x - ile.largeur / 2, 0, position.y - ile.profondeur / 2);

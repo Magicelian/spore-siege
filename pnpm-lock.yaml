@@ -168,13 +168,13 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@spore-siege/engine':
+      '@tiny-siege/engine':
         specifier: workspace:*
         version: link:../../packages/engine
-      '@spore-siege/renderer':
+      '@tiny-siege/renderer':
         specifier: workspace:*
         version: link:../../packages/renderer
-      '@spore-siege/ui':
+      '@tiny-siege/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@tauri-apps/api':
@@ -211,7 +211,7 @@ importers:
 
   packages/renderer:
     dependencies:
-      '@spore-siege/engine':
+      '@tiny-siege/engine':
         specifier: workspace:*
         version: link:../engine
       three:
@@ -233,7 +233,7 @@ importers:
       '@fontsource/pixelify-sans':
         specifier: ^5.3.0
         version: 5.3.0
-      '@spore-siege/engine':
+      '@tiny-siege/engine':
         specifier: workspace:*
         version: link:../engine
       preact:

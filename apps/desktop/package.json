@@ -8,9 +8,9 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
-    "@spore-siege/engine": "workspace:*",
-    "@spore-siege/renderer": "workspace:*",
-    "@spore-siege/ui": "workspace:*",
+    "@tiny-siege/engine": "workspace:*",
+    "@tiny-siege/renderer": "workspace:*",
+    "@tiny-siege/ui": "workspace:*",
     "@tauri-apps/api": "^2.11.1",
     "preact": "^10.29.8",
     "three": "^0.186.0"

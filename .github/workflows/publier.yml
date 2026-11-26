@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 env:
-  NOM: Spore-Siege
+  NOM: Tiny-Siege
 
 jobs:
   construire:
@@ -99,6 +99,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" sortie/* -R "$GITHUB_REPOSITORY" \
-            --title "Spore Siege $GITHUB_REF_NAME" \
+            --title "Tiny Siege $GITHUB_REF_NAME" \
             --notes "**Mac Apple Silicon** : \`$NOM-Mac-Apple-Silicon.dmg\` · **Mac Intel** : \`$NOM-Mac-Intel.dmg\` · **Windows** : \`$NOM-Windows.exe\`
           Les autres fichiers servent aux mises à jour automatiques. Installation détaillée : voir le README."

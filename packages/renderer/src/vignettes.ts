@@ -1,7 +1,7 @@
 // Vignettes des modèles pour l'interface (copiées de Tiny Shrooms) : rendu en petit, vue iso, cerné de sombre
 // comme dans le jeu. Chaque vignette est dessinée une fois avec le moteur principal, puis gardée en image (data URL).
 import * as THREE from 'three';
-import type { Capacite, TypeMonstre } from '@spore-siege/engine';
+import type { Capacite, TypeMonstre } from '@tiny-siege/engine';
 import { modelesMonstres } from './monstres';
 import { modeleTour, type Objet } from './tours';
 import type { Modele } from './voxels';

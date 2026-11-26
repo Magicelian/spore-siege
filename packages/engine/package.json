@@ -1,5 +1,5 @@
 {
-  "name": "@spore-siege/engine",
+  "name": "@tiny-siege/engine",
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",

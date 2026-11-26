@@ -1,7 +1,7 @@
 // Ce qui reste d'une séance à l'autre, dans le stockage local de la fenêtre. Trois emplacements de partie, chacun
 // avec sa difficulté et toute sa progression (étoiles, Atelier, monstres et tours découverts) ; seuls les réglages
 // (son, musique) sont communs.
-import { TOURS_DE_BASE, TOUTES_CAPACITES, type Capacite, type Difficulte, type Reprise, type TypeMonstre, type TypeTour } from '@spore-siege/engine';
+import { TOURS_DE_BASE, TOUTES_CAPACITES, type Capacite, type Difficulte, type Reprise, type TypeMonstre, type TypeTour } from '@tiny-siege/engine';
 
 export const NB_EMPLACEMENTS = 3;
 
@@ -13,6 +13,7 @@ export interface Sauvegarde {
 /** Meilleures étoiles, par id de niveau (`foret-1`…). */
 export type Etoiles = Record<string, number>;
 
+// Clés gardées en « spore-siege » malgré le renommage en Tiny Siege : les changer effacerait les parties des joueurs.
 const CLE_PARTIES = 'spore-siege:parties';
 /** Avant les parties multiples : une seule progression, effacée (choix de Celian, on repart de zéro). */
 const ANCIENNES_CLES = ['spore-siege:etoiles', 'spore-siege:decouverts', 'spore-siege:tours', 'spore-siege:atelier'];

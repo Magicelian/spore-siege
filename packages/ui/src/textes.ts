@@ -1,5 +1,5 @@
 // Tous les textes de l'interface, en un seul endroit : l'anglais s'ajoutera ici plus tard.
-import type { Biome, Capacite, ModeCible, TypeMonstre, TypeTour } from '@spore-siege/engine';
+import type { Biome, Capacite, ModeCible, TypeMonstre, TypeTour } from '@tiny-siege/engine';
 
 export const TOURS_TEXTES: Record<TypeTour, { nom: string; role: string }> = {
   ruche: { nom: 'Poste-ruche', role: 'Ses abeilles piquent vite, un monstre à la fois.' },
@@ -256,7 +256,7 @@ export const TEXTES = {
   morsureCourt: 'Morsure',
   butinCourt: 'Butin',
   rebondsStades: (n: number[]) => `rebonds ${n.join(' / ')}`,
-  titre: 'Spore Siege',
+  titre: 'Tiny Siege',
   surtitre: 'Tiny Shrooms',
   accroche: 'La Rouille débarque. Défends la souche.',
   jouer: 'Jouer',

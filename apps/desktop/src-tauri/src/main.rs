@@ -95,7 +95,7 @@ fn main() {
                 son: case("son", "Son")?,
                 musique: case("musique", "Musique pendant les vagues")?,
                 mettre_a_jour: entree("mettre-a-jour", "")?,
-                quitter: entree("quitter", "Quitter Spore Siege")?,
+                quitter: entree("quitter", "Quitter Tiny Siege")?,
             };
             reglages::preparer_menu(&entrees, &lus);
             let menu = Menu::with_items(
@@ -158,7 +158,7 @@ fn main() {
             journal
         ])
         .build(tauri::generate_context!())
-        .expect("échec du lancement de Spore Siege")
+        .expect("échec du lancement de Tiny Siege")
         .run(|app, evenement| {
             if let RunEvent::ExitRequested { .. } = evenement {
                 reglages::enregistrer(app);

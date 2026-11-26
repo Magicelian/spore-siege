@@ -1,4 +1,4 @@
-"""Icônes de Spore Siege en pixel art, dessinées sur une grille puis agrandies sans lissage.
+"""Icônes de Tiny Siege en pixel art, dessinées sur une grille puis agrandies sans lissage.
 
 - `icone.png` (1024 px, grille 32 × 32) : le canon à spores, chapeau rouge casqué, et une limace, sur fond transparent.
 - `barre-menus.png` (36 px, grille 18 × 18) : sa silhouette en modèle monochrome pour la barre des menus.

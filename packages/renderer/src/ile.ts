@@ -1,6 +1,6 @@
 // Île en coupe : herbe, terre et roche empilées par colonne, décor posé sur les cases.
 import * as THREE from 'three';
-import { estSentier, type Ile, type Terrain } from '@spore-siege/engine';
+import { estSentier, type Ile, type Terrain } from '@tiny-siege/engine';
 import { COULEURS, SURFACES_PAR_BIOME, materiau } from './palette';
 import { modelesDecor, type Decor } from './modeles';
 import { bruit, centreCase } from './repere';

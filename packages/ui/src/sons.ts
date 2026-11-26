@@ -2,7 +2,7 @@
 // pour les tirs, les explosions, les morts, la souche mordue et l'interface ; ambiance de fond comme Tiny Shrooms
 // (vent qui respire, oiseaux de temps en temps ; au marais, grenouilles et grillons ; à la prairie, alouettes, bourdons et grillons ; à la grotte, gouttes et grondements ; à la futaie, pic-vert, coucou et grands arbres qui grincent) ; musique de combat pendant les vagues (`musique.ts`).
 // Coupé par défaut ; le contexte audio n'est créé qu'une fois le son allumé.
-import type { Biome, TypeTour } from '@spore-siege/engine';
+import type { Biome, TypeTour } from '@tiny-siege/engine';
 import { MusiqueCombat } from './musique';
 
 export type Effet =

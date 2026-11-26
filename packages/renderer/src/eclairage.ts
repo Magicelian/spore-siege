@@ -3,7 +3,7 @@
 // les champignons-lanternes. Les lampes forment une réserve fixe (jamais ajoutées ni retirées : changer le nombre de
 // lumières recompilerait tous les matériaux) ; celles qui ne servent pas sont éteintes.
 import * as THREE from 'three';
-import type { Ile, Lumiere } from '@spore-siege/engine';
+import type { Ile, Lumiere } from '@tiny-siege/engine';
 import { centreCase } from './repere';
 
 const RESERVE = 24;

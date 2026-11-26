@@ -1,6 +1,6 @@
 // Palette limitée et matériaux partagés, ombrés en paliers.
 import * as THREE from 'three';
-import type { Biome, Terrain } from '@spore-siege/engine';
+import type { Biome, Terrain } from '@tiny-siege/engine';
 
 export const COULEURS = {
   herbe: 0x7cc452,

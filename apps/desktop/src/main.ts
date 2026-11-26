@@ -2,10 +2,10 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { ileDe, NIVEAUX, NIVEAUX_FORET, partieDe, PAS_MS, reprendre, type Reprise, type Niveau, type Partie, type Commande, type EvenementVu, type Instantane, type Phase } from '@spore-siege/engine';
-import { echelleAffichage, ORDRE_ILES, Rendu } from '@spore-siege/renderer';
-import { ControleurInterface, type Effet, type Fenetre, type Jeu } from '@spore-siege/ui';
-import '@spore-siege/ui/interface.css';
+import { ileDe, NIVEAUX, NIVEAUX_FORET, partieDe, PAS_MS, reprendre, type Reprise, type Niveau, type Partie, type Commande, type EvenementVu, type Instantane, type Phase } from '@tiny-siege/engine';
+import { echelleAffichage, ORDRE_ILES, Rendu } from '@tiny-siege/renderer';
+import { ControleurInterface, type Effet, type Fenetre, type Jeu } from '@tiny-siege/ui';
+import '@tiny-siege/ui/interface.css';
 
 const dansTauri = '__TAURI_INTERNALS__' in window;
 /** Distance, en pixels, au-delà de laquelle un appui devient un glisser. */

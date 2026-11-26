@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Case, Ile } from '@spore-siege/engine';
+import type { Case, Ile } from '@tiny-siege/engine';
 import { Eclats } from './effets';
 import type { PlateformeVue } from './ile';
 import { modelesDecor } from './modeles';

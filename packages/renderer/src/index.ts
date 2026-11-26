@@ -1,7 +1,7 @@
 // Rendu de l'île : scène Three.js pixelisée, dans le style de Tiny Shrooms.
 import * as THREE from 'three';
 import { Eclairage } from './eclairage';
-import type { Biome, Case, EvenementVu, Ile, Instantane } from '@spore-siege/engine';
+import type { Biome, Case, EvenementVu, Ile, Instantane } from '@tiny-siege/engine';
 import { Archipel, COTE_ARCHIPEL, ETAPES_ARCHIPEL, reduire } from './archipel';
 import { CameraIso } from './camera';
 import { ChutesRendu } from './chutes';

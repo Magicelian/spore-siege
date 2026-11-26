@@ -1,16 +1,16 @@
 <div align="center">
 
-<img src="docs/icone.png" width="128" alt="Icône de Spore Siege" />
+<img src="docs/icone.png" width="128" alt="Icône de Tiny Siege" />
 
-# Tiny Shrooms: Spore Siege
+# Tiny Siege
 
 **Un tower defense sur une île flottante : la Rouille débarque, défends la souche.**
 
-[![Mac Apple Silicon](https://img.shields.io/badge/Mac_Apple_Silicon-Télécharger-c8403a?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Magicelian/spore-siege/releases/latest/download/Spore-Siege-Mac-Apple-Silicon.dmg)
-[![Mac Intel](https://img.shields.io/badge/Mac_Intel-Télécharger-9a4a24?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Magicelian/spore-siege/releases/latest/download/Spore-Siege-Mac-Intel.dmg)
-[![Windows](https://img.shields.io/badge/Windows-Télécharger-5b5550?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Magicelian/spore-siege/releases/latest/download/Spore-Siege-Windows.exe)
+[![Mac Apple Silicon](https://img.shields.io/badge/Mac_Apple_Silicon-Télécharger-c8403a?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Magicelian/tiny-siege/releases/latest/download/Tiny-Siege-Mac-Apple-Silicon.dmg)
+[![Mac Intel](https://img.shields.io/badge/Mac_Intel-Télécharger-9a4a24?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Magicelian/tiny-siege/releases/latest/download/Tiny-Siege-Mac-Intel.dmg)
+[![Windows](https://img.shields.io/badge/Windows-Télécharger-5b5550?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Magicelian/tiny-siege/releases/latest/download/Tiny-Siege-Windows.exe)
 
-![Dernière version](https://img.shields.io/github/v/release/Magicelian/spore-siege?label=version&color=c8403a)
+![Dernière version](https://img.shields.io/github/v/release/Magicelian/tiny-siege?label=version&color=c8403a)
 
 <img src="docs/partie.png" width="480" alt="Tours qui défendent la souche contre la Rouille" />
 
@@ -39,21 +39,21 @@ Un clic sur le lien qui correspond à ton ordinateur, et le téléchargement dé
 
 | Ordinateur | Télécharger |
 |---|---|
-| 🍎 **Mac Apple Silicon** (puce M1, M2, M3, M4…) | [Spore-Siege-Mac-Apple-Silicon.dmg](https://github.com/Magicelian/spore-siege/releases/latest/download/Spore-Siege-Mac-Apple-Silicon.dmg) |
-| 🍏 **Mac Intel** (Mac d'avant fin 2020) | [Spore-Siege-Mac-Intel.dmg](https://github.com/Magicelian/spore-siege/releases/latest/download/Spore-Siege-Mac-Intel.dmg) |
-| 🪟 **Windows** | [Spore-Siege-Windows.exe](https://github.com/Magicelian/spore-siege/releases/latest/download/Spore-Siege-Windows.exe) |
+| 🍎 **Mac Apple Silicon** (puce M1, M2, M3, M4…) | [Tiny-Siege-Mac-Apple-Silicon.dmg](https://github.com/Magicelian/tiny-siege/releases/latest/download/Tiny-Siege-Mac-Apple-Silicon.dmg) |
+| 🍏 **Mac Intel** (Mac d'avant fin 2020) | [Tiny-Siege-Mac-Intel.dmg](https://github.com/Magicelian/tiny-siege/releases/latest/download/Tiny-Siege-Mac-Intel.dmg) |
+| 🪟 **Windows** | [Tiny-Siege-Windows.exe](https://github.com/Magicelian/tiny-siege/releases/latest/download/Tiny-Siege-Windows.exe) |
 
 Pour savoir quel Mac tu as : menu Pomme → **À propos de ce Mac**. « Puce » = Apple Silicon, « Processeur Intel » = Intel.
 
 <details>
 <summary><b>🍎 Mac : installation pas à pas</b></summary>
 
-1. Ouvre le `.dmg` et glisse **Tiny Shrooms Spore Siege** dans **Applications**.
+1. Ouvre le `.dmg` et glisse **Tiny Siege** dans **Applications**.
 2. Le jeu n'est pas signé par Apple, donc macOS le bloque au premier lancement. Deux façons de le débloquer :
    - **Réglages Système → Confidentialité et sécurité**, puis **Ouvrir quand même** en bas de la page ;
    - ou, dans le Terminal, une fois le jeu dans Applications :
      ```bash
-     xattr -cr "/Applications/Tiny Shrooms Spore Siege.app"
+     xattr -cr "/Applications/Tiny Siege.app"
      ```
 3. Le jeu n'apparaît pas dans le Dock : il vit dans la **barre des menus**, en haut de l'écran 🍄.
 
@@ -62,7 +62,7 @@ Pour savoir quel Mac tu as : menu Pomme → **À propos de ce Mac**. « Puce » 
 <details>
 <summary><b>🪟 Windows : installation pas à pas</b></summary>
 
-1. Lance `Spore-Siege-Windows.exe`.
+1. Lance `Tiny-Siege-Windows.exe`.
 2. Si SmartScreen affiche un avertissement : **Informations complémentaires**, puis **Exécuter quand même**.
 3. L'icône du jeu apparaît dans la zone de notification, en bas à droite.
 

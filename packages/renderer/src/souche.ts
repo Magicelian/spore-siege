@@ -1,6 +1,6 @@
 // Souche à défendre, au centre de l'île.
 import * as THREE from 'three';
-import type { Ile } from '@spore-siege/engine';
+import type { Ile } from '@tiny-siege/engine';
 import { modeleSouche } from './modeles';
 import { versMonde } from './repere';
 

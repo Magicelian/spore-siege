@@ -1,6 +1,6 @@
 // Tours, projectiles, explosions et éclairs. Modèles des tours dans `fortins.ts`.
 import * as THREE from 'three';
-import type { Capacite, Case, ImpactVu, Ile, Instantane, ProjectileVu, TypeTour } from '@spore-siege/engine';
+import type { Capacite, Case, ImpactVu, Ile, Instantane, ProjectileVu, TypeTour } from '@tiny-siege/engine';
 import { Eclats } from './effets';
 import { centreCase, HAUTEUR_PLATEFORME, hauteurCase, versMonde } from './repere';
 import { fortin } from './fortins';
